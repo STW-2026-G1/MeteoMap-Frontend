@@ -11,6 +11,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; errorMessage?: string }>;
+  loginGoogle: (credential: string) => Promise<{ success: boolean; errorMessage?: string }>;
   logout: () => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<{ success: boolean; errorMessage?: string }>;
   loading: boolean;
@@ -80,6 +81,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
       setError(errorMessage);
       console.error('Login error:', errorMessage);
+      return { success: false, errorMessage };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loginGoogle = async (idToken: string): Promise<{ success: boolean; errorMessage?: string }> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login-google`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ idToken }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        let errorMessage = 'Error al iniciar sesión con Google';
+        if (data?.message) {
+          errorMessage = data.message;
+        } else if (data?.error) {
+          errorMessage = data.error;
+        }
+        setError(errorMessage);
+        return { success: false, errorMessage };
+      }
+
+      const userData = data.user;
+      setUser(userData);
+      localStorage.setItem('meteomap_user', JSON.stringify(userData));
+      localStorage.setItem('meteomap_token', data.accessToken);
+
+      return { success: true };
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+      setError(errorMessage);
+      console.error('Google login error:', errorMessage);
       return { success: false, errorMessage };
     } finally {
       setLoading(false);
@@ -170,6 +212,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isAuthenticated: !!user,
         login,
+        loginGoogle,
         logout,
         register,
         loading,
