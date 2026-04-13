@@ -2,9 +2,14 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 
 interface User {
   _id?: string;
+  id?: string; // For Google users
   email: string;
-  nombre?: string;
   name?: string;
+  nombre?: string; // For Google users
+  avatar_style?: string;
+  avatar_seed?: string;
+  avatar_url?: string; // For Google users
+  rol?: string;
 }
 
 interface AuthContextType {
@@ -13,7 +18,8 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<{ success: boolean; errorMessage?: string }>;
   loginGoogle: (credential: string) => Promise<{ success: boolean; errorMessage?: string }>;
   logout: () => Promise<void>;
-  register: (email: string, password: string, name: string) => Promise<{ success: boolean; errorMessage?: string }>;
+  register: (email: string, password: string, name: string, avatarStyle?: string) => Promise<{ success: boolean; errorMessage?: string }>;
+  updateProfile: (profileData: { name?: string; email?: string; avatar_style?: string }) => Promise<{ success: boolean; errorMessage?: string }>;
   loading: boolean;
   error: string | null;
 }
@@ -21,6 +27,25 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:3000/api';
+
+// Helper function to normalize user data from backend to frontend format
+const normalizeUserData = (backendUser: any): User => {
+  // Check if data is nested inside 'perfil' (new backend structure)
+  const profile = backendUser.perfil || {};
+  
+  // TODO, CRITICAL: check for inconsistencies with the backend
+  return {
+    _id: backendUser._id || backendUser.id,
+    id: backendUser.id,
+    email: backendUser.email,
+    name: backendUser.name || profile.nombre || backendUser.nombre,
+    nombre: profile.nombre || backendUser.nombre,
+    avatar_style: profile.avatar_style || backendUser.avatar_style,
+    avatar_seed: profile.avatar_seed || backendUser.avatar_seed,
+    avatar_url: profile.avatar_url || backendUser.avatar_url,
+    rol: backendUser.rol,
+  };
+};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -32,7 +57,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const savedUser = localStorage.getItem('meteomap_user');
     const savedToken = localStorage.getItem('meteomap_token');
     if (savedUser && savedToken) {
-      setUser(JSON.parse(savedUser));
+      const parsedUser = JSON.parse(savedUser);
+      // Normalize user data when loading from localStorage to ensure consistency
+      const normalizedUser = normalizeUserData(parsedUser);
+      setUser(normalizedUser);
     }
   }, []);
 
@@ -70,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, errorMessage };
       }
 
-      const userData = data.user || { email };
+      const userData = normalizeUserData(data.user || { email });
       
       setUser(userData);
       localStorage.setItem('meteomap_user', JSON.stringify(userData));
@@ -112,7 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, errorMessage };
       }
 
-      const userData = data.user;
+      const userData = normalizeUserData(data.user);
       setUser(userData);
       localStorage.setItem('meteomap_user', JSON.stringify(userData));
       localStorage.setItem('meteomap_token', data.accessToken);
@@ -157,7 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (email: string, password: string, name: string): Promise<{ success: boolean; errorMessage?: string }> => {
+  const register = async (email: string, password: string, name: string, avatarStyle?: string): Promise<{ success: boolean; errorMessage?: string }> => {
     setLoading(true);
     setError(null);
     try {
@@ -166,7 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password, nombre: name }),
+        body: JSON.stringify({ email, password, name, avatar_style: avatarStyle }),
       });
 
       const errorData = await response.json();
@@ -189,7 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, errorMessage };
       }
 
-      const userData = errorData.user || { email, name };
+      const userData = normalizeUserData(errorData.user || { email, name });
       
       setUser(userData);
       localStorage.setItem('meteomap_user', JSON.stringify(userData));
@@ -206,6 +234,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateProfile = async (profileData: { name?: string; email?: string; avatar_style?: string }): Promise<{ success: boolean; errorMessage?: string }> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = localStorage.getItem('meteomap_token');
+      const response = await fetch(`${API_BASE_URL}/user/update`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(profileData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        let errorMessage = 'Error al actualizar perfil';
+        if (data?.message) {
+          errorMessage = data.message;
+        } else if (data?.error) {
+          errorMessage = data.error;
+        }
+        setError(errorMessage);
+        return { success: false, errorMessage };
+      }
+
+      // Update local user data
+      if (user) {
+        // Correctly handle the response from backend which might be nested
+        const updatedUser = normalizeUserData(data.user || data || { ...user, ...profileData });
+        setUser(updatedUser);
+        localStorage.setItem('meteomap_user', JSON.stringify(updatedUser));
+      }
+
+      return { success: true };
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+      setError(errorMessage);
+      console.error('Update profile error:', errorMessage);
+      return { success: false, errorMessage };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -215,6 +289,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loginGoogle,
         logout,
         register,
+        updateProfile,
         loading,
         error,
       }}

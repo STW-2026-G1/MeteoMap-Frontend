@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
@@ -37,8 +37,8 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { useAuth } from "../contexts/AuthContext";
+import { ImageWithFallback } from "../components/common/ImageWithFallback";
 import {
-  User,
   MapPin,
   FileText,
   Settings,
@@ -53,23 +53,52 @@ import {
   Heart,
   Trash2,
   Plus,
-  Camera,
   Lock,
-  Upload,
 } from "lucide-react";
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileData, setProfileData] = useState({
-    name: user?.name || "Usuario",
+    id: user?._id || user?.id || 'User',
+    name: user?.name || user?.nombre || "Usuario",
     email: user?.email || "",
     bio: "Amante de la montaña y el esquí. Llevo 5 años explorando los Pirineos.",
     location: "Huesca, España",
     experience: "Avanzado",
-    avatar: "",
+    avatar_style: user?.avatar_style || "avataaars",
+    avatar_seed: user?.avatar_seed || user?.name || user?.nombre || "Usuario",
+    avatar_url: user?.avatar_url,
   });
+
+  // Sync state with user context if it changes (e.g., after login or update)
+  useEffect(() => {
+    if (user) {
+      setProfileData(prev => ({
+        ...prev,
+        id: user._id || user.id || prev.id,
+        name: user.name || user.nombre || prev.name,
+        email: user.email || prev.email,
+        avatar_style: user.avatar_style || prev.avatar_style,
+        avatar_seed: user.avatar_seed || user.name || user.nombre || prev.avatar_seed,
+        avatar_url: user.avatar_url,
+      }));
+    }
+  }, [user]);
+
+  const avatarStyles = [
+    { value: "avataaars", label: "Avataaars" },
+    { value: "bottts", label: "Bottts" },
+    { value: "lorelei", label: "Lorelei" },
+    { value: "pixel-art", label: "Pixel Art" },
+    { value: "thumbs", label: "Thumbs" },
+    { value: "notionists", label: "Notionists" },
+    { value: "notionists-neutral", label: "Notionists Neutral" },
+    { value: "dylan", label: "Dylan" },
+    { value: "croodles", label: "Croodles" },
+    { value: "personas", label: "Personas" },
+  ];
 
   // Estados para diálogos
   const [editReportDialog, setEditReportDialog] = useState<number | null>(null);
@@ -197,9 +226,32 @@ export default function ProfilePage() {
     region: "",
   });
 
-  const handleSaveProfile = () => {
-    // Aquí guardarías los datos del perfil
-    setIsEditingProfile(false);
+  const handleSaveProfile = async () => {
+    // Determine if we should clear avatar_url based on style change
+    // If the style being saved is NOT what we had originally or from google, 
+    // we want to effectively "switch" to dicebear
+    const result = await updateProfile({
+      name: profileData.name,
+      email: profileData.email,
+      avatar_style: profileData.avatar_style,
+    });
+    if (result.success) {
+      setIsEditingProfile(false);
+      // Re-initialize profile data with updated user values from context
+      if (user) {
+        setProfileData({
+          ...profileData,
+          name: user.name || user.nombre || "Usuario",
+          email: user.email || "",
+          avatar_style: user.avatar_style || "avataaars",
+          avatar_seed: user.avatar_seed || user.name || user.nombre || "Usuario",
+          avatar_url: user.avatar_url,
+        });
+      }
+    } else {
+      // Handle error - maybe show an alert
+      alert(result.errorMessage || "Error al actualizar perfil");
+    }
   };
 
   const handleEditReport = (reportId: number) => {
@@ -270,17 +322,6 @@ export default function ProfilePage() {
     alert("Cuenta eliminada");
   };
 
-  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfileData({ ...profileData, avatar: reader.result as string });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   const getReportTypeInfo = (type: string) => {
     switch (type) {
       case "danger":
@@ -308,17 +349,12 @@ export default function ProfilePage() {
           <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
             {/* Avatar */}
             <div className="relative">
-              {profileData.avatar ? (
-                <img
-                  src={profileData.avatar}
-                  alt="Avatar"
-                  className="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover shadow-lg"
-                />
-              ) : (
-                <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-4xl md:text-5xl font-bold shadow-lg">
-                  {profileData.name.charAt(0).toUpperCase()}
-                </div>
-              )}
+              <ImageWithFallback
+                src={profileData.avatar_url}
+                fallback={`https://api.dicebear.com/9.x/${profileData.avatar_style}/svg?seed=${profileData.avatar_seed}`}
+                alt="Avatar"
+                className="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover shadow-lg"
+              />
             </div>
 
             {/* User Info */}
@@ -693,53 +729,6 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-6">
-                {/* Avatar Upload */}
-                <div>
-                  <Label className="text-base font-semibold mb-3 block">
-                    Foto de Perfil
-                  </Label>
-                  <div className="flex items-center gap-4">
-                    {profileData.avatar ? (
-                      <img
-                        src={profileData.avatar}
-                        alt="Avatar"
-                        className="w-20 h-20 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold">
-                        {profileData.name.charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                    <div>
-                      <input
-                        type="file"
-                        id="avatar-upload"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleAvatarUpload}
-                        disabled={!isEditingProfile}
-                      />
-                      <label htmlFor="avatar-upload">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          disabled={!isEditingProfile}
-                          onClick={() => document.getElementById('avatar-upload')?.click()}
-                          asChild
-                        >
-                          <span className="cursor-pointer">
-                            <Camera className="h-4 w-4 mr-2" />
-                            Cambiar Foto
-                          </span>
-                        </Button>
-                      </label>
-                      <p className="text-xs text-gray-500 mt-2">
-                        JPG, PNG o GIF. Tamaño máximo 2MB
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
                 {/* Name */}
                 <div>
                   <Label htmlFor="name" className="text-base font-semibold mb-2 block">
@@ -796,6 +785,48 @@ export default function ProfilePage() {
                     disabled={!isEditingProfile}
                     className="text-base h-11"
                   />
+                </div>
+
+                {/* Avatar Style - Always show to allow switching to generated avatar */}
+                <div>
+                  <Label htmlFor="avatarStyle" className="text-base font-semibold mb-2 block">
+                    Estilo de Avatar
+                  </Label>
+                  <div className="flex items-center gap-4">
+                    <Select
+                      value={profileData.avatar_style}
+                      onValueChange={(value) => setProfileData({ ...profileData, avatar_style: value })}
+                      disabled={!isEditingProfile}
+                    >
+                      <SelectTrigger className="flex-1 text-base h-11">
+                        <SelectValue placeholder="Selecciona un estilo de avatar" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {avatarStyles.map((style) => (
+                          <SelectItem key={style.value} value={style.value}>
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={`https://api.dicebear.com/9.x/${style.value}/svg?seed=${profileData.avatar_seed}`}
+                                alt={style.label}
+                                className="w-8 h-8 rounded-full"
+                              />
+                              <span>{style.label}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex-shrink-0">
+                      <img
+                        src={`https://api.dicebear.com/9.x/${profileData.avatar_style}/svg?seed=${profileData.avatar_seed}`}
+                        alt="Avatar preview"
+                        className="w-12 h-12 rounded-full border-2 border-gray-200"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Elige un estilo si prefieres usar un avatar generado en lugar de tu foto de perfil
+                  </p>
                 </div>
               </div>
             </Card>

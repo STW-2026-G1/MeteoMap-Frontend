@@ -1,8 +1,9 @@
 import { Link } from "react-router";
 import { Button } from "./ui/button";
-import { Cloud, Menu, X, BarChart3, User, LogOut } from "lucide-react";
+import { Cloud, Menu, X, BarChart3, LogOut } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { ImageWithFallback } from "./common/ImageWithFallback";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,8 +56,13 @@ export function Header() {
                 {/* User Dropdown Menu */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="rounded-full">
-                      <User className="h-5 w-5" />
+                    <Button variant="ghost" size="icon" className="rounded-full p-0 overflow-hidden w-8 h-8">
+                      <ImageWithFallback
+                        src={user?.avatar_url}
+                        fallback={`https://api.dicebear.com/9.x/${user?.avatar_style || 'avataaars'}/svg?seed=${user?.avatar_seed || user?.name || 'User'}`}
+                        alt="Avatar"
+                        className="w-full h-full rounded-full object-cover"
+                      />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
@@ -69,7 +75,6 @@ export function Header() {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
                       <Link to="/perfil" className="cursor-pointer">
-                        <User className="h-4 w-4 mr-2" />
                         Mi Perfil
                       </Link>
                     </DropdownMenuItem>
@@ -139,11 +144,14 @@ export function Header() {
                   <>
                     <div className="border-t pt-4 mt-4">
                       <div className="flex items-center gap-3 mb-4 p-2 bg-gray-50 rounded-lg">
-                        <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold">
-                          {(user?.name || user?.nombre || "U")?.charAt(0).toUpperCase()}
-                        </div>
+                        <ImageWithFallback
+                          src={user?.avatar_url}
+                          fallback={`https://api.dicebear.com/9.x/${user?.avatar_style || 'avataaars'}/svg?seed=${user?.avatar_seed || user?.name || 'User'}`}
+                          alt="Avatar"
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
                         <div>
-                          <p className="text-sm font-medium">{user?.name || user?.nombre}</p>
+                          <p className="text-sm font-medium">{user?.name}</p>
                           <p className="text-xs text-gray-500">{user?.email}</p>
                         </div>
                       </div>
@@ -154,7 +162,6 @@ export function Header() {
                       className="flex items-center gap-2 text-lg text-gray-700 hover:text-blue-600 transition-colors py-2"
                       onClick={() => setMobileMenuOpen(false)}
                     >
-                      <User className="h-5 w-5" />
                       Mi Perfil
                     </Link>
 
