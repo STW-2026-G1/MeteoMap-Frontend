@@ -25,6 +25,7 @@ import {
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
+const SERVER_URL = import.meta.env.VITE_API_BASE_URL
 interface MapMarker {
   id: number;
   lat: number;
@@ -82,20 +83,23 @@ export default function MapViewer() {
 
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
   const [selectedZone, setSelectedZone] = useState<ZoneData | null>(null);
-  const [favoriteZones, setFavoriteZones] = useState<Set<number>>(new Set([2])); // Pico Aneto es favorito por defecto
+  const [favoriteZones, setFavoriteZones] = useState<Set<number>>(new Set([]));
   const [createReportModalOpen, setCreateReportModalOpen] = useState(false);
 
-  // Markers centered around Pyrenees mountains
-  const markers: MapMarker[] = [
-    { id: 1, lat: 42.65, lng: 0.85, type: 'snow', label: 'Nieve inestable - Valle de Benasque' },
-    { id: 2, lat: 42.75, lng: 0.65, type: 'ice', label: 'Placas de hielo - Pico Aneto' },
-    { id: 3, lat: 42.55, lng: 0.75, type: 'alert', label: 'Alerta aludes - Zona Maladeta' },
-    { id: 4, lat: 42.85, lng: 0.95, type: 'snow', label: 'Nieve polvo - Pista Cerler' },
-    { id: 5, lat: 42.45, lng: 0.55, type: 'ice', label: 'Hielo negro - Carretera A-139' },
-    { id: 6, lat: 42.70, lng: 1.05, type: 'alert', label: 'Precaución - Collado del Infierno' },
-  ];
+  /* ========================================================================== */
+  /* ESTADO - Dynamic Data Management                                          */
+  /* Gestiona los datos obtenidos de la API y su transformación               */
+  /* ========================================================================== */
+  const [apiZones, setApiZones] = useState<any[]>([]);
+  const [markers, setMarkers] = useState<MapMarker[]>([]);
+  const [zonesDataState, setZonesDataState] = useState<{ [key: number]: ZoneData }>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Weather data points - coordenadas geográficas específicas
+  /* ========================================================================== */
+  /* DATOS ESTÁTICOS - Weather & Meteorological Data                          */
+  /* Coordenadas y valores meteorológicos de ejemplo para visualización        */
+  /* ========================================================================== */
   const temperatureData = [
     { lat: 42.60, lng: 0.70, temp: -2, color: '#f97316' },
     { lat: 42.70, lng: 0.95, temp: 5, color: '#ef4444' },
@@ -116,151 +120,184 @@ export default function MapViewer() {
     { lat: 42.58, lng: 0.82, speed: 15, rotation: -45 },
   ];
 
-  // Complete zone data with reports
-  const zonesData: { [key: number]: ZoneData } = {
-    1: {
-      id: 1,
-      name: 'Valle de Benasque',
-      elevation: '1.140m',
-      temperature: -2,
-      wind: 18,
-      avalancheLevel: 2,
-      isFavorite: favoriteZones.has(1),
-      reports: [
-        {
-          id: 1,
-          userName: 'Carlos_Montañero',
-          avatar: '',
-          condition: 'Nieve polvo en buen estado. Cuidado con las zonas de sombra.',
-          timestamp: 'hace 2h',
-          photo: 'https://images.unsplash.com/photo-1770064182538-0f88c61455eb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzbm93eSUyMG1vdW50YWluJTIwcGVhayUyMGNvbmRpdGlvbnN8ZW58MXx8fHwxNzc0NDQzMTYwfDA&ixlib=rb-4.1.0&q=80&w=1080',
-        },
-        {
-          id: 2,
-          userName: 'Laura_Ski',
-          avatar: '',
-          condition: 'Visibilidad perfecta. Temperatura agradable para esquiar.',
-          timestamp: 'hace 5h',
-        },
-      ],
-    },
-    2: {
-      id: 2,
-      name: 'Pico Aneto',
-      elevation: '3.404m',
-      temperature: -4,
-      wind: 25,
-      avalancheLevel: 3,
-      isFavorite: favoriteZones.has(2),
-      reports: [
-        {
-          id: 3,
-          userName: 'MiguelAlpinista',
-          avatar: '',
-          condition: 'Mucho viento en la cumbre. Placas de hielo detectadas en cara norte.',
-          timestamp: 'hace 1h',
-          photo: 'https://images.unsplash.com/photo-1772032253819-ab75f447d5d9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb3VudGFpbiUyMHRyYWlsJTIwaWNlJTIwaGF6YXJkfGVufDF8fHx8MTc3NDQ0MzE2M3ww&ixlib=rb-4.1.0&q=80&w=1080',
-        },
-        {
-          id: 4,
-          userName: 'Ana_Guía',
-          avatar: '',
-          condition: 'Recomiendo crampones obligatorios. Condiciones técnicas.',
-          timestamp: 'hace 3h',
-        },
-        {
-          id: 5,
-          userName: 'JavierPirineos',
-          avatar: '',
-          condition: 'Impresionantes vistas hoy. Nieve firme en la aproximación.',
-          timestamp: 'ayer',
-        },
-      ],
-    },
-    3: {
-      id: 3,
-      name: 'Zona Maladeta',
-      elevation: '2.580m',
-      temperature: -5,
-      wind: 32,
-      avalancheLevel: 4,
-      isFavorite: favoriteZones.has(3),
-      reports: [
-        {
-          id: 6,
-          userName: 'Rescue_Team',
-          avatar: '',
-          condition: '⚠️ ALERTA: Peligro notable de aludes. Evitar la zona hasta nueva orden.',
-          timestamp: 'hace 30min',
-        },
-        {
-          id: 7,
-          userName: 'Sofia_Trekking',
-          avatar: '',
-          condition: 'Escuchamos ruidos de avalanchas pequeñas. Precaución extrema.',
-          timestamp: 'hace 2h',
-        },
-      ],
-    },
-    4: {
-      id: 4,
-      name: 'Pista Cerler',
-      elevation: '1.500m',
-      temperature: 1,
-      wind: 15,
-      avalancheLevel: 1,
-      isFavorite: favoriteZones.has(4),
-      reports: [
-        {
-          id: 8,
-          userName: 'PistasAbiertas',
-          avatar: '',
-          condition: 'Todas las pistas operativas. Nieve en condiciones óptimas.',
-          timestamp: 'hace 4h',
-        },
-      ],
-    },
-    5: {
-      id: 5,
-      name: 'Carretera A-139',
-      elevation: '800m',
-      temperature: 3,
-      wind: 12,
-      avalancheLevel: 2,
-      isFavorite: favoriteZones.has(5),
-      reports: [
-        {
-          id: 9,
-          userName: 'DGT_Huesca',
-          avatar: '',
-          condition: 'Hielo negro en el km 15. Circular con precaución y cadenas.',
-          timestamp: 'hace 1h',
-        },
-      ],
-    },
-    6: {
-      id: 6,
-      name: 'Collado del Infierno',
-      elevation: '2.721m',
-      temperature: -3,
-      wind: 28,
-      avalancheLevel: 3,
-      isFavorite: favoriteZones.has(6),
-      reports: [],
-    },
-  };
+  // Referencia a los datos de zonas transformadas
+  const zonesData = zonesDataState;
 
-  const handleZoneSelect = (zoneId: number) => {
-    const zone = zonesData[zoneId];
-    if (zone) {
-      setSelectedZone({ ...zone, isFavorite: favoriteZones.has(zoneId) });
+  /* ========================================================================== */
+  /* EFECTO 1: API Data Fetching & Transformation                             */
+  /* Obtiene datos de zonas desde la API y los transforma a formatos locales   */
+  /* ========================================================================== */
+  useEffect(() => {
+    const fetchAndTransformZones = async () => {
+      try {
+        setLoading(true);
+
+        /* Paso 1: Fetch desde el endpoint de API */
+        const apiUrl = `${SERVER_URL}/zones`;
+        console.log('Fetching zones from:', apiUrl);
+
+        const response = await fetch(apiUrl);
+
+        if (!response.ok) {
+          throw new Error(`API Error: ${response.status} ${response.statusText}`);
+        }
+
+        const apiResponse = await response.json();
+        const zonesFromApi = apiResponse.data;
+
+        if (!Array.isArray(zonesFromApi)) {
+          throw new Error('API response format is invalid');
+        }
+
+        console.log(`Loaded ${zonesFromApi.length} zones from API`);
+
+        /* Paso 2: Transformar datos a formato MapMarker para renderizado */
+        const transformedMarkers: MapMarker[] = zonesFromApi.map(
+          (zone: any, index: number) => {
+            const [lng, lat] = zone.geolocalizacion?.coordinates || [0, 0];
+
+            return {
+              id: index + 1,
+              lat: lat,
+              lng: lng,
+              type: 'snow' as const,
+              label: zone.nombre || `Zone ${index + 1}`,
+            };
+          }
+        );
+
+        /* Paso 3: Transformar datos a formato ZoneData para UI sidebar */
+        const transformedZonesData: { [key: number]: ZoneData } = {};
+
+        zonesFromApi.forEach((zone: any, index: number) => {
+          const [lng, lat] = zone.geolocalizacion?.coordinates || [0, 0];
+          const temp = zone.cache_meteo?.datos_crudos?.current?.temperature ?? 0;
+          const wind = zone.cache_meteo?.datos_crudos?.current?.wind_speed_10m ?? 0;
+
+          transformedZonesData[index + 1] = {
+            id: index + 1,
+            name: zone.nombre || `Zone ${index + 1}`,
+            elevation: '1.500m',
+            temperature: temp,
+            wind: wind,
+            avalancheLevel: 2,
+            isFavorite: false,
+            reports: [],
+          };
+        });
+
+        /* Paso 4: Actualizar estados y limpiar errores previos */
+        setApiZones(zonesFromApi);
+        setMarkers(transformedMarkers);
+        setZonesDataState(transformedZonesData);
+        setError(null);
+
+        console.log('✅ Zones loaded and transformed successfully');
+      } catch (err) {
+        console.error('❌ Error loading zones:', err);
+        setError(err instanceof Error ? err.message : 'Unknown error');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAndTransformZones();
+  }, []);
+
+  /* ========================================================================== */
+  /* HANDLERS - User Interaction Management                                    */
+  /* Funciones para gestionar interacciones del usuario con el mapa y zonas    */
+  /* ========================================================================== */
+
+  /**
+   * Selecciona una zona para mostrar su información en el sidebar
+   * Llama a la API para obtener datos meteorológicos actualizados
+   * @param zoneId - ID de posición en el array (1-indexed)
+   *** TODO: DECIDIR SI LLAMAR A LA API EN CADA CLICK O NO
+   */
+  const handleZoneSelect = async (zoneId: number) => {
+    try {
+      /* Obtener la zona desde apiZones (índice es zoneId - 1) */
+      const apiZone = apiZones[zoneId - 1];
+      
+      if (!apiZone) {
+        console.warn('Zona no encontrada con índice:', zoneId - 1);
+        return;
+      }
+
+      /* Obtener el ID de MongoDB (_id) de la zona */
+      const mongoDbId = apiZone._id;
+      console.log('Zona seleccionada - MongoDB ID:', mongoDbId);
+
+      /* Paso 1: Llamar a la API para obtener datos meteorológicos actualizados */
+      const weatherApiUrl = `${SERVER_URL}/zones/${mongoDbId}/weather`;
+      console.log('Fetching updated weather from:', weatherApiUrl);
+
+      const weatherResponse = await fetch(weatherApiUrl);
+      
+      if (!weatherResponse.ok) {
+        throw new Error(`Weather API Error: ${weatherResponse.status} ${weatherResponse.statusText}`);
+      }
+
+      const weatherData = await weatherResponse.json();
+      console.log('Weather data received:', weatherData);
+
+      /* Paso 2: Extraer datos meteorológicos de la respuesta */
+      const meteorologicalData = weatherData.datos_crudos?.current || 
+                                apiZone.cache_meteo?.datos_crudos?.current || {};
+      const temperature = meteorologicalData.temperature ?? 0;
+      const wind = meteorologicalData.wind_speed_10m ?? 0;
+      const weatherCode = meteorologicalData.weather_code ?? 0;
+
+      /* Extraer coordenadas */
+      const [lng, lat] = apiZone.geolocalizacion?.coordinates || [0, 0];
+
+      /* Paso 3: Construir objeto ZoneData con datos actualizados de la API */
+      const completeZoneData: ZoneData = {
+        id: zoneId,
+        name: apiZone.nombre || `Zone ${zoneId}`,
+        elevation: '1.500m',
+        temperature: temperature,
+        wind: wind,
+        avalancheLevel: 2,
+        isFavorite: favoriteZones.has(zoneId),
+        reports: [],
+      };
+
+      /* Paso 4: Actualizar estado con los datos completos */
+      setSelectedZone(completeZoneData);
+
+      console.log('Zona actualizada en sidebar:', {
+        nombre: completeZoneData.name,
+        mongoDbId: mongoDbId,
+        coordenadas: { lat, lng },
+        temperatura: temperature,
+        viento: wind,
+        codigoMeteo: weatherCode,
+      });
+
+    } catch (err) {
+      console.error('Error al seleccionar zona:', err);
+      
+      /* Fallback: mostrar zona con datos cargados previamente */
+      const zone = zonesData[zoneId];
+      if (zone) {
+        setSelectedZone({ ...zone, isFavorite: favoriteZones.has(zoneId) });
+      }
     }
   };
 
+  /**
+   * Cierra el panel de información de la zona seleccionada
+   */
   const handleZoneClose = () => {
     setSelectedZone(null);
   };
 
+  /**
+   * Alterna el estado favorito de una zona
+   * @param zoneId - ID único de la zona
+   */
   const handleToggleFavorite = (zoneId: number) => {
     setFavoriteZones(prev => {
       const newFavorites = new Set(prev);
@@ -271,8 +308,7 @@ export default function MapViewer() {
       }
       return newFavorites;
     });
-    
-    // Update selected zone if it's the one being toggled
+
     if (selectedZone && selectedZone.id === zoneId) {
       setSelectedZone({
         ...selectedZone,
@@ -281,6 +317,16 @@ export default function MapViewer() {
     }
   };
 
+  /* ========================================================================== */
+  /* UTILIDADES - Icon & Marker Management                                    */
+  /* Funciones para crear iconos personalizados y marcadores de mapa           */
+  /* ========================================================================== */
+
+  /**
+   * Crea un icono personalizado con color y estilos especificados
+   * @param color - Código de color hexadecimal para el icono
+   * @returns Objeto de icono de Leaflet personalizado
+   */
   const createCustomIcon = (color: string) => {
     return L.divIcon({
       className: 'custom-marker',
@@ -291,6 +337,11 @@ export default function MapViewer() {
     });
   };
 
+  /**
+   * Retorna el icono correspondiente según el tipo de marcador
+   * @param type - Tipo de marcador ('snow' | 'ice' | 'alert')
+   * @returns Icono de Leaflet personalizado
+   */
   const getMarkerIcon = (type: string) => {
     switch (type) {
       case 'snow':
@@ -304,6 +355,11 @@ export default function MapViewer() {
     }
   };
 
+  /**
+   * Retorna el SVG correspondiente para mostrar en los popups
+   * @param type - Tipo de marcador para seleccionar el icono SVG
+   * @returns String con código SVG del icono
+   */
   const getIconSvg = (type: string) => {
     const iconMap: { [key: string]: string } = {
       snow: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="m17 20-5-5 5-5"/><path d="m7 4 5 5-5 5"/></svg>',
@@ -313,16 +369,22 @@ export default function MapViewer() {
     return iconMap[type] || '';
   };
 
-  // Initialize map
+  /* ========================================================================== */
+  /* EFECTO 2: Map Initialization                                              */
+  /* Inicializa Leaflet map, agrega marcadores y capas meteorológicas         */
+  /* Se ejecuta cuando los marcadores están disponibles y loading es falso     */
+  /* ========================================================================== */
   useEffect(() => {
-    if (!mapRef.current || mapInstanceRef.current) return;
+    if (!mapRef.current || mapInstanceRef.current || loading || markers.length === 0) return;
 
-    // Create map
+    console.log('Initializing map with', markers.length, 'markers');
+
+    /* Crear instancia de mapa Leaflet centrada en la región */
     const map = L.map(mapRef.current, {
       zoomControl: false,
     }).setView([42.65, 0.75], 8);
 
-    // Add tile layer
+    /* Agregar capa de tiles de OpenStreetMap */
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       maxZoom: 18,
@@ -330,7 +392,7 @@ export default function MapViewer() {
 
     mapInstanceRef.current = map;
 
-    // Add markers
+    /* Agregar marcadores de zonas al mapa */
     markers.forEach((marker) => {
       const leafletMarker = L.marker([marker.lat, marker.lng], {
         icon: getMarkerIcon(marker.type),
@@ -342,18 +404,17 @@ export default function MapViewer() {
           <span style="font-weight: 500;">${marker.label}</span>
         </div>
       `;
-      
+
       leafletMarker.bindPopup(popupContent);
-      
-      // Add click handler to open zone sidebar
+
       leafletMarker.on('click', () => {
         handleZoneSelect(marker.id);
       });
-      
+
       userMarkersRef.current.push(leafletMarker);
     });
 
-    // Add weather data points
+    /* Agregar marcadores de temperatura al mapa */
     temperatureData.forEach((data) => {
       const marker = L.marker([data.lat, data.lng], {
         icon: L.divIcon({
@@ -367,6 +428,7 @@ export default function MapViewer() {
       weatherLayersRef.current.temperature.push(marker);
     });
 
+    /* Agregar marcadores de precipitación al mapa */
     precipitationData.forEach((data) => {
       const marker = L.marker([data.lat, data.lng], {
         icon: L.divIcon({
@@ -380,6 +442,7 @@ export default function MapViewer() {
       weatherLayersRef.current.precipitation.push(marker);
     });
 
+    /* Agregar marcadores de viento al mapa */
     windData.forEach((data) => {
       const marker = L.marker([data.lat, data.lng], {
         icon: L.divIcon({
@@ -402,7 +465,7 @@ export default function MapViewer() {
       weatherLayersRef.current.wind.push(marker);
     });
 
-    // Cleanup
+    /* Limpieza de recursos cuando se desmonta el componente */
     return () => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
@@ -413,29 +476,29 @@ export default function MapViewer() {
       weatherLayersRef.current.precipitation = [];
       weatherLayersRef.current.wind = [];
     };
-  }, []);
+  }, [loading, markers]);
 
-  // Handle layer visibility and marker filtering
+  /* ========================================================================== */
+  /* EFECTO 3: Layer Visibility & Opacity Control                              */
+  /* Controla la visibilidad y opacidad de capas meteorológicas y marcadores   */
+  /* Se actualiza cuando cambian los estados de capas u opacidad              */
+  /* ========================================================================== */
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
-    
-    // Control marker visibility
+
+    /* Control de visibilidad de marcadores de zonas */
     userMarkersRef.current.forEach((marker, index) => {
       const markerData = markers[index];
-      
-      // Check if marker should be visible based on layers
+
       let shouldShow = true;
-      
-      // Hide all user reports if layer is off
+
       if (!layers.userReports) {
         shouldShow = false;
-      } 
-      // Hide only alert markers if avalanche layer is off
-      else if (!layers.avalanche && markerData.type === 'alert') {
+      } else if (!layers.avalanche && markerData.type === 'alert') {
         shouldShow = false;
       }
-      
+
       if (shouldShow && !map.hasLayer(marker)) {
         marker.addTo(map);
       } else if (!shouldShow && map.hasLayer(marker)) {
@@ -443,13 +506,12 @@ export default function MapViewer() {
       }
     });
 
-    // Control temperature markers visibility and opacity
+    /* Control de visibilidad y opacidad de marcadores de temperatura */
     weatherLayersRef.current.temperature.forEach((marker) => {
       if (layers.temperature) {
         if (!map.hasLayer(marker)) {
           marker.addTo(map);
         }
-        // Update opacity
         const element = marker.getElement();
         if (element) {
           element.style.opacity = `${layerOpacity.temperature / 100}`;
@@ -459,13 +521,12 @@ export default function MapViewer() {
       }
     });
 
-    // Control precipitation markers visibility and opacity
+    /* Control de visibilidad y opacidad de marcadores de precipitación */
     weatherLayersRef.current.precipitation.forEach((marker) => {
       if (layers.precipitation) {
         if (!map.hasLayer(marker)) {
           marker.addTo(map);
         }
-        // Update opacity
         const element = marker.getElement();
         if (element) {
           element.style.opacity = `${layerOpacity.precipitation / 100}`;
@@ -475,13 +536,12 @@ export default function MapViewer() {
       }
     });
 
-    // Control wind markers visibility and opacity
+    /* Control de visibilidad y opacidad de marcadores de viento */
     weatherLayersRef.current.wind.forEach((marker) => {
       if (layers.wind) {
         if (!map.hasLayer(marker)) {
           marker.addTo(map);
         }
-        // Update opacity
         const element = marker.getElement();
         if (element) {
           element.style.opacity = `${layerOpacity.wind / 100}`;
@@ -490,31 +550,59 @@ export default function MapViewer() {
         map.removeLayer(marker);
       }
     });
-  }, [layers, layerOpacity]);
+  }, [layers, layerOpacity, markers]);
 
+  /**
+   * Aumenta el nivel de zoom del mapa
+   */
   const handleZoomIn = () => {
     if (mapInstanceRef.current) {
       mapInstanceRef.current.zoomIn();
     }
   };
 
+  /**
+   * Disminuye el nivel de zoom del mapa
+   */
   const handleZoomOut = () => {
     if (mapInstanceRef.current) {
       mapInstanceRef.current.zoomOut();
     }
   };
 
+  /* ========================================================================== */
+  /* RENDER - Main Component Output                                            */
+  /* Estructura principal del componente con mapa, controles y paneles laterales*/
+  /* ========================================================================== */
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
 
       <div className="relative flex-1 mt-16">
-        {/* Map Container */}
+        {/* Estado de carga: Spinner y mensaje de espera */}
+        {loading && (
+          <div className="absolute inset-0 z-[999] flex items-center justify-center bg-black/50">
+            <Card className="p-6">
+              <p className="text-center text-gray-700">Cargando zonas...</p>
+            </Card>
+          </div>
+        )}
+
+        {/* Estado de error: Mensaje de error personalizado */}
+        {error && (
+          <div className="absolute inset-0 z-[999] flex items-center justify-center bg-black/50">
+            <Card className="p-6 bg-red-50 border-red-200">
+              <p className="text-center text-red-700">Error: {error}</p>
+            </Card>
+          </div>
+        )}
+
+        {/* Contenedor del mapa Leaflet */}
         <div className="absolute inset-0">
           <div ref={mapRef} className="h-full w-full" />
         </div>
 
-        {/* Search Bar */}
+        {/* Barra de búsqueda posicionada en la parte superior */}
         <div className="absolute top-4 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-md z-[1000]">
           <Card className="p-2">
             <div className="relative">
@@ -528,12 +616,12 @@ export default function MapViewer() {
           </Card>
         </div>
 
-        {/* Layer Control Panel - Desktop */}
+        {/* Panel de control de capas - Versión Desktop */}
         <div className="absolute top-20 right-4 z-[1000] w-72 hidden md:block max-h-[calc(100vh-7rem)] overflow-y-auto">
           <Card className="p-4">
             <h3 className="font-semibold mb-4 text-gray-900">Capas del Mapa</h3>
             <div className="space-y-5">
-              {/* User Reports */}
+              {/* Control de capa: Reportes de Usuarios */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -549,7 +637,7 @@ export default function MapViewer() {
                 </div>
               </div>
 
-              {/* Temperature */}
+              {/* Control de capa: Temperatura con slider de opacidad */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -583,7 +671,7 @@ export default function MapViewer() {
                 )}
               </div>
 
-              {/* Precipitation */}
+              {/* Control de capa: Precipitación con slider de opacidad */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -617,7 +705,7 @@ export default function MapViewer() {
                 )}
               </div>
 
-              {/* Wind */}
+              {/* Control de capa: Viento con slider de intensidad */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -651,7 +739,7 @@ export default function MapViewer() {
                 )}
               </div>
 
-              {/* Avalanche Alerts */}
+              {/* Control de capa: Alertas de Aludes */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -670,11 +758,12 @@ export default function MapViewer() {
           </Card>
         </div>
 
-        {/* Mobile Layer Control */}
+        {/* Panel de control de capas - Versión Mobile */}
         <div className="absolute bottom-20 left-4 right-4 z-[1000] md:hidden">
           <Card className="p-3">
             <h3 className="font-semibold mb-3 text-sm text-gray-900">Capas</h3>
             <div className="space-y-3">
+              {/* Control de temperatura (mobile) */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Thermometer className="h-4 w-4 text-orange-500" />
@@ -687,6 +776,7 @@ export default function MapViewer() {
                   }
                 />
               </div>
+              {/* Control de precipitación (mobile) */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <CloudRain className="h-4 w-4 text-blue-500" />
@@ -699,6 +789,7 @@ export default function MapViewer() {
                   }
                 />
               </div>
+              {/* Control de alertas de aludes (mobile) */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 text-red-500" />
@@ -715,8 +806,9 @@ export default function MapViewer() {
           </Card>
         </div>
 
-        {/* Zoom Controls */}
+        {/* Controles de Zoom */}
         <div className="absolute bottom-4 right-4 z-[1000] flex flex-col gap-2">
+          {/* Botón para aumentar zoom */}
           <Button
             size="icon"
             variant="secondary"
@@ -725,6 +817,7 @@ export default function MapViewer() {
           >
             <Plus className="h-5 w-5" />
           </Button>
+          {/* Botón para disminuir zoom */}
           <Button
             size="icon"
             variant="secondary"
@@ -735,19 +828,22 @@ export default function MapViewer() {
           </Button>
         </div>
 
-        {/* Legend */}
+        {/* Leyenda del Mapa - Información de iconos y capas */}
         <div className="absolute bottom-4 left-4 z-[1000] hidden sm:block">
           <Card className="p-3">
             <h4 className="font-semibold text-xs mb-2 text-gray-900">Leyenda</h4>
             <div className="space-y-1.5">
+              {/* Icono: Nieve inestable */}
               <div className="flex items-center gap-2">
                 <Snowflake className="h-4 w-4 text-blue-500" />
                 <span className="text-xs text-gray-700">Nieve inestable</span>
               </div>
+              {/* Icono: Placas de hielo */}
               <div className="flex items-center gap-2">
                 <IceCreamCone className="h-4 w-4 text-cyan-500" />
                 <span className="text-xs text-gray-700">Placas de hielo</span>
               </div>
+              {/* Icono: Alerta de aludes */}
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-red-500" />
                 <span className="text-xs text-gray-700">Alerta aludes</span>
@@ -756,7 +852,7 @@ export default function MapViewer() {
           </Card>
         </div>
 
-        {/* AI Assistant Floating Button */}
+        {/* Botón flotante del Asistente IA */}
         <div className="absolute top-20 left-4 z-[1000]">
           <Button
             size="lg"
@@ -769,13 +865,13 @@ export default function MapViewer() {
           </Button>
         </div>
 
-        {/* AI Assistant Panel */}
+        {/* Panel del Asistente IA */}
         <AIAssistant open={aiAssistantOpen} onOpenChange={setAiAssistantOpen} />
 
-        {/* Zone Sidebar */}
-        <ZoneSidebar 
-          zone={selectedZone} 
-          onClose={handleZoneClose} 
+        {/* Panel Lateral de Detalles de Zona */}
+        <ZoneSidebar
+          zone={selectedZone}
+          onClose={handleZoneClose}
           onToggleFavorite={handleToggleFavorite}
           onCreateReport={() => setCreateReportModalOpen(true)}
           onViewAllReports={() => {
@@ -785,9 +881,9 @@ export default function MapViewer() {
           }}
         />
 
-        {/* Create Report Modal */}
-        <CreateReportModal 
-          open={createReportModalOpen} 
+        {/* Modal para crear nuevo reporte */}
+        <CreateReportModal
+          open={createReportModalOpen}
           onOpenChange={setCreateReportModalOpen}
           zoneName={selectedZone?.name || ''}
         />
