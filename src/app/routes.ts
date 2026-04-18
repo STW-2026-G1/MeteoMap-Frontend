@@ -4,6 +4,7 @@ import MapViewer from "./pages/MapViewer";
 import SignUpPage from "./pages/SignUpPage";
 import LoginPage from "./pages/LoginPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import ZoneForumPage from "./pages/ZoneForumPage";
 import StatsPage from "./pages/StatsPage";
@@ -41,6 +42,10 @@ export const router = createBrowserRouter([
   {
     path: "/recuperar-password",
     Component: ForgotPasswordPage,
+  },
+  {
+    path: "/reset-password",
+    Component: ResetPasswordPage,
   },
   {
     path: "*",

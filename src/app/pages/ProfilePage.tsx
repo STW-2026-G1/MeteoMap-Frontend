@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
+import { toast } from "sonner";
 import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
 import { Card } from "../components/ui/card";
@@ -56,12 +57,14 @@ import {
   Lock,
 } from "lucide-react";
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:3000/api';
+
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, logout } = useAuth();
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileData, setProfileData] = useState({
-    id: user?._id || user?.id || 'User',
+    id: user?.id || 'User',
     name: user?.name || user?.nombre || "Usuario",
     email: user?.email || "",
     bio: "Amante de la montaña y el esquí. Llevo 5 años explorando los Pirineos.",
@@ -72,20 +75,63 @@ export default function ProfilePage() {
     avatar_url: user?.avatar_url,
   });
 
+  // Estados para diálogos
+  const [editReportDialog, setEditReportDialog] = useState<number | null>(null);
+  const [addZoneDialog, setAddZoneDialog] = useState(false);
+  const [changePasswordDialog, setChangePasswordDialog] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordStrength, setPasswordStrength] = useState<"weak" | "medium" | "strong" | null>(null);
+  const [deleteAccountDialog, setDeleteAccountDialog] = useState(false);
+  const [deleteEmailConfirm, setDeleteEmailConfirm] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
   // Sync state with user context if it changes (e.g., after login or update)
   useEffect(() => {
     if (user) {
       setProfileData(prev => ({
         ...prev,
-        id: user._id || user.id || prev.id,
+        id: user.id || prev.id,
         name: user.name || user.nombre || prev.name,
         email: user.email || prev.email,
+        bio: user.biografia || prev.bio,
+        location: user.ubicacion || prev.location,
         avatar_style: user.avatar_style || prev.avatar_style,
         avatar_seed: user.avatar_seed || user.name || user.nombre || prev.avatar_seed,
         avatar_url: user.avatar_url,
       }));
     }
   }, [user]);
+
+  // Validate password strength in real-time
+  useEffect(() => {
+    if (!newPassword) {
+      setPasswordStrength(null);
+      return;
+    }
+
+    const hasUpperCase = /[A-Z]/.test(newPassword);
+    const hasLowerCase = /[a-z]/.test(newPassword);
+    const hasNumber = /[0-9]/.test(newPassword);
+    const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword);
+    const isLongEnough = newPassword.length >= 8;
+
+    const conditions = [hasUpperCase, hasLowerCase, hasNumber, hasSpecialChar, isLongEnough];
+    const metConditions = conditions.filter(Boolean).length;
+
+    let strength: "weak" | "medium" | "strong" = "weak";
+    if (metConditions >= 4) {
+      strength = "strong";
+    } else if (metConditions >= 3) {
+      strength = "medium";
+    }
+
+    setPasswordStrength(strength);
+  }, [newPassword]);
 
   const avatarStyles = [
     { value: "avataaars", label: "Avataaars" },
@@ -99,14 +145,6 @@ export default function ProfilePage() {
     { value: "croodles", label: "Croodles" },
     { value: "personas", label: "Personas" },
   ];
-
-  // Estados para diálogos
-  const [editReportDialog, setEditReportDialog] = useState<number | null>(null);
-  const [addZoneDialog, setAddZoneDialog] = useState(false);
-  const [changePasswordDialog, setChangePasswordDialog] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
 
   // Mock data - Estadísticas del usuario
   const userStats = {
@@ -231,9 +269,11 @@ export default function ProfilePage() {
     // If the style being saved is NOT what we had originally or from google, 
     // we want to effectively "switch" to dicebear
     const result = await updateProfile({
-      name: profileData.name,
+      nombre: profileData.name,
       email: profileData.email,
       avatar_style: profileData.avatar_style,
+      biografia: profileData.bio,
+      ubicacion: profileData.location,
     });
     if (result.success) {
       setIsEditingProfile(false);
@@ -243,6 +283,8 @@ export default function ProfilePage() {
           ...profileData,
           name: user.name || user.nombre || "Usuario",
           email: user.email || "",
+          bio: user.biografia || "",
+          location: user.ubicacion || "",
           avatar_style: user.avatar_style || "avataaars",
           avatar_seed: user.avatar_seed || user.name || user.nombre || "Usuario",
           avatar_url: user.avatar_url,
@@ -306,20 +348,122 @@ export default function ProfilePage() {
     setFavoriteZones(favoriteZones.filter((z) => z.id !== zoneId));
   };
 
-  const handleChangePassword = () => {
-    // Aquí cambiarías la contraseña
-    if (newPassword === confirmPassword && newPassword.length >= 6) {
-      alert("Contraseña cambiada exitosamente");
+  const handleChangePassword = async () => {
+    setPasswordError("");
+
+    // Frontend validation - ensure password is strong
+    if (!currentPassword) {
+      setPasswordError("Contraseña actual requerida");
+      return;
+    }
+
+    if (!newPassword) {
+      setPasswordError("Nueva contraseña requerida");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setPasswordError("La contraseña debe tener al menos 8 caracteres");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Las contraseñas no coinciden");
+      return;
+    }
+
+    // Validate password strength requirements
+    const hasUpperCase = /[A-Z]/.test(newPassword);
+    const hasLowerCase = /[a-z]/.test(newPassword);
+    const hasNumber = /[0-9]/.test(newPassword);
+    const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword);
+
+    if (!hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar) {
+      setPasswordError("La contraseña debe contener: mayúscula, minúscula, número y carácter especial");
+      return;
+    }
+
+    setPasswordLoading(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/user/updatepassword`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("meteomap_token")}`,
+        },
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        setPasswordError(errorData.message || errorData.error || "Error al cambiar la contraseña");
+        setPasswordLoading(false);
+        return;
+      }
+
+      // Éxito - cerrar diálogo y limpiar campos
       setChangePasswordDialog(false);
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+      
+      // Mostrar toast de éxito
+      toast.success("✓ Contraseña actualizada", {
+        description: "Redirigiendo a inicio de sesión...",
+        duration: 2000,
+      });
+      
+      // Logout y redirigir a login después de 1.5 segundos
+      setTimeout(async () => {
+        await logout();
+        navigate("/login");
+      }, 1500);
+    } catch (err) {
+      setPasswordError("Error de conexión. Intenta de nuevo.");
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
-  const handleDeleteAccount = () => {
-    // Aquí eliminarías la cuenta
-    alert("Cuenta eliminada");
+  const handleDeleteAccount = async () => {
+    setDeleteError("");
+    setDeleteLoading(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/user/delete`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("meteomap_token")}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        setDeleteError(errorData.message || errorData.error || "Error al eliminar la cuenta");
+        setDeleteLoading(false);
+        return;
+      }
+
+      // Éxito - logout y redirigir a landing
+      toast.success("✓ Cuenta eliminada", {
+        description: "Si cambias de opinión, contacta con soporte en los próximos 30 días",
+        duration: 3000,
+      });
+      
+      setTimeout(async () => {
+        await logout();
+        navigate("/");
+      }, 2000);
+    } catch (err) {
+      setDeleteError("Error de conexión. Intenta de nuevo.");
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   const getReportTypeInfo = (type: string) => {
@@ -370,7 +514,7 @@ export default function ProfilePage() {
                 </div>
                 <div className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
-                  <span>Miembro desde Marzo 2025</span>
+                  <span>Miembro desde {user && user.createdAt ? new Date(user.createdAt).toLocaleDateString('es-ES', { year: 'numeric', month: 'long' }) : 'hace poco'}</span>
                 </div>
               </div>
             </div>
@@ -853,6 +997,15 @@ export default function ProfilePage() {
                         Actualiza tu contraseña para mantener tu cuenta segura
                       </DialogDescription>
                     </DialogHeader>
+                    {passwordError && (
+                      <div className="flex items-start gap-3 p-4 rounded-lg border-2 border-red-300 bg-red-50">
+                        <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-semibold text-red-900">Error</p>
+                          <p className="text-sm text-red-800">{passwordError}</p>
+                        </div>
+                      </div>
+                    )}
                     <div className="grid gap-4 py-4">
                       <div className="space-y-2">
                         <Label htmlFor="current-password">Contraseña Actual</Label>
@@ -861,6 +1014,7 @@ export default function ProfilePage() {
                           type="password"
                           value={currentPassword}
                           onChange={(e) => setCurrentPassword(e.target.value)}
+                          disabled={passwordLoading}
                         />
                       </div>
                       <div className="space-y-2">
@@ -870,7 +1024,24 @@ export default function ProfilePage() {
                           type="password"
                           value={newPassword}
                           onChange={(e) => setNewPassword(e.target.value)}
+                          disabled={passwordLoading}
                         />
+                        {newPassword && (
+                          <div className="space-y-2">
+                            <div className="flex gap-1 h-1">
+                              <div className={`flex-1 rounded-full ${passwordStrength === "weak" ? "bg-red-500" : passwordStrength === "medium" ? "bg-yellow-500" : passwordStrength === "strong" ? "bg-green-500" : "bg-gray-200"}`} />
+                              <div className={`flex-1 rounded-full ${["medium", "strong"].includes(passwordStrength || "") ? (passwordStrength === "strong" ? "bg-green-500" : "bg-yellow-500") : "bg-gray-200"}`} />
+                              <div className={`flex-1 rounded-full ${passwordStrength === "strong" ? "bg-green-500" : "bg-gray-200"}`} />
+                            </div>
+                            <p className={`text-xs font-medium ${
+                              passwordStrength === "weak" ? "text-red-600" : 
+                              passwordStrength === "medium" ? "text-yellow-600" : 
+                              "text-green-600"
+                            }`}>
+                              Contraseña {passwordStrength || "débil"}
+                            </p>
+                          </div>
+                        )}
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="confirm-password">Confirmar Nueva Contraseña</Label>
@@ -879,6 +1050,7 @@ export default function ProfilePage() {
                           type="password"
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
+                          disabled={passwordLoading}
                         />
                       </div>
                       {newPassword !== confirmPassword && confirmPassword && (
@@ -886,47 +1058,94 @@ export default function ProfilePage() {
                       )}
                     </div>
                     <DialogFooter>
-                      <Button variant="outline" onClick={() => setChangePasswordDialog(false)}>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setChangePasswordDialog(false);
+                          setPasswordError("");
+                        }}
+                        disabled={passwordLoading}
+                      >
                         Cancelar
                       </Button>
                       <Button
                         onClick={handleChangePassword}
                         className="bg-blue-600 hover:bg-blue-700"
-                        disabled={!currentPassword || !newPassword || newPassword !== confirmPassword}
+                        disabled={!currentPassword || !newPassword || newPassword !== confirmPassword || passwordLoading || passwordStrength !== "strong"}
                       >
-                        Cambiar Contraseña
+                        {passwordLoading ? "Cambiando..." : "Cambiar Contraseña"}
                       </Button>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
 
                 {/* Delete Account Dialog */}
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
+                <Dialog open={deleteAccountDialog} onOpenChange={setDeleteAccountDialog}>
+                  <DialogTrigger asChild>
                     <Button variant="outline" className="border-red-400 text-red-700 hover:bg-red-100">
                       <Trash2 className="h-4 w-4 mr-2" />
                       Eliminar Cuenta
                     </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>¿Estás completamente seguro?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Esta acción no se puede deshacer. Se eliminarán permanentemente todos tus datos:
-                        reportes, zonas favoritas, comentarios y toda tu información de perfil.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>¿Eliminar tu cuenta?</DialogTitle>
+                      <DialogDescription>
+                        Esta acción es permanente. Se eliminarán todos tus datos:
+                        reportes, zonas favoritas, comentarios e información de perfil.
+                        <br />
+                        <strong>Si cambias de opinión, contacta soporte en los próximos 30 días para recuperarla.</strong>
+                      </DialogDescription>
+                    </DialogHeader>
+                    {deleteError && (
+                      <div className="flex items-start gap-3 p-4 rounded-lg border-2 border-red-300 bg-red-50">
+                        <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-semibold text-red-900">Error</p>
+                          <p className="text-sm text-red-800">{deleteError}</p>
+                        </div>
+                      </div>
+                    )}
+                    <div className="grid gap-4 py-4">
+                      <div className="bg-red-50 border border-red-200 p-3 rounded-md">
+                        <p className="text-sm text-red-800">
+                          <strong>⚠️ Para confirmar,</strong> escribe tu email: <strong>{user?.email}</strong>
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="delete-email-confirm">Tu email</Label>
+                        <Input
+                          id="delete-email-confirm"
+                          type="email"
+                          value={deleteEmailConfirm}
+                          onChange={(e) => setDeleteEmailConfirm(e.target.value)}
+                          disabled={deleteLoading}
+                          placeholder="Escribe tu email para confirmar"
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setDeleteAccountDialog(false);
+                          setDeleteEmailConfirm("");
+                          setDeleteError("");
+                        }}
+                        disabled={deleteLoading}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
                         onClick={handleDeleteAccount}
                         className="bg-red-600 hover:bg-red-700"
+                        disabled={deleteEmailConfirm !== user?.email || deleteLoading}
                       >
-                        Sí, eliminar mi cuenta
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                        {deleteLoading ? "Eliminando..." : "Sí, eliminar mi cuenta"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
             </Card>
           </TabsContent>

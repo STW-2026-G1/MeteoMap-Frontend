@@ -1,15 +1,17 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 interface User {
-  _id?: string;
-  id?: string; // For Google users
+  id: string; // Primary identifier from MongoDB _id
   email: string;
   name?: string;
-  nombre?: string; // For Google users
+  nombre?: string;
+  biografia?: string;
+  ubicacion?: string;
   avatar_style?: string;
   avatar_seed?: string;
-  avatar_url?: string; // For Google users
+  avatar_url?: string;
   rol?: string;
+  createdAt?: string; // Timestamp de creación
 }
 
 interface AuthContextType {
@@ -19,7 +21,7 @@ interface AuthContextType {
   loginGoogle: (credential: string) => Promise<{ success: boolean; errorMessage?: string }>;
   logout: () => Promise<void>;
   register: (email: string, password: string, name: string, avatarStyle?: string) => Promise<{ success: boolean; errorMessage?: string }>;
-  updateProfile: (profileData: { name?: string; email?: string; avatar_style?: string }) => Promise<{ success: boolean; errorMessage?: string }>;
+  updateProfile: (profileData: { nombre?: string; email?: string; avatar_style?: string; biografia?: string; ubicacion?: string }) => Promise<{ success: boolean; errorMessage?: string }>;
   loading: boolean;
   error: string | null;
 }
@@ -33,17 +35,18 @@ const normalizeUserData = (backendUser: any): User => {
   // Check if data is nested inside 'perfil' (new backend structure)
   const profile = backendUser.perfil || {};
   
-  // TODO, CRITICAL: check for inconsistencies with the backend
   return {
-    _id: backendUser._id || backendUser.id,
-    id: backendUser.id,
+    id: backendUser.id || backendUser._id?.toString(),
     email: backendUser.email,
     name: backendUser.name || profile.nombre || backendUser.nombre,
     nombre: profile.nombre || backendUser.nombre,
+    biografia: profile.biografia || backendUser.biografia,
+    ubicacion: profile.ubicacion || backendUser.ubicacion,
     avatar_style: profile.avatar_style || backendUser.avatar_style,
     avatar_seed: profile.avatar_seed || backendUser.avatar_seed,
     avatar_url: profile.avatar_url || backendUser.avatar_url,
     rol: backendUser.rol,
+    createdAt: backendUser.createdAt,
   };
 };
 
@@ -185,7 +188,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (email: string, password: string, name: string, avatarStyle?: string): Promise<{ success: boolean; errorMessage?: string }> => {
+  const register = async (email: string, password: string, nombre: string, avatarStyle?: string): Promise<{ success: boolean; errorMessage?: string }> => {
     setLoading(true);
     setError(null);
     try {
@@ -194,7 +197,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password, name, avatar_style: avatarStyle }),
+        body: JSON.stringify({ email, password, nombre, avatar_style: avatarStyle }),
       });
 
       const errorData = await response.json();
@@ -217,7 +220,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, errorMessage };
       }
 
-      const userData = normalizeUserData(errorData.user || { email, name });
+      const userData = normalizeUserData(errorData.user || { email, nombre });
       
       setUser(userData);
       localStorage.setItem('meteomap_user', JSON.stringify(userData));
@@ -234,7 +237,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updateProfile = async (profileData: { name?: string; email?: string; avatar_style?: string }): Promise<{ success: boolean; errorMessage?: string }> => {
+  const updateProfile = async (profileData: { nombre?: string; email?: string; avatar_style?: string; biografia?: string; ubicacion?: string }): Promise<{ success: boolean; errorMessage?: string }> => {
     setLoading(true);
     setError(null);
     try {

@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Button } from "./ui/button";
 import { Cloud, Menu, X, BarChart3, LogOut } from "lucide-react";
 import { useState } from "react";
@@ -17,10 +17,12 @@ import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
 
   const handleLogout = () => {
     logout();
     setMobileMenuOpen(false);
+    navigate("/");
   };
 
   return (
