@@ -27,7 +27,7 @@ import "leaflet/dist/leaflet.css";
 
 const SERVER_URL = import.meta.env.VITE_API_BASE_URL
 interface MapMarker {
-  id: number;
+  id: string;
   lat: number;
   lng: number;
   type: 'snow' | 'ice' | 'alert';
@@ -35,7 +35,7 @@ interface MapMarker {
 }
 
 interface ZoneData {
-  id: number;
+  id: string;
   name: string;
   elevation: string;
   temperature: number;
@@ -43,7 +43,7 @@ interface ZoneData {
   avalancheLevel: number;
   isFavorite: boolean;
   reports: Array<{
-    id: number;
+    id: string;
     userName: string;
     avatar: string;
     condition: string;
@@ -83,7 +83,7 @@ export default function MapViewer() {
 
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
   const [selectedZone, setSelectedZone] = useState<ZoneData | null>(null);
-  const [favoriteZones, setFavoriteZones] = useState<Set<number>>(new Set([]));
+  const [favoriteZones, setFavoriteZones] = useState<Set<string>>(new Set([]));
   const [createReportModalOpen, setCreateReportModalOpen] = useState(false);
 
   /* ========================================================================== */
@@ -92,7 +92,7 @@ export default function MapViewer() {
   /* ========================================================================== */
   const [apiZones, setApiZones] = useState<any[]>([]);
   const [markers, setMarkers] = useState<MapMarker[]>([]);
-  const [zonesDataState, setZonesDataState] = useState<{ [key: number]: ZoneData }>({});
+  const [zonesDataState, setZonesDataState] = useState<{ [key: string]: ZoneData }>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -152,30 +152,27 @@ export default function MapViewer() {
         console.log(`Loaded ${zonesFromApi.length} zones from API`);
 
         /* Paso 2: Transformar datos a formato MapMarker para renderizado */
-        const transformedMarkers: MapMarker[] = zonesFromApi.map(
-          (zone: any, index: number) => {
+        const transformedMarkers: MapMarker[] = zonesFromApi.map((zone: any) => {
             const [lng, lat] = zone.geolocalizacion?.coordinates || [0, 0];
-
             return {
-              id: index + 1,
-              lat: lat,
-              lng: lng,
-              type: 'snow' as const,
-              label: zone.nombre || `Zone ${index + 1}`,
+               id: zone._id, // <--- USA EL ID DE MONGO, NO EL INDEX
+               lat: lat,
+               lng: lng,
+               type: 'snow' as const,
+               label: zone.nombre || "Zona sin nombre",
             };
-          }
-        );
+         });
 
         /* Paso 3: Transformar datos a formato ZoneData para UI sidebar */
-        const transformedZonesData: { [key: number]: ZoneData } = {};
+        const transformedZonesData: { [key: string]: ZoneData } = {};
 
         zonesFromApi.forEach((zone: any, index: number) => {
           const [lng, lat] = zone.geolocalizacion?.coordinates || [0, 0];
           const temp = zone.cache_meteo?.datos_crudos?.current?.temperature ?? 0;
           const wind = zone.cache_meteo?.datos_crudos?.current?.wind_speed_10m ?? 0;
 
-          transformedZonesData[index + 1] = {
-            id: index + 1,
+          transformedZonesData[zone._id] = {
+            id: zone._id, // <--- USA EL ID DE MONGO, NO EL INDEX
             name: zone.nombre || `Zone ${index + 1}`,
             elevation: '1.500m',
             temperature: temp,
@@ -215,13 +212,13 @@ export default function MapViewer() {
    * @param zoneId - ID de posición en el array (1-indexed)
    *** TODO: DECIDIR SI LLAMAR A LA API EN CADA CLICK O NO
    */
-  const handleZoneSelect = async (zoneId: number) => {
+  const handleZoneSelect = async (zoneId: string) => {
     try {
       /* Obtener la zona desde apiZones (índice es zoneId - 1) */
-      const apiZone = apiZones[zoneId - 1];
+      const apiZone = apiZones.find(z => z._id === zoneId);
       
       if (!apiZone) {
-        console.warn('Zona no encontrada con índice:', zoneId - 1);
+        console.warn('Zona no encontrada con índice:', zoneId);
         return;
       }
 
