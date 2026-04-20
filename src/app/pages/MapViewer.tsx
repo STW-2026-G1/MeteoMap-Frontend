@@ -871,9 +871,11 @@ export default function MapViewer() {
           onClose={handleZoneClose}
           onToggleFavorite={handleToggleFavorite}
           onCreateReport={() => setCreateReportModalOpen(true)}
-          onViewAllReports={() => {
+          onViewAllReports={(dynamicComments) => {
             if (selectedZone) {
-              navigate(`/foro?zone=${encodeURIComponent(selectedZone.name)}&id=${selectedZone.id}&elevation=${encodeURIComponent(selectedZone.elevation)}&temp=${selectedZone.temperature}&wind=${selectedZone.wind}&avalanche=${selectedZone.avalancheLevel}`);
+              // Pasar comentarios dinámicos como JSON en la URL
+              const commentsParam = encodeURIComponent(JSON.stringify(dynamicComments));
+              navigate(`/foro?zone=${encodeURIComponent(selectedZone.name)}&id=${selectedZone.id}&elevation=${encodeURIComponent(selectedZone.elevation)}&temp=${selectedZone.temperature}&wind=${selectedZone.wind}&avalanche=${selectedZone.avalancheLevel}&comments=${commentsParam}`);
             }
           }}
         />

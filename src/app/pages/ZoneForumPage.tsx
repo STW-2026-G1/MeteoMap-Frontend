@@ -57,6 +57,7 @@ export default function ZoneForumPage() {
   const zoneTemp = searchParams.get("temp") || "-2";
   const zoneWind = searchParams.get("wind") || "18";
   const zoneAvalanche = searchParams.get("avalanche") || "2";
+  const commentsParam = searchParams.get("comments");
 
   const [newComment, setNewComment] = useState("");
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
@@ -90,41 +91,22 @@ export default function ZoneForumPage() {
     },
   ];
 
-  // Mock comments data
-  const [comments, setComments] = useState<Comment[]>([
-    {
-      id: 1,
-      userId: 1,
-      userName: "Usuario453",
-      avatar: "https://i.pravatar.cc/150?img=12",
-      message: "Ayer la nieve estaba súper dura en la cara norte, cuidado con las placas de hielo",
-      timestamp: "hace 2 horas",
-      likes: 12,
-      isLiked: false,
-      replies: [
-        {
-          id: 5,
-          userId: 5,
-          userName: "Ana_Alpinista",
-          avatar: "https://i.pravatar.cc/150?img=45",
-          message: "Confirmo! Yo subí esta mañana y las condiciones son exactamente así.",
-          timestamp: "hace 1 hora",
-          likes: 5,
-          isLiked: false,
-        },
-      ],
-    },
-    {
-      id: 2,
-      userId: 2,
-      userName: "MontañeroPro",
-      avatar: "https://i.pravatar.cc/150?img=26",
-      message: "Cuidado, en la zona de Maladeta estaba muy bien. Mejor ir con crampones",
-      timestamp: "hace 1 hora",
-      likes: 8,
-      isLiked: false,
-    },
-  ]);
+  // Obtener comentarios dinámicos del parámetro o usar mock
+  const getInitialComments = (): Comment[] => {
+    if (commentsParam) {
+      try {
+        const dynamicComments = JSON.parse(decodeURIComponent(commentsParam));
+        console.log("Usando comentarios dinámicos del backend:", dynamicComments);
+        return dynamicComments;
+      } catch (error) {
+        console.error("Error parsing dynamic comments:", error);
+      }
+    }
+    // Retornar comentarios mock si no hay dinámicos
+    return [];
+  };
+
+  const [comments, setComments] = useState<Comment[]>(getInitialComments());
 
   const handleLike = (commentId: number, isReply: boolean = false, parentId?: number) => {
     if (!isReply) {

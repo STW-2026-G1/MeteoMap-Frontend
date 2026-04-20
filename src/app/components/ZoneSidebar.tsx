@@ -47,7 +47,7 @@ interface ZoneSidebarProps {
   onClose: () => void;
   onToggleFavorite: (zoneId: string) => void;
   onCreateReport: () => void;
-  onViewAllReports: () => void;
+  onViewAllReports: (currentComments: Comment[]) => void;
 }
 
 // Mock data for temperature forecast
@@ -608,8 +608,8 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
                     ))}
 
                     {comments.length > 3 && (
-                      <Button variant="outline" className="w-full text-sm" onClick={onViewAllReports}>
-                        Ver todos los comentarios ({comments.length})
+                      <Button variant="outline" className="w-full text-sm" onClick={() => onViewAllReports(dynamicComments)}>
+                        Ver todos los comentarios ({dynamicComments.length})
                       </Button>
                     )}
                   </>
