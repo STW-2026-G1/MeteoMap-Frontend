@@ -64,7 +64,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
     }
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/reports/${report.id}/validate`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/reports/${report.id}/validate`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

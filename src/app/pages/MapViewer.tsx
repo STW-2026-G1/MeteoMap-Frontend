@@ -204,6 +204,41 @@ export default function MapViewer() {
   }, []);
 
   /* ========================================================================== */
+  /* EFECTO 2: Cargar zonas favoritas del usuario autenticado                */
+  /* Obtiene las zonas marcadas como favoritas desde el backend               */
+  /* ========================================================================== */
+  useEffect(() => {
+    const loadFavorites = async () => {
+      try {
+        const token = localStorage.getItem('meteomap_token');
+        if (!token) {
+          console.log('No hay usuario autenticado');
+          return;
+        }
+
+        const response = await fetch(`${SERVER_URL}/user/me/favorites`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const favoriteIds = data.preferencias.map((pref: any) => 
+            typeof pref === 'string' ? pref : pref._id
+          );
+          setFavoriteZones(new Set(favoriteIds));
+          console.log('Favoritas cargadas:', favoriteIds);
+        }
+      } catch (error) {
+        console.error('Error cargando favoritas:', error);
+      }
+    };
+
+    loadFavorites();
+  }, []);
+
+  /* ========================================================================== */
   /* HANDLERS - User Interaction Management                                    */
   /* Funciones para gestionar interacciones del usuario con el mapa y zonas    */
   /* ========================================================================== */
@@ -296,12 +331,23 @@ export default function MapViewer() {
 
   /**
    * Alterna el estado favorito de una zona
+   * Sincroniza con el backend para persistir los cambios
    * @param zoneId - ID único de la zona
    */
-  const handleToggleFavorite = (zoneId: string) => {
+  const handleToggleFavorite = async (zoneId: string) => {
+    const token = localStorage.getItem('meteomap_token');
+    if (!token) {
+      alert('Debes iniciar sesión para agregar a favoritos');
+      return;
+    }
+
+    const isCurrentlyFavorite = favoriteZones.has(zoneId);
+    const accion = isCurrentlyFavorite ? 'remove' : 'add';
+
+    // Actualizar estado local inmediatamente (optimistic update)
     setFavoriteZones(prev => {
       const newFavorites = new Set(prev);
-      if (newFavorites.has(zoneId)) {
+      if (isCurrentlyFavorite) {
         newFavorites.delete(zoneId);
       } else {
         newFavorites.add(zoneId);
@@ -313,6 +359,44 @@ export default function MapViewer() {
       setSelectedZone({
         ...selectedZone,
         isFavorite: !selectedZone.isFavorite,
+      });
+    }
+
+    // Sincronizar con el backend
+    try {
+      const response = await fetch(`${SERVER_URL}/user/me/favorites`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ zonaId: zoneId, accion: accion })
+      });
+
+      if (!response.ok) {
+        // Revertir cambios si falla
+        setFavoriteZones(prev => {
+          const newFavorites = new Set(prev);
+          if (isCurrentlyFavorite) {
+            newFavorites.add(zoneId);
+          } else {
+            newFavorites.delete(zoneId);
+          }
+          return newFavorites;
+        });
+        alert('Error al actualizar favoritos');
+      }
+    } catch (error) {
+      console.error('Error sincronizando favoritos:', error);
+      // Revertir cambios si falla
+      setFavoriteZones(prev => {
+        const newFavorites = new Set(prev);
+        if (isCurrentlyFavorite) {
+          newFavorites.add(zoneId);
+        } else {
+          newFavorites.delete(zoneId);
+        }
+        return newFavorites;
       });
     }
   };

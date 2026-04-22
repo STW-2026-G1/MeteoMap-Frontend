@@ -63,6 +63,7 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const { user, updateProfile, logout } = useAuth();
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [favoriteZones, setFavoriteZones] = useState<any[]>([]);
   const [profileData, setProfileData] = useState({
     id: user?.id || 'User',
     name: user?.name || user?.nombre || "Usuario",
@@ -153,14 +154,14 @@ export default function ProfilePage() {
   const userStats = {
     totalReports: myReports.length,
     confirmations: myReports.reduce((acc, curr) => acc + curr.confirmations, 0),
-    favoriteZones: 5,
+    favoriteZones: favoriteZones.length,
   };
 
   useEffect(() => {
     if (!user || !user.id) return;
     const fetchMyReports = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/reports?usuarioId=${user.id}`);
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/reports?usuarioId=${user.id}`);
         if (!response.ok) throw new Error("Error fetching user reports");
         const data = await response.json();
         
@@ -170,7 +171,7 @@ export default function ProfilePage() {
             zone: r.zona_id?.nombre || "Zona Desconocida",
             title: r.categoria_id?.nombre || "Reporte",
             description: r.contenido?.descripcion || "",
-            type: (r.estado === "SOSPECHOSO" || r.categoria_id?.nombre?.toLowerCase().includes("riesgo")) ? "warning" : "info",
+            tipo: r.tipo || "good-conditions",
             date: r.createdAt.substring(0, 10),
             confirmations: r.validaciones?.usuarios_confirmaron?.length ?? 0,
             comments: 0,
@@ -185,61 +186,67 @@ export default function ProfilePage() {
     fetchMyReports();
   }, [user]);
 
-  // Mock data - Zonas Favoritas
-  const [favoriteZones, setFavoriteZones] = useState([
-    {
-      id: 1,
-      name: "Formigal",
-      region: "Huesca",
-      image: "https://images.unsplash.com/photo-1551524164-687a55dd1126?w=800",
-      riskLevel: 45,
-      lastVisit: "2026-03-24",
-      totalReports: 12,
-    },
-    {
-      id: 2,
-      name: "Benasque",
-      region: "Huesca",
-      image: "https://images.unsplash.com/photo-1519904981063-b0cf448d479e?w=800",
-      riskLevel: 67,
-      lastVisit: "2026-03-22",
-      totalReports: 8,
-    },
-    {
-      id: 3,
-      name: "Pico Aneto",
-      region: "Huesca",
-      image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800",
-      riskLevel: 78,
-      lastVisit: "2026-03-15",
-      totalReports: 15,
-    },
-    {
-      id: 4,
-      name: "Ordesa",
-      region: "Huesca",
-      image: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800",
-      riskLevel: 32,
-      lastVisit: "2026-03-20",
-      totalReports: 6,
-    },
-    {
-      id: 5,
-      name: "Candanchú",
-      region: "Huesca",
-      image: "https://images.unsplash.com/photo-1418290232843-5d7a0bd1b5d8?w=800",
-      riskLevel: 23,
-      lastVisit: "2026-03-18",
-      totalReports: 9,
-    },
-  ]);
+  // Cargar zonas favoritas del backend
+  useEffect(() => {
+    const loadFavorites = async () => {
+      try {
+        const token = localStorage.getItem('meteomap_token');
+        if (!token) {
+          console.log('No hay usuario autenticado para cargar favoritas');
+          return;
+        }
+
+        const response = await fetch(`${API_BASE_URL}/user/me/favorites`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const preferences = data.preferencias || [];
+          
+          // Transformar referencias a zonas en objetos con datos completos
+          const mappedFavorites = preferences.map((pref: any, index: number) => {
+            const zone = typeof pref === 'object' ? pref : { _id: pref };
+            return {
+              id: index, // ID local para React key
+              zoneId: zone._id || zone.id, // ObjectId para enviar al backend
+              name: zone.nombre || zone.name || "Zona sin nombre",
+              region: zone.departamento || "Región desconocida",
+              image: "https://images.unsplash.com/photo-1551524164-687a55dd1126?w=800", // Default image
+              riskLevel: zone.nivelAvalanchas || 50,
+              lastVisit: new Date().toISOString().split('T')[0],
+              totalReports: 0,
+            };
+          });
+
+          setFavoriteZones(mappedFavorites);
+          console.log('Favoritas cargadas:', mappedFavorites);
+        }
+      } catch (error) {
+        console.error('Error cargando favoritas:', error);
+      }
+    };
+
+    loadFavorites();
+  }, []);
+
+  // Tipos de riesgo - sincronizado con CreateReportModal
+  const riskTypes = [
+    { value: "avalanche", label: "Alud reciente", icon: "❄️" },
+    { value: "unstable-snow", label: "Nieve inestable", icon: "⚠️" },
+    { value: "ice-plates", label: "Placas de hielo", icon: "🧊" },
+    { value: "bad-visibility", label: "Mala visibilidad", icon: "🌫️" },
+    { value: "strong-wind", label: "Viento fuerte", icon: "💨" },
+    { value: "rockfall", label: "Desprendimientos", icon: "🪨" },
+    { value: "good-conditions", label: "Buenas condiciones", icon: "✅" },
+  ];
 
   // Estado para nuevo reporte editado
   const [editedReport, setEditedReport] = useState({
-    title: "",
-    description: "",
-    type: "info",
-    zone: "",
+    tipo: "",
+    descripcion: "",
   });
 
   // Estado para nueva zona
@@ -284,52 +291,118 @@ export default function ProfilePage() {
     const report = myReports.find((r) => r.id === reportId);
     if (report) {
       setEditedReport({
-        title: report.title,
-        description: report.description,
-        type: report.type,
-        zone: report.zone,
+        tipo: report.tipo || "good-conditions",
+        descripcion: report.description,
       });
       setEditReportDialog(reportId);
     }
   };
 
-  const handleSaveReport = () => {
-    // Aquí guardarías el reporte editado
-    setMyReports(
-      myReports.map((r) =>
-        r.id === editReportDialog
-          ? { ...r, ...editedReport }
-          : r
-      )
-    );
-    setEditReportDialog(null);
+  const handleSaveReport = async () => {
+    const token = localStorage.getItem('meteomap_token');
+    if (!token) {
+      toast.error("Debes estar autenticado para editar reportes");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/reports/${editReportDialog}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          descripcion: editedReport.descripcion,
+          tipo: editedReport.tipo
+        })
+      });
+
+      if (response.ok) {
+        setMyReports(
+          myReports.map((r) =>
+            r.id === editReportDialog
+              ? { ...r, description: editedReport.descripcion, tipo: editedReport.tipo }
+              : r
+          )
+        );
+        setEditReportDialog(null);
+        toast.success("Reporte actualizado correctamente");
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Error al actualizar el reporte");
+      }
+    } catch (error) {
+      console.error("Error al editar reporte:", error);
+      toast.error("Error de conexión");
+    }
   };
 
-  const handleDeleteReport = (reportId: number) => {
-    setMyReports(myReports.filter((r) => r.id !== reportId));
+  const handleDeleteReport = async (reportId: number | string) => {
+    const token = localStorage.getItem('meteomap_token');
+    if (!token) {
+      toast.error("Debes estar autenticado para eliminar reportes");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/reports/${reportId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        setMyReports(myReports.filter((r) => r.id !== reportId));
+        toast.success("Reporte eliminado correctamente");
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Error al eliminar el reporte");
+      }
+    } catch (error) {
+      console.error("Error al eliminar reporte:", error);
+      toast.error("Error de conexión");
+    }
   };
 
-  const handleAddZone = () => {
-    // Aquí añadirías la zona
-    const newId = Math.max(...favoriteZones.map((z) => z.id)) + 1;
-    setFavoriteZones([
-      ...favoriteZones,
-      {
-        id: newId,
-        name: newZone.name,
-        region: newZone.region,
-        image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800",
-        riskLevel: 50,
-        lastVisit: new Date().toISOString().split("T")[0],
-        totalReports: 0,
-      },
-    ]);
-    setAddZoneDialog(false);
-    setNewZone({ name: "", region: "" });
-  };
+  const handleRemoveZone = async (zoneId: number | string) => {
+    const token = localStorage.getItem('meteomap_token');
+    if (!token) {
+      alert('Debes estar autenticado para eliminar favoritos');
+      return;
+    }
 
-  const handleRemoveZone = (zoneId: number) => {
-    setFavoriteZones(favoriteZones.filter((z) => z.id !== zoneId));
+    // Actualizar estado local inmediatamente
+    setFavoriteZones(favoriteZones.filter((z) => z.zoneId !== zoneId));
+
+    // Sincronizar con el backend
+    try {
+      const response = await fetch(`${API_BASE_URL}/user/me/favorites`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ zonaId: zoneId, accion: 'remove' })
+      });
+
+      if (!response.ok) {
+        // Revertir cambios si falla
+        const zone = favoriteZones.find(z => z.zoneId === zoneId);
+        if (zone) {
+          setFavoriteZones([...favoriteZones, zone]);
+        }
+        alert('Error al eliminar de favoritos');
+      }
+    } catch (error) {
+      console.error('Error eliminando favorito:', error);
+      // Revertir cambios si falla
+      const zone = favoriteZones.find(z => z.zoneId === zoneId);
+      if (zone) {
+        setFavoriteZones([...favoriteZones, zone]);
+      }
+    }
   };
 
   const handleChangePassword = async () => {
@@ -468,10 +541,10 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-gray-50 to-purple-50">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 via-gray-50 to-purple-50">
       <Header />
 
-      <div className="mt-16 container mx-auto px-4 py-8 max-w-[1400px]">
+      <div className="flex-1 mt-16 container mx-auto px-4 py-8 max-w-[1400px]">
         {/* Profile Header Card */}
         <Card className="p-6 md:p-8 mb-8 bg-white/80 backdrop-blur">
           <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
@@ -545,10 +618,6 @@ export default function ProfilePage() {
           <TabsContent value="reports" className="space-y-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-bold text-gray-900">Mis Reportes</h2>
-              <Button className="bg-blue-600 hover:bg-blue-700">
-                <FileText className="h-4 w-4 mr-2" />
-                Crear Reporte
-              </Button>
             </div>
 
             <div className="grid gap-4">
@@ -570,9 +639,6 @@ export default function ProfilePage() {
                           <div>
                             <div className="flex items-center gap-2 mb-1">
                               <h3 className="text-xl font-semibold text-gray-900">{report.title}</h3>
-                              {report.status === "resolved" && (
-                                <Badge className="bg-gray-100 text-gray-700">Resuelto</Badge>
-                              )}
                             </div>
                             <div className="flex items-center gap-2 text-sm text-gray-600">
                               <MapPin className="h-4 w-4" />
@@ -594,36 +660,25 @@ export default function ProfilePage() {
                                 <DialogHeader>
                                   <DialogTitle>Editar Reporte</DialogTitle>
                                   <DialogDescription>
-                                    Actualiza la información de tu reporte
+                                    Actualiza el tipo y descripción de tu reporte
                                   </DialogDescription>
                                 </DialogHeader>
                                 <div className="grid gap-4 py-4">
                                   <div className="space-y-2">
-                                    <Label htmlFor="edit-title">Título</Label>
-                                    <Input
-                                      id="edit-title"
-                                      value={editedReport.title}
-                                      onChange={(e) => setEditedReport({ ...editedReport, title: e.target.value })}
-                                    />
-                                  </div>
-                                  <div className="space-y-2">
-                                    <Label htmlFor="edit-zone">Zona</Label>
-                                    <Input
-                                      id="edit-zone"
-                                      value={editedReport.zone}
-                                      onChange={(e) => setEditedReport({ ...editedReport, zone: e.target.value })}
-                                    />
-                                  </div>
-                                  <div className="space-y-2">
-                                    <Label htmlFor="edit-type">Tipo</Label>
-                                    <Select value={editedReport.type} onValueChange={(value) => setEditedReport({ ...editedReport, type: value })}>
+                                    <Label htmlFor="edit-type">Tipo de Riesgo</Label>
+                                    <Select value={editedReport.tipo} onValueChange={(value) => setEditedReport({ ...editedReport, tipo: value })}>
                                       <SelectTrigger>
                                         <SelectValue />
                                       </SelectTrigger>
                                       <SelectContent>
-                                        <SelectItem value="info">Información</SelectItem>
-                                        <SelectItem value="warning">Advertencia</SelectItem>
-                                        <SelectItem value="danger">Peligro</SelectItem>
+                                        {riskTypes.map((type) => (
+                                          <SelectItem key={type.value} value={type.value}>
+                                            <span className="flex items-center gap-2">
+                                              <span>{type.icon}</span>
+                                              {type.label}
+                                            </span>
+                                          </SelectItem>
+                                        ))}
                                       </SelectContent>
                                     </Select>
                                   </div>
@@ -632,8 +687,8 @@ export default function ProfilePage() {
                                     <Textarea
                                       id="edit-description"
                                       rows={4}
-                                      value={editedReport.description}
-                                      onChange={(e) => setEditedReport({ ...editedReport, description: e.target.value })}
+                                      value={editedReport.descripcion}
+                                      onChange={(e) => setEditedReport({ ...editedReport, descripcion: e.target.value })}
                                     />
                                   </div>
                                 </div>
@@ -703,52 +758,6 @@ export default function ProfilePage() {
           <TabsContent value="zones" className="space-y-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-bold text-gray-900">Zonas Favoritas</h2>
-              
-              {/* Add Zone Dialog */}
-              <Dialog open={addZoneDialog} onOpenChange={setAddZoneDialog}>
-                <DialogTrigger asChild>
-                  <Button className="bg-blue-600 hover:bg-blue-700">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Añadir Zona
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
-                  <DialogHeader>
-                    <DialogTitle>Añadir Zona Favorita</DialogTitle>
-                    <DialogDescription>
-                      Agrega una nueva zona a tu lista de favoritas
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="zone-name">Nombre de la Zona</Label>
-                      <Input
-                        id="zone-name"
-                        placeholder="Ej: Valle de Tena"
-                        value={newZone.name}
-                        onChange={(e) => setNewZone({ ...newZone, name: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="zone-region">Región</Label>
-                      <Input
-                        id="zone-region"
-                        placeholder="Ej: Huesca"
-                        value={newZone.region}
-                        onChange={(e) => setNewZone({ ...newZone, region: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setAddZoneDialog(false)}>
-                      Cancelar
-                    </Button>
-                    <Button onClick={handleAddZone} className="bg-blue-600 hover:bg-blue-700">
-                      Añadir Zona
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -781,7 +790,7 @@ export default function ProfilePage() {
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleRemoveZone(zone.id)}>
+                            <AlertDialogAction onClick={() => handleRemoveZone(zone.zoneId)}>
                               Eliminar
                             </AlertDialogAction>
                           </AlertDialogFooter>

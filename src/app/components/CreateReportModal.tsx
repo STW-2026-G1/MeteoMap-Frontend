@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { X, MapPin, AlertTriangle, } from "lucide-react";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
@@ -42,7 +43,7 @@ export function CreateReportModal({ open, onOpenChange, zoneId, zoneName }: Crea
     const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!zoneId) {
-      alert("Error: Faltan datos de la zona seleccionada.");
+      toast.error("Error: Faltan datos de la zona seleccionada.");
       return;
     }
     
@@ -50,7 +51,7 @@ export function CreateReportModal({ open, onOpenChange, zoneId, zoneName }: Crea
     try {
       const token = localStorage.getItem("meteomap_token");
       if (!token) {
-        alert("Debes iniciar sesión para crear un reporte.");
+        toast.error("Debes iniciar sesión para crear un reporte.");
         onOpenChange(false);
         setIsSubmitting(false);
         return;
@@ -67,7 +68,7 @@ export function CreateReportModal({ open, onOpenChange, zoneId, zoneName }: Crea
         descripcion: description,
       };
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/reports`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/reports`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -93,10 +94,10 @@ export function CreateReportModal({ open, onOpenChange, zoneId, zoneName }: Crea
       onOpenChange(false);
       
       // Mostrar mensaje de éxito
-      alert("¡Reporte publicado con éxito! Gracias por contribuir a la seguridad en la montaña.");
+      toast.success("¡Reporte publicado con éxito! Gracias por contribuir a la seguridad en la montaña.");
     } catch (error: any) {
       console.error(error);
-      alert(error.message || "Error al publicar el reporte");
+      toast.error(error.message || "Error al publicar el reporte");
     } finally {
       setIsSubmitting(false);
     }

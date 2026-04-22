@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router";
+import { toast } from "sonner";
+import { useAuth } from "../contexts/AuthContext";
 import { Header } from "../components/Header";
 import { Button } from "../components/ui/button";
 import { Textarea } from "../components/ui/textarea";
@@ -18,8 +20,6 @@ import {
   ArrowLeft,
   Thermometer,
   Wind,
-  Calendar,
-  Camera,
 } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -38,11 +38,11 @@ interface Comment {
 
 interface Report {
     id: number | string;
+    userId: string; // ID del usuario propietario del reporte
     userName: string;
     avatar: string;
     condition: string;
     timestamp: string;
-    photo?: string;
     riskType?: string;
     description?: string;
     confirmations?: number;
@@ -53,6 +53,7 @@ interface Report {
   export default function ZoneForumPage() {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
+    const { user } = useAuth(); // Obtener usuario autenticado
     const mapRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<L.Map | null>(null);
 
@@ -76,16 +77,16 @@ interface Report {
     useEffect(() => {
       const fetchReports = async () => {
         try {
-          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/reports?zonaId=${zoneId}`);
+          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/reports?zonaId=${zoneId}`);
           const data = await response.json();
           if (response.ok && data.reports) {
             const mappedReports = data.reports.map((r: any) => ({
               id: r._id,
+              userId: r.usuario_id?._id, // ID del propietario
               userName: r.usuario_id?.perfil?.nombre || "Usuario",
-              avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?._id || r.usuario_id}`,
+              avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?.avatar_seed || r.usuario_id?._id || "usuario"}`,
               condition: r.categoria_id?.nombre || r.categoria?.nombre,
               timestamp: new Date(r.createdAt).toLocaleString(),
-              photo: r.contenido?.foto_url,
               riskType: r.categoria_id?.nombre || r.categoria?.nombre,
               description: r.contenido?.descripcion,
               confirmations: r.validaciones?.usuarios_confirmaron?.length ?? 0,
@@ -528,15 +529,9 @@ interface Report {
                   {reports.map((report) => (
                     <div
                       key={report.id}
-                      className="bg-white border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors cursor-pointer"
-                      onClick={() => handleReportClick(report)}
+                      className="bg-white border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors"
                       role="button"
                       tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          handleReportClick(report);
-                        }
-                      }}
                     >
                       <div className="flex items-start gap-3 mb-3">
                         <Avatar className="h-8 w-8 flex-shrink-0">
@@ -554,22 +549,17 @@ interface Report {
                             {report.timestamp}
                           </div>
                         </div>
+                        <div className="flex gap-1">
+                          {/* Los botones de editar/eliminar solo están disponibles en el perfil del usuario */}
+                        </div>
                       </div>
 
-                      <p className="text-sm text-gray-700 mb-3">{report.condition}</p>
-
-                      {report.photo && (
-                        <div className="relative rounded-lg overflow-hidden">
-                          <img
-                            src={report.photo}
-                            alt="Report"
-                            className="w-full h-32 object-cover"
-                          />
-                          <div className="absolute top-2 right-2 bg-black/50 p-1 rounded">
-                            <Camera className="h-4 w-4 text-white" />
-                          </div>
-                        </div>
-                      )}
+                      <p 
+                        className="text-sm text-gray-700 mb-3 cursor-pointer hover:text-gray-900"
+                        onClick={() => handleReportClick(report)}
+                      >
+                        {report.condition}
+                      </p>
                     </div>
                   ))}
                 </div>

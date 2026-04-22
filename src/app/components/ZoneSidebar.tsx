@@ -10,6 +10,9 @@ import { motion, AnimatePresence } from "motion/react";
 import { ReportDetailModal } from "./ReportDetailModal";
 import { useState, useEffect } from "react";
 
+// API Base URL
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+
 interface UserReport {
   id: string;
   userName: string;
@@ -125,7 +128,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
 
       const fetchReports = async () => {
          try {
-            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/reports?zonaId=${zone.id}`);
+            const response = await fetch(`${API_BASE_URL}/reports?zonaId=${zone.id}`);
             const data = await response.json();
             if (response.ok && data.reports) {
                const mappedReports = data.reports.map((r: any) => ({
@@ -150,7 +153,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
       const fetchComments = async () => {
          setIsLoading(true);
          try {
-            const response = await fetch(`http://localhost:3000/api/comments/zone/${zone.id}`);
+            const response = await fetch(`${API_BASE_URL}/comments/zone/${zone.id}`);
             const data = await response.json();
 
             if (response.ok) {
@@ -199,8 +202,8 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
       const isAlreadyLiked = likedComments.has(commentId);
 
       const url = isAlreadyLiked 
-         ? `http://localhost:3000/api/comments/${commentId}/unlike` // <--- Ruta para quitar
-         : `http://localhost:3000/api/comments/${commentId}/like`;   // <--- Ruta para dar
+         ? `${API_BASE_URL}/comments/${commentId}/unlike` // <--- Ruta para quitar
+         : `${API_BASE_URL}/comments/${commentId}/like`;   // <--- Ruta para dar
       const method = isAlreadyLiked ? 'DELETE' : 'POST';
 
       setLikedComments(prev => {
@@ -252,7 +255,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
       try {
          console.log("Enviando ID:", zone.id);
          console.log("Enviando Contenido:", newCommentText);
-         const response = await fetch(`http://localhost:3000/api/comments/zone/${zone.id}`, {
+         const response = await fetch(`${API_BASE_URL}/comments/zone/${zone.id}`, {
             method: 'POST',
             headers: {
             'Content-Type': 'application/json',
@@ -309,7 +312,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
             return;
          }
 
-         const response = await fetch(`http://localhost:3000/api/comments/${commentId}`, {
+         const response = await fetch(`${API_BASE_URL}/comments/${commentId}`, {
             method: 'DELETE',
             headers: {
             'Authorization': `Bearer ${rawToken}`,
