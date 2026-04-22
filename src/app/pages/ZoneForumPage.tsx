@@ -37,60 +37,70 @@ interface Comment {
 }
 
 interface Report {
-  id: number;
-  userName: string;
-  avatar: string;
-  condition: string;
-  timestamp: string;
-  photo?: string;
-}
+    id: number | string;
+    userName: string;
+    avatar: string;
+    condition: string;
+    timestamp: string;
+    photo?: string;
+    riskType?: string;
+    description?: string;
+    confirmations?: number;
+    denials?: number;
+    location?: string;
+  }
 
-export default function ZoneForumPage() {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<L.Map | null>(null);
+  export default function ZoneForumPage() {
+    const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
+    const mapRef = useRef<HTMLDivElement>(null);
+    const mapInstanceRef = useRef<L.Map | null>(null);
 
-  const zoneName = searchParams.get("zone") || "Zona Desconocida";
-  const zoneId = searchParams.get("id") || "1";
-  const zoneElevation = searchParams.get("elevation") || "N/A";
-  const zoneTemp = searchParams.get("temp") || "-2";
-  const zoneWind = searchParams.get("wind") || "18";
-  const zoneAvalanche = searchParams.get("avalanche") || "2";
-  const commentsParam = searchParams.get("comments");
+    const zoneName = searchParams.get("zone") || "Zona Desconocida";
+    const zoneId = searchParams.get("id") || "1";
+    const zoneElevation = searchParams.get("elevation") || "N/A";
+    const zoneTemp = searchParams.get("temp") || "-2";
+    const zoneWind = searchParams.get("wind") || "18";
+    const zoneAvalanche = searchParams.get("avalanche") || "2";
+    const commentsParam = searchParams.get("comments");
 
-  const [newComment, setNewComment] = useState("");
-  const [replyingTo, setReplyingTo] = useState<number | null>(null);
-  const [replyText, setReplyText] = useState("");
-  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+    const [newComment, setNewComment] = useState("");
+    const [replyingTo, setReplyingTo] = useState<number | null>(null);
+    const [replyText, setReplyText] = useState("");
+    const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    
+    const [reports, setReports] = useState<Report[]>([]);
 
-  // Mock reports data
-  const reports: Report[] = [
-    {
-      id: 1,
-      userName: "Carlos_Montañero",
-      avatar: "https://i.pravatar.cc/150?img=12",
-      condition: "Nieve polvo en buen estado. Cuidado con las zonas de sombra.",
-      timestamp: "hace 2h",
-      photo: "https://images.unsplash.com/photo-1770064182538-0f88c61455eb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzbm93eSUyMG1vdW50YWluJTIwcGVhayUyMGNvbmRpdGlvbnN8ZW58MXx8fHwxNzc0NDQzMTYwfDA&ixlib=rb-4.1.0&q=80&w=1080",
-    },
-    {
-      id: 2,
-      userName: "Laura_Ski",
-      avatar: "https://i.pravatar.cc/150?img=26",
-      condition: "Visibilidad perfecta. Temperatura agradable para esquiar.",
-      timestamp: "hace 5h",
-    },
-    {
-      id: 3,
-      userName: "MiguelAlpinista",
-      avatar: "https://i.pravatar.cc/150?img=33",
-      condition: "Mucho viento en la cumbre. Placas de hielo detectadas.",
-      timestamp: "hace 8h",
-    },
-  ];
+    // Fetch reports from Backend
+    useEffect(() => {
+      const fetchReports = async () => {
+        try {
+          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/reports?zonaId=${zoneId}`);
+          const data = await response.json();
+          if (response.ok && data.reports) {
+            const mappedReports = data.reports.map((r: any) => ({
+              id: r._id,
+              userName: r.usuario_id?.perfil?.nombre || "Usuario",
+              avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?._id || r.usuario_id}`,
+              condition: r.categoria_id?.nombre || r.categoria?.nombre,
+              timestamp: new Date(r.createdAt).toLocaleString(),
+              photo: r.contenido?.foto_url,
+              riskType: r.categoria_id?.nombre || r.categoria?.nombre,
+              description: r.contenido?.descripcion,
+              confirmations: r.validaciones?.usuarios_confirmaron?.length ?? 0,
+              denials: r.validaciones?.usuarios_desmintieron?.length ?? 0,
+              location: zoneName,
+            }));
+            setReports(mappedReports);
+          }
+        } catch (error) {
+          console.error("Error fetching reports in forum:", error);
+        }
+      };
 
+      fetchReports();
+    }, [zoneId, zoneName]);
   // Obtener comentarios dinámicos del parámetro o usar mock
   const getInitialComments = (): Comment[] => {
     if (commentsParam) {

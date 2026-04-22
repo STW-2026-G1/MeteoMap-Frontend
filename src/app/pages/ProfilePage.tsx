@@ -146,60 +146,44 @@ export default function ProfilePage() {
     { value: "personas", label: "Personas" },
   ];
 
+  // Mock data - Mis Reportes
+  const [myReports, setMyReports] = useState<any[]>([]);
+
   // Mock data - Estadísticas del usuario
   const userStats = {
-    totalReports: 47,
-    confirmations: 156,
+    totalReports: myReports.length,
+    confirmations: myReports.reduce((acc, curr) => acc + curr.confirmations, 0),
     favoriteZones: 5,
   };
 
-  // Mock data - Mis Reportes
-  const [myReports, setMyReports] = useState([
-    {
-      id: 1,
-      zone: "Formigal",
-      title: "Nieve polvo en Cota 1800",
-      description: "Excelentes condiciones de nieve polvo en la zona alta. Visibilidad perfecta.",
-      type: "info",
-      date: "2026-03-24",
-      confirmations: 12,
-      comments: 5,
-      status: "active",
-    },
-    {
-      id: 2,
-      zone: "Benasque",
-      title: "Placas de hielo en cara norte",
-      description: "Detectadas placas de hielo en acceso al Aneto. Precaución extrema.",
-      type: "danger",
-      date: "2026-03-22",
-      confirmations: 28,
-      comments: 15,
-      status: "active",
-    },
-    {
-      id: 3,
-      zone: "Ordesa",
-      title: "Sendero despejado",
-      description: "El sendero del valle está completamente despejado y accesible.",
-      type: "info",
-      date: "2026-03-20",
-      confirmations: 8,
-      comments: 3,
-      status: "resolved",
-    },
-    {
-      id: 4,
-      zone: "Candanchú",
-      title: "Visibilidad reducida por niebla",
-      description: "Niebla densa en cotas medias-altas. Recomendable posponer actividad.",
-      type: "warning",
-      date: "2026-03-18",
-      confirmations: 15,
-      comments: 7,
-      status: "active",
-    },
-  ]);
+  useEffect(() => {
+    if (!user || !user.id) return;
+    const fetchMyReports = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/reports?usuarioId=${user.id}`);
+        if (!response.ok) throw new Error("Error fetching user reports");
+        const data = await response.json();
+        
+        if (data.reports) {
+          const mapped = data.reports.map((r: any) => ({
+            id: r._id,
+            zone: r.zona_id?.nombre || "Zona Desconocida",
+            title: r.categoria_id?.nombre || "Reporte",
+            description: r.contenido?.descripcion || "",
+            type: (r.estado === "SOSPECHOSO" || r.categoria_id?.nombre?.toLowerCase().includes("riesgo")) ? "warning" : "info",
+            date: r.createdAt.substring(0, 10),
+            confirmations: r.validaciones?.usuarios_confirmaron?.length ?? 0,
+            comments: 0,
+            status: r.estado === "ACTIVO" ? "active" : "resolved"
+          }));
+          setMyReports(mapped);
+        }
+      } catch (error) {
+        console.error("Error al cargar mis reportes:", error);
+      }
+    };
+    fetchMyReports();
+  }, [user]);
 
   // Mock data - Zonas Favoritas
   const [favoriteZones, setFavoriteZones] = useState([

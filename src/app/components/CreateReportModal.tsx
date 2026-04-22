@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, MapPin, Camera, AlertTriangle, Image as ImageIcon } from "lucide-react";
+import { X, MapPin, AlertTriangle, } from "lucide-react";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
@@ -20,6 +20,7 @@ import {
 interface CreateReportModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  zoneId?: string;
   zoneName: string;
 }
 
@@ -33,53 +34,75 @@ const riskTypes = [
   { value: "good-conditions", label: "Buenas condiciones", icon: "✅" },
 ];
 
-export function CreateReportModal({ open, onOpenChange, zoneName }: CreateReportModalProps) {
+export function CreateReportModal({ open, onOpenChange, zoneId, zoneName }: CreateReportModalProps) {
   const [riskType, setRiskType] = useState("");
   const [description, setDescription] = useState("");
-  const [photo, setPhoto] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string>("");
+      const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setPhoto(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result as string);
+    const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!zoneId) {
+      alert("Error: Faltan datos de la zona seleccionada.");
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      const token = localStorage.getItem("meteomap_token");
+      if (!token) {
+        alert("Debes iniciar sesión para crear un reporte.");
+        onOpenChange(false);
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Find the selected risk to get label and icon
+      const selectedRisk = riskTypes.find((r) => r.value === riskType);
+
+      const requestBody = {
+        zona_id: zoneId,
+        nombre_categoria: selectedRisk?.label || riskType,
+        icono_marcador: selectedRisk?.icon || "⚠️",
+        tipo: riskType,
+        descripcion: description,
       };
-      reader.readAsDataURL(file);
+
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/reports`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        let errMessage = "Error al crear el reporte.";
+        try {
+          const errData = await response.json();
+          errMessage = errData.error || errData.message || errMessage;
+        } catch { }
+        throw new Error(errMessage);
+      }
+
+      // Resetear formulario
+      setRiskType("");
+      setDescription("");
+      
+      // Cerrar modal
+      onOpenChange(false);
+      
+      // Mostrar mensaje de éxito
+      alert("¡Reporte publicado con éxito! Gracias por contribuir a la seguridad en la montaña.");
+    } catch (error: any) {
+      console.error(error);
+      alert(error.message || "Error al publicar el reporte");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Aquí iría la lógica para enviar el reporte
-    console.log({
-      zoneName,
-      riskType,
-      description,
-      photo,
-    });
-
-    // Resetear formulario
-    setRiskType("");
-    setDescription("");
-    setPhoto(null);
-    setPhotoPreview("");
-    
-    // Cerrar modal
-    onOpenChange(false);
-    
-    // Mostrar mensaje de éxito (podrías usar toast aquí)
-    alert("¡Reporte publicado con éxito! Gracias por contribuir a la seguridad en la montaña.");
-  };
-
-  const handleRemovePhoto = () => {
-    setPhoto(null);
-    setPhotoPreview("");
-  };
-
+  
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
@@ -141,55 +164,6 @@ export function CreateReportModal({ open, onOpenChange, zoneName }: CreateReport
             </p>
           </div>
 
-          {/* Adjuntar Foto */}
-          <div className="space-y-2">
-            <Label htmlFor="photo" className="flex items-center gap-2">
-              <Camera className="h-4 w-4 text-gray-600" />
-              Adjuntar Foto (opcional)
-            </Label>
-            
-            {!photoPreview ? (
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-blue-400 transition-colors cursor-pointer">
-                <input
-                  type="file"
-                  id="photo"
-                  accept="image/*"
-                  onChange={handlePhotoChange}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="photo"
-                  className="flex flex-col items-center justify-center cursor-pointer"
-                >
-                  <ImageIcon className="h-10 w-10 text-gray-400 mb-2" />
-                  <p className="text-sm text-gray-600 font-medium">
-                    Click para seleccionar una foto
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    JPG, PNG o WEBP (máx. 5MB)
-                  </p>
-                </label>
-              </div>
-            ) : (
-              <div className="relative rounded-lg overflow-hidden border border-gray-300">
-                <img
-                  src={photoPreview}
-                  alt="Preview"
-                  className="w-full h-48 object-cover"
-                />
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="destructive"
-                  className="absolute top-2 right-2"
-                  onClick={handleRemovePhoto}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
-          </div>
-
           {/* Botones de Acción */}
           <div className="flex gap-3 pt-4">
             <Button
@@ -203,9 +177,9 @@ export function CreateReportModal({ open, onOpenChange, zoneName }: CreateReport
             <Button
               type="submit"
               className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-              disabled={!riskType || description.length < 20}
+              disabled={!riskType || description.length < 20 || isSubmitting}
             >
-              Publicar Reporte
+              {isSubmitting ? "Publicando..." : "Publicar Reporte"}
             </Button>
           </div>
         </form>

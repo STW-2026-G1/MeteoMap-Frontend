@@ -25,7 +25,7 @@ import {
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-const SERVER_URL = import.meta.env.VITE_API_BASE_URL
+const SERVER_URL = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:3000/api';
 interface MapMarker {
   id: string;
   lat: number;
@@ -42,6 +42,7 @@ interface ZoneData {
   wind: number;
   avalancheLevel: number;
   isFavorite: boolean;
+  coordinates?: [number, number]; // [lng, lat]
   reports: Array<{
     id: string;
     userName: string;
@@ -83,7 +84,7 @@ export default function MapViewer() {
 
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
   const [selectedZone, setSelectedZone] = useState<ZoneData | null>(null);
-  const [favoriteZones, setFavoriteZones] = useState<Set<string>>(new Set([]));
+  const [favoriteZones, setFavoriteZones] = useState<Set<string>>(new Set<string>([]));
   const [createReportModalOpen, setCreateReportModalOpen] = useState(false);
 
   /* ========================================================================== */
@@ -179,6 +180,7 @@ export default function MapViewer() {
             wind: wind,
             avalancheLevel: 2,
             isFavorite: false,
+            coordinates: [lng, lat],
             reports: [],
           };
         });
@@ -258,6 +260,7 @@ export default function MapViewer() {
         wind: wind,
         avalancheLevel: 2,
         isFavorite: favoriteZones.has(zoneId),
+        coordinates: [lng, lat],
         reports: [],
       };
 
@@ -295,7 +298,7 @@ export default function MapViewer() {
    * Alterna el estado favorito de una zona
    * @param zoneId - ID único de la zona
    */
-  const handleToggleFavorite = (zoneId: number) => {
+  const handleToggleFavorite = (zoneId: string) => {
     setFavoriteZones(prev => {
       const newFavorites = new Set(prev);
       if (newFavorites.has(zoneId)) {
@@ -884,7 +887,9 @@ export default function MapViewer() {
         <CreateReportModal
           open={createReportModalOpen}
           onOpenChange={setCreateReportModalOpen}
+          zoneId={selectedZone?.id || ''}
           zoneName={selectedZone?.name || ''}
+
         />
       </div>
     </div>

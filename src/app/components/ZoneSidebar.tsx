@@ -16,7 +16,11 @@ interface UserReport {
   avatar: string;
   condition: string;
   timestamp: string;
-  photo?: string;
+  riskType?: string;
+  description?: string;
+  confirmations?: number;
+  denials?: number;
+  location?: string;
 }
 
 interface Comment {
@@ -38,6 +42,7 @@ interface ZoneData {
   wind: number;
   avalancheLevel: number;
   isFavorite: boolean;
+  coordinates?: [number, number];
   reports: UserReport[];
   comments?: Comment[];
 }
@@ -81,6 +86,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
   if (!zone) return null;
 
   const [dynamicComments, setDynamicComments] = useState<Comment[]>([]);
+  const [dynamicReports, setDynamicReports] = useState<UserReport[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedReport, setSelectedReport] = useState<UserReport | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -90,6 +96,11 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserName, setCurrentUserName] = useState<string | null>(null);
+
+  const handleReportClick = (report: UserReport) => {
+    setSelectedReport(report);
+    setIsModalOpen(true);
+  };
 
   // Obtener el userId y nombre del usuario actual
   useEffect(() => {
@@ -112,6 +123,30 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
   useEffect(() => {
       if (!zone.id) return;
 
+      const fetchReports = async () => {
+         try {
+            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/reports?zonaId=${zone.id}`);
+            const data = await response.json();
+            if (response.ok && data.reports) {
+               const mappedReports = data.reports.map((r: any) => ({
+                  id: r._id,
+                  userName: r.usuario_id?.perfil?.nombre || "Usuario",
+                  avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?._id || r.usuario_id}`,
+                  condition: r.categoria_id?.nombre || r.categoria?.nombre,
+                  timestamp: new Date(r.createdAt).toLocaleString(),
+                  riskType: r.categoria_id?.nombre || r.categoria?.nombre,
+                  description: r.contenido?.descripcion,
+                  confirmations: r.validaciones?.usuarios_confirmaron?.length ?? 0,
+                  denials: r.validaciones?.usuarios_desmintieron?.length ?? 0,
+                  location: zone.name,
+               }));
+               setDynamicReports(mappedReports);
+            }
+         } catch (error) {
+            console.error("Error fetching reports:", error);
+         }
+      };
+
       const fetchComments = async () => {
          setIsLoading(true);
          try {
@@ -132,7 +167,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
                   id: c._id,
                   userId: c.usuario_id?._id || c.usuario_id,
                   userName: c.usuario_id?.perfil?.nombre || "Usuario Anónimo",
-                  avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.usuario_id?._id}`,
+                  avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${c.usuario_id?._id}`,
                   message: c.contenido,
                   timestamp: new Date(c.createdAt).toLocaleDateString(),
                   likes: uniqueLikes.size, // Contamos likes únicos
@@ -151,6 +186,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
       };
 
       fetchComments();
+      fetchReports();
    }, [zone.id, currentUserId]); // <--- Se re-ejecuta cuando el usuario se loguea
 
   const handleLikeComment = async (commentId: string) => {
@@ -233,9 +269,9 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
             const serverId = data.comment?._id || data._id;
             const newCommentMapped: Comment = {
                id: serverId,
-               userId: currentUserId,
-               userName: currentUserName, 
-               avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=me`,
+               userId: currentUserId ?? undefined,
+               userName: currentUserName ?? "", 
+               avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=me`,
                message: newCommentText,
                timestamp: "Ahora mismo",
                likes: 0,
@@ -420,9 +456,9 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
             <div>
               <h3 className="font-semibold text-gray-900 mb-3">Reportes Recientes de Usuarios</h3>
               <div className="space-y-3">
-                {zone.reports.length > 0 ? (
+                {dynamicReports.length > 0 ? (
                   <>
-                    {zone.reports.map((report) => (
+                    {dynamicReports.map((report) => (
                       <Card 
                         key={report.id} 
                         className="p-3 hover:shadow-md transition-shadow cursor-pointer hover:border-blue-300" 
@@ -455,22 +491,11 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
                             <p className="text-sm text-gray-600 mt-1">{report.condition}</p>
                           </div>
                         </div>
-
-                        {/* Photo if exists */}
-                        {report.photo && (
-                          <div className="mt-2 rounded-md overflow-hidden">
-                            <img 
-                              src={report.photo} 
-                              alt="Reporte" 
-                              className="w-full h-32 object-cover"
-                            />
-                          </div>
-                        )}
                       </Card>
                     ))}
 
                     {/* View All Button */}
-                    <Button variant="outline" className="w-full" onClick={onViewAllReports}>
+                    <Button variant="outline" className="w-full" onClick={() => onViewAllReports(dynamicComments)}>
                       Ver todos los reportes de esta zona
                     </Button>
                   </>

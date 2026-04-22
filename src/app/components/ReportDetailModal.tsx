@@ -12,12 +12,11 @@ import {
 import { useState } from "react";
 
 interface ReportData {
-  id: number;
+  id: string | number;
   userName: string;
   avatar: string;
   condition: string;
   timestamp: string;
-  photo?: string;
   riskType?: string;
   location?: string;
   description?: string;
@@ -41,8 +40,8 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
   if (!report) return null;
 
   // Initialize vote counts
-  const confirmations = report.confirmations || 5;
-  const denials = report.denials || 1;
+  const confirmations = report.confirmations ?? 0;
+  const denials = report.denials ?? 0;
   const totalVotes = confirmations + denials + localConfirmations + localDenials;
   const confidenceLevel = totalVotes > 0 ? ((confirmations + localConfirmations) / totalVotes) * 100 : 0;
 
@@ -57,35 +56,60 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
   const confidenceBadge = getConfidenceBadge(confidenceLevel);
   const ConfidenceIcon = confidenceBadge.icon;
 
-  const handleConfirm = () => {
-    if (userVote === 'confirm') {
-      // Unvote
-      setUserVote(null);
-      setLocalConfirmations(prev => prev - 1);
-    } else {
-      // Vote confirm (remove deny if exists)
-      if (userVote === 'deny') {
-        setLocalDenials(prev => prev - 1);
+  const handleVote = async (accion: 'confirmar' | 'desmentir') => {
+    const token = localStorage.getItem("meteomap_token");
+    if (!token) {
+      alert("Debes iniciar sesión para validar un reporte.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/reports/${report.id}/validate`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ accion }),
+      });
+
+      const resData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(resData.error || resData.message || "Error al validar el reporte.");
       }
-      setUserVote('confirm');
-      setLocalConfirmations(prev => prev + 1);
+
+      // Success
+      if (resData.report && resData.report.validaciones) {
+        // Backend returns the exact validations count from arrays, we update our local offset to match it exactly.
+        const newConfirmations = resData.report.validaciones.usuarios_confirmaron?.length || 0;
+        const newDenials = resData.report.validaciones.usuarios_desmintieron?.length || 0;
+        
+        setLocalConfirmations(newConfirmations - (report.confirmations ?? 0));
+        setLocalDenials(newDenials - (report.denials ?? 0));
+      }
+
+      if (accion === 'confirmar') {
+        if (userVote === 'confirm') {
+          setUserVote(null);
+        } else {
+          setUserVote('confirm');
+        }
+      } else {
+        if (userVote === 'deny') {
+          setUserVote(null);
+        } else {
+          setUserVote('deny');
+        }
+      }
+    } catch (error: any) {
+      console.error(error);
+      alert(error.message);
     }
   };
 
-  const handleDeny = () => {
-    if (userVote === 'deny') {
-      // Unvote
-      setUserVote(null);
-      setLocalDenials(prev => prev - 1);
-    } else {
-      // Vote deny (remove confirm if exists)
-      if (userVote === 'confirm') {
-        setLocalConfirmations(prev => prev - 1);
-      }
-      setUserVote('deny');
-      setLocalDenials(prev => prev + 1);
-    }
-  };
+  const handleConfirm = () => handleVote('confirmar');
+  const handleDeny = () => handleVote('desmentir');
 
   const riskType = report.riskType || "Placas de hielo";
   const description = report.description || report.condition;
@@ -107,22 +131,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
           </Button>
         </div>
 
-        <div className="px-6 pb-6 space-y-6">
-          {/* Photo */}
-          {report.photo ? (
-            <div className="relative w-full h-80 rounded-lg overflow-hidden bg-gray-100">
-              <img
-                src={report.photo}
-                alt={riskType}
-                className="w-full h-full object-cover"
-              />
-            </div>
-          ) : (
-            <div className="relative w-full h-80 rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-              <AlertTriangle className="h-16 w-16 text-gray-400" />
-            </div>
-          )}
-
+        <div className="px-6 pb-6 space-y-6 pt-4">
           {/* User Info */}
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold text-lg">
