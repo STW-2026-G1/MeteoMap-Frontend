@@ -461,7 +461,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
               <div className="space-y-3">
                 {dynamicReports.length > 0 ? (
                   <>
-                    {dynamicReports.map((report) => (
+                    {dynamicReports.slice(0, 3).map((report) => (
                       <Card 
                         key={report.id} 
                         className="p-3 hover:shadow-md transition-shadow cursor-pointer hover:border-blue-300" 
@@ -498,9 +498,11 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
                     ))}
 
                     {/* View All Button */}
-                    <Button variant="outline" className="w-full" onClick={() => onViewAllReports(dynamicComments)}>
-                      Ver todos los reportes de esta zona
-                    </Button>
+                    {dynamicReports.length > 3 && (
+                      <Button variant="outline" className="w-full" onClick={() => onViewAllReports(dynamicComments)}>
+                        Ver todos los reportes de esta zona
+                      </Button>
+                    )}
                   </>
                 ) : (
                   <Card className="p-4 text-center text-gray-500">
