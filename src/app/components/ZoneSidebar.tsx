@@ -99,6 +99,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserName, setCurrentUserName] = useState<string | null>(null);
+  const [currentUserAvatar, setCurrentUserAvatar] = useState<string | null>(null);
 
   const handleReportClick = (report: UserReport) => {
     setSelectedReport(report);
@@ -113,8 +114,10 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
         const parsed = JSON.parse(userInfo);
         const userId = parsed.id || parsed._id || null;
         const userName = parsed.name || parsed.nombre || null;
+        const userAvatar = parsed.avatar_url || `https://api.dicebear.com/9.x/${parsed.avatar_style || 'avataaars'}/svg?seed=${parsed.avatar_seed || userName || userId || "me"}`;
         setCurrentUserId(userId);
         setCurrentUserName(userName);
+        setCurrentUserAvatar(userAvatar);
         console.log("Current User:", { id: userId, name: userName });
       } catch (error) {
         console.error("Error parsing user info:", error);
@@ -134,7 +137,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
                const mappedReports = data.reports.map((r: any) => ({
                   id: r._id,
                   userName: r.usuario_id?.perfil?.nombre || "Usuario",
-                  avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?._id || r.usuario_id}`,
+                  avatar: r.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?._id || r.usuario_id}`,
                   condition: r.categoria_id?.nombre || r.categoria?.nombre,
                   timestamp: new Date(r.createdAt).toLocaleString(),
                   riskType: r.categoria_id?.nombre || r.categoria?.nombre,
@@ -170,7 +173,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
                   id: c._id,
                   userId: c.usuario_id?._id || c.usuario_id,
                   userName: c.usuario_id?.perfil?.nombre || "Usuario Anónimo",
-                  avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${c.usuario_id?._id}`,
+                  avatar: c.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${c.usuario_id?._id}`,
                   message: c.contenido,
                   timestamp: new Date(c.createdAt).toLocaleDateString(),
                   likes: uniqueLikes.size, // Contamos likes únicos
@@ -274,7 +277,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
                id: serverId,
                userId: currentUserId ?? undefined,
                userName: currentUserName ?? "", 
-               avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=me`,
+               avatar: currentUserAvatar || `https://api.dicebear.com/9.x/avataaars/svg?seed=me`,
                message: newCommentText,
                timestamp: "Ahora mismo",
                likes: 0,

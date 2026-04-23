@@ -149,6 +149,10 @@ export default function ProfilePage() {
 
   // Mock data - Mis Reportes
   const [myReports, setMyReports] = useState<any[]>([]);
+  const [myReportsRaw, setMyReportsRaw] = useState<any[]>([]);
+  const [categories, setCategories] = useState<{ value: string; label: string; icon: string }[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+
 
   // Mock data - Estadísticas del usuario
   const userStats = {
@@ -166,12 +170,13 @@ export default function ProfilePage() {
         const data = await response.json();
         
         if (data.reports) {
+          setMyReportsRaw(data.reports);
           const mapped = data.reports.map((r: any) => ({
             id: r._id,
             zone: r.zona_id?.nombre || "Zona Desconocida",
             title: r.categoria_id?.nombre || "Reporte",
+            categoria_id: r.categoria_id?._id || r.categoria_id,
             description: r.contenido?.descripcion || "",
-            tipo: r.tipo || "good-conditions",
             date: r.createdAt.substring(0, 10),
             confirmations: r.validaciones?.usuarios_confirmaron?.length ?? 0,
             comments: 0,
@@ -185,6 +190,32 @@ export default function ProfilePage() {
     };
     fetchMyReports();
   }, [user]);
+
+  // Cargar categorías del backend
+  useEffect(() => {
+    const fetchCategories = async () => {
+      setIsLoadingCategories(true);
+      try {
+        const response = await fetch(`${API_BASE_URL}/categories`);
+        if (response.ok) {
+          const data = await response.json();
+          const mapped = data.map((cat: any) => ({
+            value: cat._id,
+            label: cat.nombre,
+            icon: cat.icono_marcador || "⚠️"
+          }));
+          setCategories(mapped);
+        } else {
+          toast.error("Error al cargar categorías");
+        }
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+      } finally {
+        setIsLoadingCategories(false);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   // Cargar zonas favoritas del backend
   useEffect(() => {
@@ -232,20 +263,11 @@ export default function ProfilePage() {
     loadFavorites();
   }, []);
 
-  // Tipos de riesgo - sincronizado con CreateReportModal
-  const riskTypes = [
-    { value: "avalanche", label: "Alud reciente", icon: "❄️" },
-    { value: "unstable-snow", label: "Nieve inestable", icon: "⚠️" },
-    { value: "ice-plates", label: "Placas de hielo", icon: "🧊" },
-    { value: "bad-visibility", label: "Mala visibilidad", icon: "🌫️" },
-    { value: "strong-wind", label: "Viento fuerte", icon: "💨" },
-    { value: "rockfall", label: "Desprendimientos", icon: "🪨" },
-    { value: "good-conditions", label: "Buenas condiciones", icon: "✅" },
-  ];
+  // Tipos de riesgo - ya no se usa, usamos categories
 
   // Estado para nuevo reporte editado
   const [editedReport, setEditedReport] = useState({
-    tipo: "",
+    categoria_id: "",
     descripcion: "",
   });
 
@@ -287,14 +309,21 @@ export default function ProfilePage() {
     }
   };
 
-  const handleEditReport = (reportId: number) => {
+  const handleEditReport = (reportId: string) => {
     const report = myReports.find((r) => r.id === reportId);
     if (report) {
+      // Intentar encontrar el ID de la categoría basado en el nombre si 'tipo' no es el ID
+      // Pero idealmente el reporte ya debería tener categoria_id si lo hemos cargado correctamente
+      // En mapped ya pusimos 'title' como nombre. Necesitamos el ID real.
+      // Vamos a ajustar el mapping en fetchMyReports para que incluya el ID.
+      
+      const originalReport = myReportsRaw.find((r: any) => r._id === reportId);
+      
       setEditedReport({
-        tipo: report.tipo || "good-conditions",
+        categoria_id: originalReport?.categoria_id?._id || originalReport?.categoria_id || "",
         descripcion: report.description,
       });
-      setEditReportDialog(reportId);
+      setEditReportDialog(reportId as any);
     }
   };
 
@@ -314,7 +343,7 @@ export default function ProfilePage() {
         },
         body: JSON.stringify({ 
           descripcion: editedReport.descripcion,
-          tipo: editedReport.tipo
+          categoria_id: editedReport.categoria_id
         })
       });
 
@@ -322,7 +351,7 @@ export default function ProfilePage() {
         setMyReports(
           myReports.map((r) =>
             r.id === editReportDialog
-              ? { ...r, description: editedReport.descripcion, tipo: editedReport.tipo }
+              ? { ...r, description: editedReport.descripcion, title: categories.find(c => c.value === editedReport.categoria_id)?.label || r.title }
               : r
           )
         );
@@ -330,7 +359,7 @@ export default function ProfilePage() {
         toast.success("Reporte actualizado correctamente");
       } else {
         const error = await response.json();
-        toast.error(error.error || "Error al actualizar el reporte");
+        toast.error(error.message || error.error || "Error al actualizar el reporte");
       }
     } catch (error) {
       console.error("Error al editar reporte:", error);
@@ -666,12 +695,12 @@ export default function ProfilePage() {
                                 <div className="grid gap-4 py-4">
                                   <div className="space-y-2">
                                     <Label htmlFor="edit-type">Tipo de Riesgo</Label>
-                                    <Select value={editedReport.tipo} onValueChange={(value) => setEditedReport({ ...editedReport, tipo: value })}>
+                                    <Select value={editedReport.categoria_id} onValueChange={(value) => setEditedReport({ ...editedReport, categoria_id: value })}>
                                       <SelectTrigger>
-                                        <SelectValue />
+                                        <SelectValue placeholder="Selecciona categoría" />
                                       </SelectTrigger>
                                       <SelectContent>
-                                        {riskTypes.map((type) => (
+                                        {categories.map((type) => (
                                           <SelectItem key={type.value} value={type.value}>
                                             <span className="flex items-center gap-2">
                                               <span>{type.icon}</span>

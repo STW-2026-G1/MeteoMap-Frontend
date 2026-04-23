@@ -84,7 +84,7 @@ interface Report {
               id: r._id,
               userId: r.usuario_id?._id, // ID del propietario
               userName: r.usuario_id?.perfil?.nombre || "Usuario",
-              avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?.avatar_seed || r.usuario_id?._id || "usuario"}`,
+              avatar: r.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?.avatar_seed || r.usuario_id?._id || "usuario"}`,
               condition: r.categoria_id?.nombre || r.categoria?.nombre,
               timestamp: new Date(r.createdAt).toLocaleString(),
               riskType: r.categoria_id?.nombre || r.categoria?.nombre,
@@ -162,9 +162,9 @@ interface Report {
 
     const newCommentObj: Comment = {
       id: Date.now(),
-      userId: 999,
-      userName: "Usuario_Actual",
-      avatar: "https://i.pravatar.cc/150?img=60",
+      userId: user?.id ? Number(user.id) : 999,
+      userName: user?.name || user?.nombre || "Usuario_Actual",
+      avatar: user?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${user?.avatar_seed || 'me'}`,
       message: newComment,
       timestamp: "justo ahora",
       likes: 0,
@@ -180,9 +180,9 @@ interface Report {
 
     const newReply: Comment = {
       id: Date.now(),
-      userId: 999,
-      userName: "Usuario_Actual",
-      avatar: "https://i.pravatar.cc/150?img=60",
+      userId: user?.id ? Number(user.id) : 999,
+      userName: user?.name || user?.nombre || "Usuario_Actual",
+      avatar: user?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${user?.avatar_seed || 'me'}`,
       message: replyText,
       timestamp: "justo ahora",
       likes: 0,

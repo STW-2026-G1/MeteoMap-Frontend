@@ -9,6 +9,7 @@ import NotFoundPage from "./pages/NotFoundPage";
 import ZoneForumPage from "./pages/ZoneForumPage";
 import StatsPage from "./pages/StatsPage";
 import ProfilePage from "./pages/ProfilePage";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 
 export const router = createBrowserRouter([
   {
@@ -29,7 +30,11 @@ export const router = createBrowserRouter([
   },
   {
     path: "/perfil",
-    Component: ProfilePage,
+    element: (
+      <ProtectedRoute>
+        <ProfilePage />
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/registro",

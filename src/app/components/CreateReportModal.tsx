@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { X, MapPin, AlertTriangle, } from "lucide-react";
 import { Button } from "./ui/button";
@@ -25,28 +25,49 @@ interface CreateReportModalProps {
   zoneName: string;
 }
 
-const riskTypes = [
-  { value: "avalanche", label: "Alud reciente", icon: "❄️" },
-  { value: "unstable-snow", label: "Nieve inestable", icon: "⚠️" },
-  { value: "ice-plates", label: "Placas de hielo", icon: "🧊" },
-  { value: "bad-visibility", label: "Mala visibilidad", icon: "🌫️" },
-  { value: "strong-wind", label: "Viento fuerte", icon: "💨" },
-  { value: "rockfall", label: "Desprendimientos", icon: "🪨" },
-  { value: "good-conditions", label: "Buenas condiciones", icon: "✅" },
-];
-
 export function CreateReportModal({ open, onOpenChange, zoneId, zoneName }: CreateReportModalProps) {
   const [riskType, setRiskType] = useState("");
   const [description, setDescription] = useState("");
-      const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [categories, setCategories] = useState<{ value: string; label: string; icon: string }[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
 
-    const handleSubmit = async (e: React.FormEvent) => {
+  useEffect(() => {
+    if (open) {
+      loadCategories();
+    }
+  }, [open]);
+
+  const loadCategories = async () => {
+    setIsLoadingCategories(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/categories`);
+      if (response.ok) {
+        const data = await response.json();
+        const mappedCategories = data.map((cat: any) => ({
+          value: cat._id,
+          label: cat.nombre,
+          icon: cat.icono_marcador || "⚠️"
+        }));
+        setCategories(mappedCategories);
+      } else {
+        toast.error("Error al cargar las categorías");
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      toast.error("Error de conexión al cargar categorías");
+    } finally {
+      setIsLoadingCategories(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!zoneId) {
       toast.error("Error: Faltan datos de la zona seleccionada.");
       return;
     }
-    
+
     setIsSubmitting(true);
     try {
       const token = localStorage.getItem("meteomap_token");
@@ -57,14 +78,9 @@ export function CreateReportModal({ open, onOpenChange, zoneId, zoneName }: Crea
         return;
       }
 
-      // Find the selected risk to get label and icon
-      const selectedRisk = riskTypes.find((r) => r.value === riskType);
-
       const requestBody = {
         zona_id: zoneId,
-        nombre_categoria: selectedRisk?.label || riskType,
-        icono_marcador: selectedRisk?.icon || "⚠️",
-        tipo: riskType,
+        categoria_id: riskType,
         descripcion: description,
       };
 
@@ -81,7 +97,12 @@ export function CreateReportModal({ open, onOpenChange, zoneId, zoneName }: Crea
         let errMessage = "Error al crear el reporte.";
         try {
           const errData = await response.json();
-          errMessage = errData.error || errData.message || errMessage;
+          errMessage = errData.message || errData.error || errMessage;
+          
+          // Si hay errores de validación específicos, podemos ser más detallistas
+          if (errData.errors && Array.isArray(errData.errors) && errData.errors.length > 0) {
+            errMessage = `${errMessage}: ${errData.errors[0].message}`;
+          }
         } catch { }
         throw new Error(errMessage);
       }
@@ -89,10 +110,10 @@ export function CreateReportModal({ open, onOpenChange, zoneId, zoneName }: Crea
       // Resetear formulario
       setRiskType("");
       setDescription("");
-      
+
       // Cerrar modal
       onOpenChange(false);
-      
+
       // Mostrar mensaje de éxito
       toast.success("¡Reporte publicado con éxito! Gracias por contribuir a la seguridad en la montaña.");
     } catch (error: any) {
@@ -103,7 +124,7 @@ export function CreateReportModal({ open, onOpenChange, zoneId, zoneName }: Crea
     }
   };
 
-  
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
@@ -129,12 +150,12 @@ export function CreateReportModal({ open, onOpenChange, zoneId, zoneName }: Crea
               <AlertTriangle className="h-4 w-4 text-orange-500" />
               Tipo de Riesgo *
             </Label>
-            <Select value={riskType} onValueChange={setRiskType} required>
+            <Select value={riskType} onValueChange={setRiskType} required disabled={isLoadingCategories}>
               <SelectTrigger id="risk-type">
-                <SelectValue placeholder="Selecciona el tipo de condición..." />
+                <SelectValue placeholder={isLoadingCategories ? "Cargando categorías..." : "Selecciona el tipo de condición..."} />
               </SelectTrigger>
               <SelectContent>
-                {riskTypes.map((type) => (
+                {categories.map((type) => (
                   <SelectItem key={type.value} value={type.value}>
                     <span className="flex items-center gap-2">
                       <span>{type.icon}</span>
