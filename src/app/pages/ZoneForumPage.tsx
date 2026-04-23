@@ -20,13 +20,14 @@ import {
   ArrowLeft,
   Thermometer,
   Wind,
+  Trash2,
 } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 interface Comment {
-  id: number;
-  userId: number;
+  id: string;
+  userId: string;
   userName: string;
   avatar: string;
   message: string;
@@ -70,10 +71,11 @@ interface Report {
     const commentsParam = searchParams.get("comments");
 
     const [newComment, setNewComment] = useState("");
-    const [replyingTo, setReplyingTo] = useState<number | null>(null);
+    const [replyingTo, setReplyingTo] = useState<string | null>(null);
     const [replyText, setReplyText] = useState("");
     const [selectedReport, setSelectedReport] = useState<Report | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
     
     const [reports, setReports] = useState<Report[]>([]);
 
@@ -136,7 +138,44 @@ interface Report {
 
   const [comments, setComments] = useState<Comment[]>(getInitialComments());
 
-  const handleLike = (commentId: number, isReply: boolean = false, parentId?: number) => {
+  // Cargar respuestas para cada comentario cuando se carga la página
+  useEffect(() => {
+    const loadRepliesForComments = async () => {
+      if (comments.length === 0) return;
+
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+      
+      for (const comment of comments) {
+        try {
+          const response = await fetch(`${API_BASE_URL}/comments/${comment.id}/replies`);
+          const data = await response.json();
+          
+          if (response.ok && data.replies) {
+            const mappedReplies: Comment[] = data.replies.map((r: any) => ({
+              id: r._id || r.id,
+              userId: r.usuario_id?._id || r.usuario_id,
+              userName: r.usuario_id?.perfil?.nombre || "Usuario",
+              avatar: r.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?._id}`,
+              message: r.contenido,
+              timestamp: new Date(r.createdAt).toLocaleDateString(),
+              likes: r.likes?.length || 0,
+              isLiked: user?.id ? r.likes?.some((id: any) => String(id) === String(user.id)) : false,
+            }));
+            
+            setComments(prev => prev.map(c =>
+              c.id === comment.id ? { ...c, replies: mappedReplies } : c
+            ));
+          }
+        } catch (error) {
+          console.error(`Error cargando respuestas para comentario ${comment.id}:`, error);
+        }
+      }
+    };
+
+    loadRepliesForComments();
+  }, [comments.length, user?.id]);
+
+  const handleLike = (commentId: string, isReply: boolean = false, parentId?: string) => {
     if (!isReply) {
       setComments(
         comments.map((comment) => {
@@ -174,12 +213,19 @@ interface Report {
     }
   };
 
+  const handleDeleteComment = (commentId: string) => {
+    const confirmDelete = window.confirm("¿Estás seguro de que quieres eliminar este comentario?");
+    if (!confirmDelete) return;
+
+    setComments(comments.filter((comment) => comment.id !== commentId));
+  };
+
   const handlePostComment = () => {
     if (newComment.trim().length < 10) return;
 
     const newCommentObj: Comment = {
-      id: Date.now(),
-      userId: user?.id ? Number(user.id) : 999,
+      id: String(Date.now()),
+      userId: user?.id || "unknown",
       userName: user?.name || user?.nombre || "Usuario_Actual",
       avatar: user?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${user?.avatar_seed || 'me'}`,
       message: newComment,
@@ -192,34 +238,109 @@ interface Report {
     setNewComment("");
   };
 
-  const handlePostReply = (parentId: number) => {
-    if (replyText.trim().length < 10) return;
+  const handlePostReply = async (parentId: string) => {
+    if (!replyText.trim()) return;
 
-    const newReply: Comment = {
-      id: Date.now(),
-      userId: user?.id ? Number(user.id) : 999,
-      userName: user?.name || user?.nombre || "Usuario_Actual",
-      avatar: user?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${user?.avatar_seed || 'me'}`,
-      message: replyText,
-      timestamp: "justo ahora",
-      likes: 0,
-      isLiked: false,
-    };
+    const rawToken = localStorage.getItem('meteomap_token');
+    if (!rawToken) {
+      alert("No se encontró el token. Por favor, inicia sesión de nuevo.");
+      return;
+    }
 
-    setComments(
-      comments.map((comment) => {
-        if (comment.id === parentId) {
-          return {
-            ...comment,
-            replies: [...(comment.replies || []), newReply],
-          };
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+      const response = await fetch(`${API_BASE_URL}/comments/${parentId}/reply`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${rawToken}`,
+        },
+        body: JSON.stringify({ contenido: replyText }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Limpiamos los campos
+        setReplyText("");
+        setReplyingTo(null);
+        
+        // Cargamos las respuestas actualizadas desde el backend
+        try {
+          const repliesResponse = await fetch(`${API_BASE_URL}/comments/${parentId}/replies`);
+          const repliesData = await repliesResponse.json();
+
+          if (repliesResponse.ok) {
+            const mappedReplies: Comment[] = repliesData.replies.map((r: any) => ({
+              id: r._id,
+              userId: r.usuario_id?._id || r.usuario_id,
+              userName: r.usuario_id?.perfil?.nombre || "Usuario",
+              avatar: r.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?._id}`,
+              message: r.contenido,
+              timestamp: new Date(r.createdAt).toLocaleDateString(),
+              likes: r.likes?.length || 0,
+              isLiked: user?.id ? r.likes?.some((id: any) => String(id) === String(user.id)) : false,
+            }));
+
+            // Actualizamos el comentario padre con sus respuestas
+            setComments(prev => prev.map(c => 
+              c.id === parentId ? { ...c, replies: mappedReplies } : c
+            ));
+
+            // Marcamos como expandido para ver la respuesta que acabamos de agregar
+            setExpandedReplies(prev => new Set(prev).add(parentId));
+          }
+        } catch (error) {
+          console.error("Error cargando respuestas actualizadas:", error);
         }
-        return comment;
-      })
-    );
+      } else {
+        alert(data.message || "Error al agregar respuesta");
+      }
+    } catch (error) {
+      console.error("Error al agregar respuesta:", error);
+      alert("Error de red al enviar la respuesta");
+    }
+  };
 
-    setReplyText("");
-    setReplyingTo(null);
+  const fetchReplies = async (commentId: number) => {
+    // Si ya están expandidas, las cerramos
+    if (expandedReplies.has(commentId)) {
+      setExpandedReplies(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(commentId);
+        return newSet;
+      });
+      return;
+    }
+
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+      const response = await fetch(`${API_BASE_URL}/comments/${commentId}/replies`);
+      const data = await response.json();
+
+      if (response.ok) {
+        const mappedReplies: Comment[] = data.replies.map((r: any) => ({
+          id: r._id,
+          userId: r.usuario_id?._id || r.usuario_id,
+          userName: r.usuario_id?.perfil?.nombre || "Usuario",
+          avatar: r.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?._id}`,
+          message: r.contenido,
+          timestamp: new Date(r.createdAt).toLocaleDateString(),
+          likes: r.likes?.length || 0,
+          isLiked: user?.id ? r.likes?.some((id: any) => String(id) === String(user.id)) : false,
+        }));
+
+        // Actualizamos el comentario padre con sus respuestas
+        setComments(prev => prev.map(c => 
+          c.id === commentId ? { ...c, replies: mappedReplies } : c
+        ));
+
+        // Marcamos como expandido
+        setExpandedReplies(prev => new Set(prev).add(commentId));
+      }
+    } catch (error) {
+      console.error("Error cargando respuestas:", error);
+    }
   };
 
   const handleReportClick = (report: Report) => {
@@ -379,14 +500,40 @@ interface Report {
                               <MessageCircle className="h-4 w-4" />
                               <span className="text-xs">Responder</span>
                             </Button>
+
+                            {user?.id === String(comment.userId) && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 gap-1 text-gray-600 hover:text-red-600 transition-colors"
+                                onClick={() => handleDeleteComment(comment.id)}
+                                title="Eliminar comentario"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Replies */}
+                    {/* Replies Button */}
                     {comment.replies && comment.replies.length > 0 && (
-                      <div className="ml-12 space-y-3">
+                      <div className="mt-3 ml-12">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 gap-1 text-xs text-blue-600 hover:text-blue-700"
+                          onClick={() => fetchReplies(comment.id)}
+                        >
+                          {expandedReplies.has(comment.id) ? '▼' : '▶'} Ver respuestas ({comment.replies.length})
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Replies */}
+                    {comment.replies && comment.replies.length > 0 && expandedReplies.has(comment.id) && (
+                      <div className="ml-12 space-y-3 mt-3">
                         {comment.replies.map((reply) => (
                           <div
                             key={reply.id}
@@ -455,9 +602,9 @@ interface Report {
                           </Button>
                           <Button
                             size="sm"
-                            className="bg-blue-600 hover:bg-blue-700"
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
                             onClick={() => handlePostReply(comment.id)}
-                            disabled={replyText.trim().length < 10}
+                            disabled={!replyText.trim()}
                           >
                             <Send className="h-4 w-4 mr-1" />
                             Responder

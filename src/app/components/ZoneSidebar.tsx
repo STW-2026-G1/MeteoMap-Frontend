@@ -10,7 +10,6 @@ import { motion, AnimatePresence } from "motion/react";
 import { ReportDetailModal } from "./ReportDetailModal";
 import { useState, useEffect } from "react";
 
-// API Base URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 
 interface UserReport {
@@ -38,6 +37,7 @@ interface Comment {
   timestamp: string;
   likes: number;
   isLiked: boolean;
+  replies?: Comment[];
 }
 
 interface ZoneData {
@@ -61,7 +61,6 @@ interface ZoneSidebarProps {
   onViewAllReports: (currentComments: Comment[]) => void;
 }
 
-// Mock data for temperature forecast
 const temperatureForecast = [
   { time: 'Ahora', temp: -4 },
   { time: '+1h', temp: -3 },
@@ -103,13 +102,16 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserName, setCurrentUserName] = useState<string | null>(null);
   const [currentUserAvatar, setCurrentUserAvatar] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
+  const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
 
   const handleReportClick = (report: UserReport) => {
     setSelectedReport(report);
     setIsModalOpen(true);
   };
 
-  // Obtener el userId y nombre del usuario actual
   useEffect(() => {
     const userInfo = localStorage.getItem('meteomap_user');
     if (userInfo) {
@@ -128,7 +130,6 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
     }
   }, []);
 
-  // Función para cargar comentarios desde el Backend
   useEffect(() => {
       if (!zone.id) return;
 
@@ -172,10 +173,9 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
             const data = await response.json();
 
             if (response.ok) {
-            const initialLikedSet = new Set<string>(); // Para rastrear likes visualmente
+            const initialLikedSet = new Set<string>();
 
             const mappedComments: Comment[] = data.comments.map((c: any) => {
-               // CRUCIAL: Verificamos si mi ID está en el array de likes del servidor
                const hasLiked = currentUserId && c.likes.some((id: string) => String(id) === String(currentUserId));
                const uniqueLikes = new Set(c.likes.map((id: any) => String(id)));
                
@@ -188,13 +188,42 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
                   avatar: c.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${c.usuario_id?._id}`,
                   message: c.contenido,
                   timestamp: new Date(c.createdAt).toLocaleDateString(),
-                  likes: uniqueLikes.size, // Contamos likes únicos
+                  likes: uniqueLikes.size,
                   isLiked: !!hasLiked,
+                  replies: []
                };
             });
 
             setLikedComments(initialLikedSet);
             setDynamicComments(mappedComments);
+            
+            // Cargamos las respuestas para cada comentario
+            for (const comment of mappedComments) {
+               try {
+                  const repliesResponse = await fetch(`${API_BASE_URL}/comments/${comment.id}/replies`);
+                  const repliesData = await repliesResponse.json();
+                  
+                  if (repliesResponse.ok) {
+                     const mappedReplies: Comment[] = repliesData.replies.map((r: any) => ({
+                        id: r._id || r.id,
+                        userId: r.usuario_id?._id || r.usuario_id,
+                        userName: r.usuario_id?.perfil?.nombre || "Usuario",
+                        avatar: r.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?._id}`,
+                        message: r.contenido,
+                        timestamp: new Date(r.createdAt).toLocaleDateString(),
+                        likes: r.likes?.length || 0,
+                        isLiked: currentUserId ? r.likes?.some((id: any) => String(id) === String(currentUserId)) : false
+                     }));
+                     
+                     // Actualizamos el comentario con sus respuestas
+                     setDynamicComments(prev => prev.map(c => 
+                        c.id === comment.id ? { ...c, replies: mappedReplies } : c
+                     ));
+                  }
+               } catch (error) {
+                  console.error(`Error cargando respuestas para comentario ${comment.id}:`, error);
+               }
+            }
             }
          } catch (error) {
             console.error("Error cargando comentarios:", error);
@@ -205,7 +234,47 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
 
       fetchComments();
       fetchReports();
-   }, [zone.id, currentUserId]); // <--- Se re-ejecuta cuando el usuario se loguea
+   }, [zone.id, currentUserId]);
+
+   const fetchReplies = async (commentId: string) => {
+    // Si ya están expandidas, las cerramos
+    if (expandedReplies.has(commentId)) {
+      setExpandedReplies(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(commentId);
+        return newSet;
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/comments/${commentId}/replies`);
+      const data = await response.json();
+
+      if (response.ok) {
+        const mappedReplies: Comment[] = data.replies.map((r: any) => ({
+          id: r._id,
+          userId: r.usuario_id?._id || r.usuario_id,
+          userName: r.usuario_id?.perfil?.nombre || "Usuario",
+          avatar: r.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?._id}`,
+          message: r.contenido,
+          timestamp: new Date(r.createdAt).toLocaleDateString(),
+          likes: r.likes?.length || 0,
+          isLiked: currentUserId ? r.likes?.some((id: any) => String(id) === String(currentUserId)) : false,
+        }));
+
+        // Actualizamos el comentario padre con sus respuestas
+        setDynamicComments(prev => prev.map(c => 
+          c.id === commentId ? { ...c, replies: mappedReplies } : c
+        ));
+
+        // Marcamos como expandido
+        setExpandedReplies(prev => new Set(prev).add(commentId));
+      }
+    } catch (error) {
+      console.error("Error cargando respuestas:", error);
+    }
+  };
 
   const handleLikeComment = async (commentId: string) => {
       const rawToken = localStorage.getItem('meteomap_token');
@@ -217,8 +286,8 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
       const isAlreadyLiked = likedComments.has(commentId);
 
       const url = isAlreadyLiked 
-         ? `${API_BASE_URL}/comments/${commentId}/unlike` // <--- Ruta para quitar
-         : `${API_BASE_URL}/comments/${commentId}/like`;   // <--- Ruta para dar
+         ? `${API_BASE_URL}/comments/${commentId}/unlike`
+         : `${API_BASE_URL}/comments/${commentId}/like`;
       const method = isAlreadyLiked ? 'DELETE' : 'POST';
 
       setLikedComments(prev => {
@@ -228,7 +297,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
          return newSet;
       });
 
-      // 2. Actualizamos el número en la lista inmediatamente (Solo +1 o -1)
+
       setDynamicComments(prev => prev.map(c => {
          if (c.id === commentId) {
             return {
@@ -247,7 +316,6 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
          });
 
          if (!response.ok) {
-            // Si el servidor falla, revertimos los cambios (Rollback)
             console.error("Error al sincronizar like con el servidor");
          }
       } catch (error) {
@@ -258,7 +326,6 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
   const handleAddComment = async () => {
       if (!newCommentText.trim()) return;
 
-      // BUSCAMOS LA CLAVE CORRECTA: meteomap_token
       const rawToken = localStorage.getItem('meteomap_token'); 
       
       if (!rawToken) {
@@ -268,8 +335,6 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
 
       setIsSubmittingComment(true);
       try {
-         console.log("Enviando ID:", zone.id);
-         console.log("Enviando Contenido:", newCommentText);
          const response = await fetch(`${API_BASE_URL}/comments/zone/${zone.id}`, {
             method: 'POST',
             headers: {
@@ -310,17 +375,13 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
    };
 
   const handleDeleteComment = async (commentId: string) => {
-      console.log("Iniciando proceso de borrado para:", commentId);
-      
       const confirmed = window.confirm("¿Estás seguro de que deseas eliminar este comentario?");
       if (!confirmed) {
-         console.log("Borrado cancelado por el usuario");
          return;
       }
 
       try {
          const rawToken = localStorage.getItem('meteomap_token'); 
-         console.log("Token recuperado:", rawToken ? "Sí" : "No");
 
          if (!rawToken) {
             alert("Sesión expirada. Por favor, inicia sesión de nuevo.");
@@ -335,22 +396,84 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
             },
          });
 
-         console.log("Respuesta del servidor (Status):", response.status);
-
          if (response.ok) {
-            console.log("Borrado exitoso en servidor. Actualizando UI...");
             setDynamicComments(prev => prev.filter(c => c.id !== commentId));
          } else {
             const data = await response.json();
-            console.error("Error devuelto por el servidor:", data);
             alert(data.message || "Error al borrar");
          }
       } catch (error) {
-         console.error("Error catastrófico en la petición DELETE:", error);
+         console.error("Error en la petición DELETE:", error);
       }
    };
 
   const comments = dynamicComments.length > 0 ? dynamicComments : [];
+
+  const handleAddReply = async (commentId: string) => {
+    if (!replyText.trim()) return;
+
+    const rawToken = localStorage.getItem('meteomap_token');
+    if (!rawToken) {
+      alert("No se encontró el token. Por favor, inicia sesión de nuevo.");
+      return;
+    }
+
+    setIsSubmittingReply(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/comments/${commentId}/reply`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${rawToken}`,
+        },
+        body: JSON.stringify({ contenido: replyText }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Limpiamos los campos
+        setReplyText("");
+        setReplyingTo(null);
+        
+        // Cargamos las respuestas actualizadas desde el backend
+        try {
+          const repliesResponse = await fetch(`${API_BASE_URL}/comments/${commentId}/replies`);
+          const repliesData = await repliesResponse.json();
+
+          if (repliesResponse.ok) {
+            const mappedReplies: Comment[] = repliesData.replies.map((r: any) => ({
+              id: r._id,
+              userId: r.usuario_id?._id || r.usuario_id,
+              userName: r.usuario_id?.perfil?.nombre || "Usuario",
+              avatar: r.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?._id}`,
+              message: r.contenido,
+              timestamp: new Date(r.createdAt).toLocaleDateString(),
+              likes: r.likes?.length || 0,
+              isLiked: currentUserId ? r.likes?.includes(currentUserId) : false,
+            }));
+
+            // Actualizamos el comentario padre con sus respuestas
+            setDynamicComments(prev => prev.map(c => 
+              c.id === commentId ? { ...c, replies: mappedReplies } : c
+            ));
+
+            // Marcamos como expandido para ver la respuesta que acabamos de agregar
+            setExpandedReplies(prev => new Set(prev).add(commentId));
+          }
+        } catch (error) {
+          console.error("Error cargando respuestas actualizadas:", error);
+        }
+      } else {
+        alert(data.message || "Error al agregar respuesta");
+      }
+    } catch (error) {
+      console.error("Error al agregar respuesta:", error);
+      alert("Error de red al enviar la respuesta");
+    } finally {
+      setIsSubmittingReply(false);
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -401,21 +524,18 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
                 Estado Actual
               </h3>
               <div className="grid grid-cols-3 gap-3">
-                {/* Temperature */}
                 <Card className="p-3 text-center">
                   <Thermometer className="h-5 w-5 text-orange-500 mx-auto mb-1" />
                   <p className="text-2xl font-bold text-gray-900">{zone.temperature}°C</p>
                   <p className="text-xs text-gray-500">Temperatura</p>
                 </Card>
 
-                {/* Wind */}
                 <Card className="p-3 text-center">
                   <Wind className="h-5 w-5 text-teal-500 mx-auto mb-1" />
                   <p className="text-2xl font-bold text-gray-900">{zone.wind}</p>
                   <p className="text-xs text-gray-500">km/h</p>
                 </Card>
 
-                {/* Avalanche Level */}
                 <Card className="p-3 text-center">
                   <AlertTriangle className="h-5 w-5 text-red-500 mx-auto mb-1" />
                   <p className="text-2xl font-bold text-gray-900">{zone.avalancheLevel}/5</p>
@@ -423,7 +543,6 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
                 </Card>
               </div>
 
-              {/* Avalanche Level Badge */}
               <div className="mt-3">
                 <Badge className={`${avalancheLevelColors[zone.avalancheLevel]} text-white w-full justify-center py-2`}>
                   Riesgo de Aludes: {avalancheLevelText[zone.avalancheLevel]}
@@ -438,29 +557,29 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
                 <ResponsiveContainer width="100%" height={150}>
                   <LineChart data={temperatureForecast}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis 
-                      dataKey="time" 
+                    <XAxis
+                      dataKey="time"
                       tick={{ fontSize: 11, fill: '#6b7280' }}
                       stroke="#9ca3af"
                     />
-                    <YAxis 
+                    <YAxis
                       tick={{ fontSize: 11, fill: '#6b7280' }}
                       stroke="#9ca3af"
                       domain={['dataMin - 1', 'dataMax + 1']}
                     />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: '#fff', 
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#fff',
                         border: '1px solid #e5e7eb',
                         borderRadius: '8px',
                         fontSize: '12px'
                       }}
                       formatter={(value) => [`${value}°C`, 'Temperatura']}
                     />
-                    <Line 
-                      type="monotone" 
-                      dataKey="temp" 
-                      stroke="#3b82f6" 
+                    <Line
+                      type="monotone"
+                      dataKey="temp"
+                      stroke="#3b82f6"
                       strokeWidth={2}
                       dot={{ fill: '#3b82f6', r: 4 }}
                       activeDot={{ r: 6 }}
@@ -477,9 +596,9 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
                 {dynamicReports.length > 0 ? (
                   <>
                     {dynamicReports.slice(0, 3).map((report) => (
-                      <Card 
-                        key={report.id} 
-                        className="p-3 hover:shadow-md transition-shadow cursor-pointer hover:border-blue-300" 
+                      <Card
+                        key={report.id}
+                        className="p-3 hover:shadow-md transition-shadow cursor-pointer hover:border-blue-300"
                         onClick={() => handleReportClick(report)}
                         role="button"
                         tabIndex={0}
@@ -490,7 +609,6 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
                         }}
                       >
                         <div className="flex gap-3">
-                          {/* Avatar */}
                           <Avatar className="h-10 w-10 flex-shrink-0">
                             <AvatarImage src={report.avatar} alt={report.userName} />
                             <AvatarFallback>
@@ -498,7 +616,6 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
                             </AvatarFallback>
                           </Avatar>
 
-                          {/* Content */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-2">
                               <p className="font-medium text-gray-900 text-sm truncate">
@@ -517,15 +634,14 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
                               </div>
                             </div>
                             <div className="flex items-center gap-2 mt-1">
-                               <span className="text-lg leading-none">{report.categoryIcon}</span>
-                               <p className="text-sm text-gray-600 font-medium">{report.condition}</p>
+                              <span className="text-lg leading-none">{report.categoryIcon}</span>
+                              <p className="text-sm text-gray-600 font-medium">{report.condition}</p>
                             </div>
                           </div>
                         </div>
                       </Card>
                     ))}
 
-                    {/* View All Button */}
                     {dynamicReports.length > 3 && (
                       <Button variant="outline" className="w-full" onClick={() => onViewAllReports(dynamicComments)}>
                         Ver todos los reportes de esta zona
@@ -549,7 +665,6 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
                 Comentarios de la Comunidad
               </h3>
 
-              {/* Add Comment Form */}
               {!isAddingComment ? (
                 <Button
                   variant="outline"
@@ -608,13 +723,11 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
                     {comments.slice(0, 3).map((comment) => (
                       <Card key={comment.id} className="p-3">
                         <div className="flex gap-3">
-                          {/* Avatar */}
                           <Avatar className="h-8 w-8 flex-shrink-0">
                             <AvatarImage src={comment.avatar} alt={comment.userName} />
                             <AvatarFallback>{comment.userName.charAt(0).toUpperCase()}</AvatarFallback>
                           </Avatar>
 
-                          {/* Content */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-2">
                               <p className="font-medium text-gray-900 text-sm">{comment.userName}</p>
@@ -625,7 +738,6 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
                             </div>
                             <p className="text-sm text-gray-600 mt-1">{comment.message}</p>
 
-                            {/* Like Button */}
                             <div className="mt-2 flex items-center gap-2">
                               <Button
                                 size="sm"
@@ -642,26 +754,111 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
                                   {comment.likes}
                                 </span>
                               </Button>
-                              
-                              {/* Botón de borrar condicional */}
-                              {(currentUserId === comment.userId) && (
-                                 <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-6 px-2 gap-1 text-gray-400 hover:text-red-600 transition-colors"
-                                    onClick={(e) => {
-                                       e.stopPropagation(); // Evita que el clic active eventos del padre
-                                       console.log("Botón eliminar presionado para ID:", comment.id);
-                                       handleDeleteComment(comment.id);
-                                    }}
-                                    title="Eliminar mi comentario"
-                                 >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                 </Button>
+
+                              {currentUserId === comment.userId && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 px-2 gap-1 text-gray-400 hover:text-red-600 transition-colors"
+                                  onClick={() => handleDeleteComment(comment.id)}
+                                  title="Eliminar mi comentario"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
                               )}
+
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 px-2 gap-1 text-gray-500 hover:text-blue-600 transition-colors"
+                                onClick={() => {
+                                  setReplyingTo(replyingTo === comment.id ? null : comment.id);
+                                  setReplyText("");
+                                }}
+                                title="Responder a este comentario"
+                              >
+                                <MessageCircle className="h-3 w-3" />
+                                <span className="text-xs">Responder</span>
+                              </Button>
                             </div>
                           </div>
                         </div>
+
+                        {replyingTo === comment.id && (
+                          <div className="mt-3 ml-11 border-l-2 border-blue-300 pl-3">
+                            <Textarea
+                              placeholder="Escribe tu respuesta..."
+                              value={replyText}
+                              onChange={(e) => setReplyText(e.target.value)}
+                              rows={2}
+                              className="mb-2 resize-none text-sm"
+                            />
+                            <div className="flex gap-2 justify-end">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setReplyingTo(null);
+                                  setReplyText("");
+                                }}
+                              >
+                                Cancelar
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                                onClick={() => handleAddReply(comment.id)}
+                                disabled={isSubmittingReply || !replyText.trim()}
+                              >
+                                {isSubmittingReply ? (
+                                  <>
+                                    <div className="h-3 w-3 rounded-full bg-white animate-spin mr-2" />
+                                    Enviando...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Send className="h-3 w-3 mr-1" />
+                                    Responder
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        {comment.replies && comment.replies.length > 0 && (
+                          <div className="mt-3">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 px-2 gap-1 text-xs text-blue-600 hover:text-blue-700"
+                              onClick={() => fetchReplies(comment.id)}
+                            >
+                              {expandedReplies.has(comment.id) ? '▼' : '▶'} Ver respuestas ({comment.replies.length})
+                            </Button>
+
+                            {expandedReplies.has(comment.id) && (
+                              <div className="mt-3 ml-8 space-y-2 border-l-2 border-blue-300 pl-3">
+                                {comment.replies.map((reply) => (
+                                  <div
+                                    key={reply.id}
+                                    className="bg-blue-50 rounded p-2 text-xs"
+                                  >
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <Avatar className="h-5 w-5 flex-shrink-0">
+                                        <AvatarImage src={reply.avatar} alt={reply.userName} />
+                                        <AvatarFallback>{reply.userName.charAt(0).toUpperCase()}</AvatarFallback>
+                                      </Avatar>
+                                      <span className="font-medium text-gray-900">{reply.userName}</span>
+                                      <span className="text-gray-500 text-[10px]">{reply.timestamp}</span>
+                                    </div>
+                                    <p className="text-gray-700 text-xs">{reply.message}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </Card>
                     ))}
 
@@ -683,7 +880,6 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
           </div>
         </div>
 
-        {/* Fixed Create Report Button at Bottom */}
         <div className="flex-shrink-0 p-4 bg-white border-t border-gray-200 shadow-lg">
           <Button
             className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-md"
@@ -694,7 +890,6 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
         </div>
       </motion.div>
 
-      {/* Report Detail Modal */}
       <ReportDetailModal
         report={selectedReport}
         zoneName={zone.name}
