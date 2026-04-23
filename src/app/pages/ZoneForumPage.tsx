@@ -212,70 +212,81 @@ interface Report {
   }, [zoneId, currentUserId]);
 
   const handleLike = async (commentId: string, isReply: boolean = false, parentId?: string) => {
-    const rawToken = localStorage.getItem('meteomap_token');
-    if (!rawToken) {
-      alert("No se encontró el token. Por favor, inicia sesión de nuevo.");
-      return;
-    }
-
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
-    const isAlreadyLiked = !isReply 
-      ? comments.find(c => c.id === commentId)?.isLiked 
-      : comments.find(c => c.id === parentId)?.replies?.find(r => r.id === commentId)?.isLiked;
-
-    const method = isAlreadyLiked ? 'DELETE' : 'POST';
-
-    // Optimistic update
-    if (!isReply) {
-      setComments(
-        comments.map((comment) => {
-          if (comment.id === commentId) {
-            return {
-              ...comment,
-              likes: isAlreadyLiked ? Math.max(0, comment.likes - 1) : comment.likes + 1,
-              isLiked: !isAlreadyLiked,
-            };
-          }
-          return comment;
-        })
-      );
-    } else if (parentId) {
-      setComments(
-        comments.map((comment) => {
-          if (comment.id === parentId && comment.replies) {
-            return {
-              ...comment,
-              replies: comment.replies.map((reply) => {
-                if (reply.id === commentId) {
-                  return {
-                    ...reply,
-                    likes: isAlreadyLiked ? Math.max(0, reply.likes - 1) : reply.likes + 1,
-                    isLiked: !isAlreadyLiked,
-                  };
-                }
-                return reply;
-              }),
-            };
-          }
-          return comment;
-        })
-      );
-    }
-
-    // Call backend
-    try {
-      const response = await fetch(`${API_BASE_URL}/comments/${commentId}/like`, {
-        method: method,
-        headers: { 'Authorization': `Bearer ${rawToken}` }
-      });
-
-      if (!response.ok) {
-        console.error("Error al sincronizar like con el servidor");
+      const rawToken = localStorage.getItem('meteomap_token');
+      if (!rawToken) {
+         alert("No se encontró el token. Por favor, inicia sesión de nuevo.");
+         return;
       }
-    } catch (error) {
-      console.error("Error de red en like:", error);
-    }
-  };
+
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+      
+      // 1. Encontrar el estado actual del like
+      const isAlreadyLiked = !isReply 
+         ? comments.find(c => c.id === commentId)?.isLiked 
+         : comments.find(c => c.id === parentId)?.replies?.find(r => r.id === commentId)?.isLiked;
+
+      // 2. Determinar Método y URL
+      // Si ya tiene like, llamamos a /unlike con DELETE. Si no, a /like con POST.
+      const endpoint = isAlreadyLiked ? 'unlike' : 'like';
+      const method = isAlreadyLiked ? 'DELETE' : 'POST';
+      const url = `${API_BASE_URL}/comments/${commentId}/${endpoint}`;
+
+      // 3. Actualización Optimista (UI)
+      if (!isReply) {
+         setComments(
+            comments.map((comment) => {
+            if (comment.id === commentId) {
+               return {
+                  ...comment,
+                  likes: isAlreadyLiked ? Math.max(0, comment.likes - 1) : comment.likes + 1,
+                  isLiked: !isAlreadyLiked,
+               };
+            }
+            return comment;
+            })
+         );
+      } else if (parentId) {
+         setComments(
+            comments.map((comment) => {
+            if (comment.id === parentId && comment.replies) {
+               return {
+                  ...comment,
+                  replies: comment.replies.map((reply) => {
+                  if (reply.id === commentId) {
+                     return {
+                        ...reply,
+                        likes: isAlreadyLiked ? Math.max(0, reply.likes - 1) : reply.likes + 1,
+                        isLiked: !isAlreadyLiked,
+                     };
+                  }
+                  return reply;
+                  }),
+               };
+            }
+            return comment;
+            })
+         );
+      }
+
+      // 4. Petición real a la API
+      try {
+         const response = await fetch(url, {
+            method: method,
+            headers: {
+            'Authorization': `Bearer ${rawToken}`,
+            'Content-Type': 'application/json'
+            },
+         });
+
+         if (!response.ok) {
+            throw new Error("Error al procesar el like");
+         }
+      } catch (error) {
+         console.error("Error en la API de Like/Unlike:", error);
+         // Opcional: Revertir la actualización optimista aquí si la petición falla
+         alert("No se pudo guardar tu interacción. Por favor, intenta de nuevo.");
+      }
+   };
 
   const handleDeleteComment = async (commentId: string) => {
     const confirmDelete = window.confirm("¿Estás seguro de que quieres eliminar este comentario?");
