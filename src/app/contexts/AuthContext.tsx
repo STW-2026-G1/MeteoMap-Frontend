@@ -51,21 +51,21 @@ const normalizeUserData = (backendUser: any): User => {
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Load user y token from localStorage on mount
-  useEffect(() => {
+  const [user, setUser] = useState<User | null>(() => {
     const savedUser = localStorage.getItem('meteomap_user');
     const savedToken = localStorage.getItem('meteomap_token');
     if (savedUser && savedToken) {
-      const parsedUser = JSON.parse(savedUser);
-      // Normalize user data when loading from localStorage to ensure consistency
-      const normalizedUser = normalizeUserData(parsedUser);
-      setUser(normalizedUser);
+      try {
+        const parsedUser = JSON.parse(savedUser);
+        return normalizeUserData(parsedUser);
+      } catch (err) {
+        return null;
+      }
     }
-  }, []);
+    return null;
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const login = async (email: string, password: string): Promise<{ success: boolean; errorMessage?: string }> => {
     setLoading(true);

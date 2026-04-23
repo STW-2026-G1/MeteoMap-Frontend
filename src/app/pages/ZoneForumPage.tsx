@@ -43,6 +43,10 @@ interface Report {
     avatar: string;
     condition: string;
     timestamp: string;
+    updatedAt: string;
+    isEdited: boolean;
+    categoryName: string;
+    categoryIcon: string;
     riskType?: string;
     description?: string;
     confirmations?: number;
@@ -80,19 +84,32 @@ interface Report {
           const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/reports?zonaId=${zoneId}`);
           const data = await response.json();
           if (response.ok && data.reports) {
-            const mappedReports = data.reports.map((r: any) => ({
-              id: r._id,
-              userId: r.usuario_id?._id, // ID del propietario
-              userName: r.usuario_id?.perfil?.nombre || "Usuario",
-              avatar: r.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?.avatar_seed || r.usuario_id?._id || "usuario"}`,
-              condition: r.categoria_id?.nombre || r.categoria?.nombre,
-              timestamp: new Date(r.createdAt).toLocaleString(),
-              riskType: r.categoria_id?.nombre || r.categoria?.nombre,
-              description: r.contenido?.descripcion,
-              confirmations: r.validaciones?.usuarios_confirmaron?.length ?? 0,
-              denials: r.validaciones?.usuarios_desmintieron?.length ?? 0,
-              location: zoneName,
-            }));
+            const mappedReports = data.reports.map((r: any) => {
+              const createdAt = new Date(r.createdAt);
+              const updatedAt = new Date(r.updatedAt);
+              const isEdited = Math.abs(updatedAt.getTime() - createdAt.getTime()) > 1000;
+              
+              const categoryName = r.categoria_id?.nombre || "Categoría desconocida";
+              const categoryIcon = r.categoria_id?.icono_marcador || "⚠️";
+
+              return {
+                id: r._id,
+                userId: r.usuario_id?._id,
+                userName: r.usuario_id?.perfil?.nombre || "Usuario",
+                avatar: r.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?.avatar_seed || r.usuario_id?._id || "usuario"}`,
+                condition: r.contenido?.descripcion?.slice(0, 50) + (r.contenido?.descripcion?.length > 50 ? "..." : ""),
+                timestamp: createdAt.toLocaleString(),
+                updatedAt: updatedAt.toLocaleString(),
+                isEdited,
+                categoryName,
+                categoryIcon,
+                riskType: categoryName,
+                description: r.contenido?.descripcion,
+                confirmations: r.validaciones?.usuarios_confirmaron?.length ?? 0,
+                denials: r.validaciones?.usuarios_desmintieron?.length ?? 0,
+                location: zoneName,
+              };
+            });
             setReports(mappedReports);
           }
         } catch (error) {
@@ -544,13 +561,21 @@ interface Report {
                           <div className="font-semibold text-sm text-gray-900">
                             {report.userName}
                           </div>
-                          <div className="text-xs text-gray-500 flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {report.timestamp}
+                          <div className="text-xs text-gray-500 flex items-center gap-2">
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {report.isEdited ? report.updatedAt : report.timestamp}
+                            </div>
+                            {report.isEdited && (
+                              <span className="bg-gray-100 px-1.5 py-0.5 rounded text-[10px] font-medium uppercase tracking-tight">
+                                Editado
+                              </span>
+                            )}
                           </div>
                         </div>
-                        <div className="flex gap-1">
-                          {/* Los botones de editar/eliminar solo están disponibles en el perfil del usuario */}
+                        <div className="bg-blue-50 text-blue-700 px-2 py-1 rounded-md text-xs font-semibold flex items-center gap-1">
+                          <span>{report.categoryIcon}</span>
+                          <span className="hidden sm:inline">{report.categoryName}</span>
                         </div>
                       </div>
 

@@ -168,7 +168,7 @@ export default function ProfilePage() {
         const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/reports?usuarioId=${user.id}`);
         if (!response.ok) throw new Error("Error fetching user reports");
         const data = await response.json();
-        
+
         if (data.reports) {
           setMyReportsRaw(data.reports);
           const mapped = data.reports.map((r: any) => ({
@@ -177,10 +177,18 @@ export default function ProfilePage() {
             title: r.categoria_id?.nombre || "Reporte",
             categoria_id: r.categoria_id?._id || r.categoria_id,
             description: r.contenido?.descripcion || "",
-            date: r.createdAt.substring(0, 10),
+            date: new Date(r.updatedAt).toLocaleString('es-ES', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit'
+            }),
             confirmations: r.validaciones?.usuarios_confirmaron?.length ?? 0,
             comments: 0,
-            status: r.estado === "ACTIVO" ? "active" : "resolved"
+            status: r.estado === "ACTIVO" ? "active" : "resolved",
+            icon: r.categoria_id?.icono_marcador || "⚠️"
           }));
           setMyReports(mapped);
         }
@@ -236,7 +244,7 @@ export default function ProfilePage() {
         if (response.ok) {
           const data = await response.json();
           const preferences = data.preferencias || [];
-          
+
           // Transformar referencias a zonas en objetos con datos completos
           const mappedFavorites = preferences.map((pref: any, index: number) => {
             const zone = typeof pref === 'object' ? pref : { _id: pref };
@@ -316,9 +324,9 @@ export default function ProfilePage() {
       // Pero idealmente el reporte ya debería tener categoria_id si lo hemos cargado correctamente
       // En mapped ya pusimos 'title' como nombre. Necesitamos el ID real.
       // Vamos a ajustar el mapping en fetchMyReports para que incluya el ID.
-      
+
       const originalReport = myReportsRaw.find((r: any) => r._id === reportId);
-      
+
       setEditedReport({
         categoria_id: originalReport?.categoria_id?._id || originalReport?.categoria_id || "",
         descripcion: report.description,
@@ -341,7 +349,7 @@ export default function ProfilePage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           descripcion: editedReport.descripcion,
           categoria_id: editedReport.categoria_id
         })
@@ -496,13 +504,13 @@ export default function ProfilePage() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      
+
       // Mostrar toast de éxito
       toast.success("✓ Contraseña actualizada", {
         description: "Redirigiendo a inicio de sesión...",
         duration: 2000,
       });
-      
+
       // Logout y redirigir a login después de 1.5 segundos
       setTimeout(async () => {
         await logout();
@@ -540,7 +548,7 @@ export default function ProfilePage() {
         description: "Si cambias de opinión, contacta con soporte en los próximos 30 días",
         duration: 3000,
       });
-      
+
       setTimeout(async () => {
         await logout();
         navigate("/");
@@ -658,8 +666,8 @@ export default function ProfilePage() {
                   <Card key={report.id} className={`p-6 border-l-4 ${typeInfo.border} hover:shadow-lg transition-shadow`}>
                     <div className="flex flex-col md:flex-row gap-4">
                       {/* Icon */}
-                      <div className={`${typeInfo.bg} p-4 rounded-lg h-fit`}>
-                        <TypeIcon className={`h-6 w-6 ${typeInfo.color}`} />
+                      <div className={`${typeInfo.bg} p-4 rounded-lg h-fit flex items-center justify-center text-2xl`}>
+                        {report.icon}
                       </div>
 
                       {/* Content */}
@@ -674,7 +682,7 @@ export default function ProfilePage() {
                               <span className="font-medium">{report.zone}</span>
                               <span>•</span>
                               <Calendar className="h-4 w-4" />
-                              <span>{new Date(report.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                              <span>{report.date}</span>
                             </div>
                           </div>
                           <div className="flex gap-2">
@@ -851,7 +859,7 @@ export default function ProfilePage() {
                       </div>
                     </div>
 
-                    <Button 
+                    <Button
                       className="w-full bg-blue-600 hover:bg-blue-700"
                       onClick={() => navigate('/mapa')}
                     >
@@ -1055,11 +1063,10 @@ export default function ProfilePage() {
                               <div className={`flex-1 rounded-full ${["medium", "strong"].includes(passwordStrength || "") ? (passwordStrength === "strong" ? "bg-green-500" : "bg-yellow-500") : "bg-gray-200"}`} />
                               <div className={`flex-1 rounded-full ${passwordStrength === "strong" ? "bg-green-500" : "bg-gray-200"}`} />
                             </div>
-                            <p className={`text-xs font-medium ${
-                              passwordStrength === "weak" ? "text-red-600" : 
-                              passwordStrength === "medium" ? "text-yellow-600" : 
-                              "text-green-600"
-                            }`}>
+                            <p className={`text-xs font-medium ${passwordStrength === "weak" ? "text-red-600" :
+                                passwordStrength === "medium" ? "text-yellow-600" :
+                                  "text-green-600"
+                              }`}>
                               Contraseña {passwordStrength || "débil"}
                             </p>
                           </div>
@@ -1080,8 +1087,8 @@ export default function ProfilePage() {
                       )}
                     </div>
                     <DialogFooter>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         onClick={() => {
                           setChangePasswordDialog(false);
                           setPasswordError("");
@@ -1147,8 +1154,8 @@ export default function ProfilePage() {
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         onClick={() => {
                           setDeleteAccountDialog(false);
                           setDeleteEmailConfirm("");

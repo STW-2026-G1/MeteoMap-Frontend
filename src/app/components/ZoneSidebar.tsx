@@ -19,6 +19,9 @@ interface UserReport {
   avatar: string;
   condition: string;
   timestamp: string;
+  updatedAt: string;
+  isEdited: boolean;
+  categoryIcon: string;
   riskType?: string;
   description?: string;
   confirmations?: number;
@@ -134,18 +137,27 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
             const response = await fetch(`${API_BASE_URL}/reports?zonaId=${zone.id}`);
             const data = await response.json();
             if (response.ok && data.reports) {
-               const mappedReports = data.reports.map((r: any) => ({
-                  id: r._id,
-                  userName: r.usuario_id?.perfil?.nombre || "Usuario",
-                  avatar: r.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?._id || r.usuario_id}`,
-                  condition: r.categoria_id?.nombre || r.categoria?.nombre,
-                  timestamp: new Date(r.createdAt).toLocaleString(),
-                  riskType: r.categoria_id?.nombre || r.categoria?.nombre,
-                  description: r.contenido?.descripcion,
-                  confirmations: r.validaciones?.usuarios_confirmaron?.length ?? 0,
-                  denials: r.validaciones?.usuarios_desmintieron?.length ?? 0,
-                  location: zone.name,
-               }));
+               const mappedReports = data.reports.map((r: any) => {
+                  const createdAt = new Date(r.createdAt);
+                  const updatedAt = new Date(r.updatedAt);
+                  const isEdited = Math.abs(updatedAt.getTime() - createdAt.getTime()) > 1000;
+
+                  return {
+                     id: r._id,
+                     userName: r.usuario_id?.perfil?.nombre || "Usuario",
+                     avatar: r.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?._id || r.usuario_id}`,
+                     condition: r.categoria_id?.nombre || r.categoria?.nombre,
+                     timestamp: createdAt.toLocaleString(),
+                     updatedAt: updatedAt.toLocaleString(),
+                     isEdited,
+                     categoryIcon: r.categoria_id?.icono_marcador || "⚠️",
+                     riskType: r.categoria_id?.nombre || r.categoria?.nombre,
+                     description: r.contenido?.descripcion,
+                     confirmations: r.validaciones?.usuarios_confirmaron?.length ?? 0,
+                     denials: r.validaciones?.usuarios_desmintieron?.length ?? 0,
+                     location: zone.name,
+                  };
+               });
                setDynamicReports(mappedReports);
             }
          } catch (error) {
@@ -479,9 +491,12 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
                       >
                         <div className="flex gap-3">
                           {/* Avatar */}
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold flex-shrink-0">
-                            {report.userName.charAt(0).toUpperCase()}
-                          </div>
+                          <Avatar className="h-10 w-10 flex-shrink-0">
+                            <AvatarImage src={report.avatar} alt={report.userName} />
+                            <AvatarFallback>
+                              {report.userName.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
 
                           {/* Content */}
                           <div className="flex-1 min-w-0">
@@ -489,12 +504,22 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
                               <p className="font-medium text-gray-900 text-sm truncate">
                                 {report.userName}
                               </p>
-                              <div className="flex items-center gap-1 text-gray-500 text-xs whitespace-nowrap">
-                                <Clock className="h-3 w-3" />
-                                {report.timestamp}
+                              <div className="flex flex-col items-end gap-0.5 text-gray-500 text-[10px] whitespace-nowrap">
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-2.5 w-2.5" />
+                                  {report.isEdited ? report.updatedAt : report.timestamp}
+                                </div>
+                                {report.isEdited && (
+                                  <span className="bg-gray-100 px-1 rounded text-[9px] font-bold uppercase text-gray-400">
+                                    Editado
+                                  </span>
+                                )}
                               </div>
                             </div>
-                            <p className="text-sm text-gray-600 mt-1">{report.condition}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                               <span className="text-lg leading-none">{report.categoryIcon}</span>
+                               <p className="text-sm text-gray-600 font-medium">{report.condition}</p>
+                            </div>
                           </div>
                         </div>
                       </Card>
