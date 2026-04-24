@@ -6,9 +6,11 @@ import { Input } from "../components/ui/input";
 import { Switch } from "../components/ui/switch";
 import { Slider } from "../components/ui/slider";
 import { Card } from "../components/ui/card";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "../components/ui/accordion";
 import { AIAssistant } from "../components/AIAssistant";
 import { ZoneSidebar } from "../components/ZoneSidebar";
 import { CreateReportModal } from "../components/CreateReportModal";
+import { useAemetAlerts } from "../components/AemetAlertsLayer";
 import { 
   Search, 
   Plus, 
@@ -34,6 +36,22 @@ interface MapMarker {
   label: string;
 }
 
+interface UserReport {
+  id: string;
+  userName: string;
+  avatar: string;
+  condition: string;
+  timestamp: string;
+  updatedAt: string;
+  isEdited: boolean;
+  categoryIcon: string;
+  riskType?: string;
+  description?: string;
+  confirmations?: number;
+  denials?: number;
+  location?: string;
+}
+
 interface ZoneData {
   id: string;
   name: string;
@@ -43,14 +61,7 @@ interface ZoneData {
   avalancheLevel: number;
   isFavorite: boolean;
   coordinates?: [number, number]; // [lng, lat]
-  reports: Array<{
-    id: string;
-    userName: string;
-    avatar: string;
-    condition: string;
-    timestamp: string;
-    photo?: string;
-  }>;
+  reports: UserReport[];
 }
 
 export default function MapViewer() {
@@ -74,12 +85,14 @@ export default function MapViewer() {
     avalanche: true,
     userReports: true,
     wind: false,
+    aemetAlerts: true,
   });
 
   const [layerOpacity, setLayerOpacity] = useState({
     temperature: 30,
     precipitation: 30,
     wind: 40,
+    aemetAlerts: 70,
   });
 
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
@@ -204,6 +217,16 @@ export default function MapViewer() {
   }, []);
 
   /* ========================================================================== */
+  /* HOOK AEMET: Alertas meteorológicas desde AEMET                            */
+  /* Carga y gestiona las alertas de riesgo meteorológico                      */
+  /* ========================================================================== */
+  const { alerts: aemetAlerts, loading: aemetLoading, fetchAlerts: refreshAemetAlerts } = useAemetAlerts(
+    mapInstanceRef.current,
+    layers.aemetAlerts,
+    layerOpacity.aemetAlerts / 100
+  );
+
+  /* ========================================================================== */
   /* EFECTO 2: Cargar zonas favoritas del usuario autenticado                */
   /* Obtiene las zonas marcadas como favoritas desde el backend               */
   /* ========================================================================== */
@@ -277,11 +300,11 @@ export default function MapViewer() {
       console.log('Weather data received:', weatherData);
 
       /* Paso 2: Extraer datos meteorológicos de la respuesta */
-      const meteorologicalData = weatherData.datos_crudos?.current || 
-                                apiZone.cache_meteo?.datos_crudos?.current || {};
-      const temperature = meteorologicalData.temperature ?? 0;
-      const wind = meteorologicalData.wind_speed_10m ?? 0;
-      const weatherCode = meteorologicalData.weather_code ?? 0;
+      const meteorologicalData = weatherData.data?.datos_meteorologicos || 
+                                weatherData.data?.cache_meteo?.datos_crudos || {};
+      const temperature = meteorologicalData.temperatura ?? 0;
+      const wind = meteorologicalData.velocidad_viento ?? 0;
+      const weatherCode = meteorologicalData.codigo_clima ?? 0;
 
       /* Extraer coordenadas */
       const [lng, lat] = apiZone.geolocalizacion?.coordinates || [0, 0];
@@ -327,6 +350,29 @@ export default function MapViewer() {
    */
   const handleZoneClose = () => {
     setSelectedZone(null);
+  };
+
+  /**
+   * Centra el mapa en una alerta AEMET y abre su popup
+   * @param alert - Datos de la alerta AEMET
+   */
+  const handleAemetAlertClick = (alert: any) => {
+    if (!mapInstanceRef.current) return;
+
+    const { latitud, longitud } = alert.coordenadas;
+
+    // Validar coordenadas
+    if (!latitud || !longitud || isNaN(latitud) || isNaN(longitud)) {
+      console.warn('Coordenadas inválidas para la alerta:', alert.id);
+      return;
+    }
+
+    // Centrar el mapa en la alerta con zoom 12
+    mapInstanceRef.current.setView([latitud, longitud], 12, {
+      animate: true,
+    });
+
+    console.log('📍 Navegando a alerta:', alert.tipo, 'en', alert.zona);
   };
 
   /**
@@ -702,191 +748,14 @@ export default function MapViewer() {
 
         {/* Panel de control de capas - Versión Desktop */}
         <div className="absolute top-20 right-4 z-[1000] w-72 hidden md:block max-h-[calc(100vh-7rem)] overflow-y-auto">
-          <Card className="p-4">
-            <h3 className="font-semibold mb-4 text-gray-900">Capas del Mapa</h3>
-            <div className="space-y-5">
-              {/* Control de capa: Reportes de Usuarios */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-purple-500" />
-                    <span className="text-sm text-gray-700">Reportes de Usuarios</span>
-                  </div>
-                  <Switch
-                    checked={layers.userReports}
-                    onCheckedChange={(checked) =>
-                      setLayers({ ...layers, userReports: checked })
-                    }
-                  />
-                </div>
-              </div>
-
-              {/* Control de capa: Temperatura con slider de opacidad */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Thermometer className="h-4 w-4 text-orange-500" />
-                    <span className="text-sm text-gray-700">Temperatura</span>
-                  </div>
-                  <Switch
-                    checked={layers.temperature}
-                    onCheckedChange={(checked) =>
-                      setLayers({ ...layers, temperature: checked })
-                    }
-                  />
-                </div>
-                {layers.temperature && (
-                  <div className="pl-6 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">Opacidad</span>
-                      <span className="text-xs text-gray-700">{layerOpacity.temperature}%</span>
-                    </div>
-                    <Slider
-                      value={[layerOpacity.temperature]}
-                      onValueChange={(value) =>
-                        setLayerOpacity({ ...layerOpacity, temperature: value[0] })
-                      }
-                      min={10}
-                      max={100}
-                      step={10}
-                      className="w-full"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Control de capa: Precipitación con slider de opacidad */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CloudRain className="h-4 w-4 text-blue-500" />
-                    <span className="text-sm text-gray-700">Precipitación</span>
-                  </div>
-                  <Switch
-                    checked={layers.precipitation}
-                    onCheckedChange={(checked) =>
-                      setLayers({ ...layers, precipitation: checked })
-                    }
-                  />
-                </div>
-                {layers.precipitation && (
-                  <div className="pl-6 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">Opacidad</span>
-                      <span className="text-xs text-gray-700">{layerOpacity.precipitation}%</span>
-                    </div>
-                    <Slider
-                      value={[layerOpacity.precipitation]}
-                      onValueChange={(value) =>
-                        setLayerOpacity({ ...layerOpacity, precipitation: value[0] })
-                      }
-                      min={10}
-                      max={100}
-                      step={10}
-                      className="w-full"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Control de capa: Viento con slider de intensidad */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Wind className="h-4 w-4 text-teal-500" />
-                    <span className="text-sm text-gray-700">Viento</span>
-                  </div>
-                  <Switch
-                    checked={layers.wind}
-                    onCheckedChange={(checked) =>
-                      setLayers({ ...layers, wind: checked })
-                    }
-                  />
-                </div>
-                {layers.wind && (
-                  <div className="pl-6 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">Intensidad</span>
-                      <span className="text-xs text-gray-700">{layerOpacity.wind}%</span>
-                    </div>
-                    <Slider
-                      value={[layerOpacity.wind]}
-                      onValueChange={(value) =>
-                        setLayerOpacity({ ...layerOpacity, wind: value[0] })
-                      }
-                      min={10}
-                      max={100}
-                      step={10}
-                      className="w-full"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Control de capa: Alertas de Aludes */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 text-red-500" />
-                    <span className="text-sm text-gray-700">Alertas Aludes</span>
-                  </div>
-                  <Switch
-                    checked={layers.avalanche}
-                    onCheckedChange={(checked) =>
-                      setLayers({ ...layers, avalanche: checked })
-                    }
-                  />
-                </div>
-              </div>
-            </div>
-          </Card>
+         
+           
         </div>
 
         {/* Panel de control de capas - Versión Mobile */}
         <div className="absolute bottom-20 left-4 right-4 z-[1000] md:hidden">
           <Card className="p-3">
-            <h3 className="font-semibold mb-3 text-sm text-gray-900">Capas</h3>
-            <div className="space-y-3">
-              {/* Control de temperatura (mobile) */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Thermometer className="h-4 w-4 text-orange-500" />
-                  <span className="text-xs text-gray-700">Temperatura</span>
-                </div>
-                <Switch
-                  checked={layers.temperature}
-                  onCheckedChange={(checked) =>
-                    setLayers({ ...layers, temperature: checked })
-                  }
-                />
-              </div>
-              {/* Control de precipitación (mobile) */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CloudRain className="h-4 w-4 text-blue-500" />
-                  <span className="text-xs text-gray-700">Precipitación</span>
-                </div>
-                <Switch
-                  checked={layers.precipitation}
-                  onCheckedChange={(checked) =>
-                    setLayers({ ...layers, precipitation: checked })
-                  }
-                />
-              </div>
-              {/* Control de alertas de aludes (mobile) */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-red-500" />
-                  <span className="text-xs text-gray-700">Alertas Aludes</span>
-                </div>
-                <Switch
-                  checked={layers.avalanche}
-                  onCheckedChange={(checked) =>
-                    setLayers({ ...layers, avalanche: checked })
-                  }
-                />
-              </div>
-            </div>
+         
           </Card>
         </div>
 
@@ -912,29 +781,93 @@ export default function MapViewer() {
           </Button>
         </div>
 
-        {/* Leyenda del Mapa - Información de iconos y capas */}
-        <div className="absolute bottom-4 left-4 z-[1000] hidden sm:block">
-          <Card className="p-3">
-            <h4 className="font-semibold text-xs mb-2 text-gray-900">Leyenda</h4>
-            <div className="space-y-1.5">
-              {/* Icono: Nieve inestable */}
-              <div className="flex items-center gap-2">
-                <Snowflake className="h-4 w-4 text-blue-500" />
-                <span className="text-xs text-gray-700">Nieve inestable</span>
-              </div>
-              {/* Icono: Placas de hielo */}
-              <div className="flex items-center gap-2">
-                <IceCreamCone className="h-4 w-4 text-cyan-500" />
-                <span className="text-xs text-gray-700">Placas de hielo</span>
-              </div>
-              {/* Icono: Alerta de aludes */}
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-red-500" />
-                <span className="text-xs text-gray-700">Alerta aludes</span>
-              </div>
-            </div>
-          </Card>
-        </div>
+        {/* Desplegable de Alertas AEMET - Reemplaza la leyenda */}
+        {layers.aemetAlerts && (
+          <div className="absolute top-20 right-4 z-[1000] w-72 hidden md:block max-h-[calc(100vh-7rem)] sm:block">
+            <Card className="bg-white shadow-lg">
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="aemet-alerts">
+                  <AccordionTrigger className="px-4 py-3 hover:bg-red-50 text-left">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                      <AlertTriangle className="h-5 w-5 text-red-600" />
+                      <span>
+                        Alertas AEMET {aemetAlerts.length > 0 && `(${aemetAlerts.length})`}
+                      </span>
+                      {aemetLoading && <span className="ml-auto text-xs animate-spin">⚙️</span>}
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-4 pb-4">
+                    {aemetAlerts.length === 0 ? (
+                      <div className="text-sm text-green-700 bg-green-50 p-3 rounded">
+                        ✅ No hay alertas meteorológicas activas
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          onClick={refreshAemetAlerts}
+                          disabled={aemetLoading}
+                          className="w-full mb-3 text-xs px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                          title="Actualizar alertas"
+                        >
+                          🔄 {aemetLoading ? 'Actualizando...' : 'Actualizar'}
+                        </button>
+                        <div className="space-y-2 max-h-[350px] overflow-y-auto">
+                          {/* Ordenar alertas por severidad: rojo > amarillo > verde */}
+                          {[
+                            ...aemetAlerts.filter(a => a.nivelNumerico >= 3), // Rojo: crítico
+                            ...aemetAlerts.filter(a => a.nivelNumerico === 2), // Amarillo: warning
+                            ...aemetAlerts.filter(a => a.nivelNumerico === 1), // Verde: información
+                          ].map((alert) => {
+                            // Determinar color del borde y fondo según severidad
+                            let borderColor = '#f87171'; // Rojo por defecto
+                            let bgColor = '#fee2e2';
+                            let hoverColor = '#fecaca';
+
+                            if (alert.nivelNumerico >= 3) {
+                              borderColor = '#ef4444'; // Rojo: crítico
+                              bgColor = '#fca5a5';
+                              hoverColor = '#f87171';
+                            } else {
+                              borderColor = '#f59e0b'; // Amarillo: warning
+                              bgColor = '#fef3c7';
+                              hoverColor = '#fde68a';
+                            }
+
+                            return (
+                              <div
+                                key={alert.id}
+                                className="p-3 rounded border-l-4 transition-colors cursor-pointer hover:shadow-md"
+                                style={{
+                                  borderLeftColor: borderColor,
+                                  backgroundColor: bgColor,
+                                }}
+                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = hoverColor)}
+                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = bgColor)}
+                                onClick={() => handleAemetAlertClick(alert)}
+                              >
+                                <div className="flex items-start gap-2">
+                                  <span className="text-lg flex-shrink-0">⚠️</span>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-semibold text-sm text-gray-900">{alert.tipo}</p>
+                                    <p className="text-xs text-gray-600">{alert.zona}</p>
+                                    <p className="text-xs text-gray-500 mt-1 line-clamp-2">{alert.descripcion}</p>
+                                    <p className="text-xs font-medium mt-1" style={{ color: borderColor }}>
+                                      {alert.nivel}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </Card>
+          </div>
+        )}
 
         {/* Botón flotante del Asistente IA */}
         <div className="absolute top-20 left-4 z-[1000]">

@@ -9,8 +9,9 @@ import {
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { ScrollArea } from "./ui/scroll-area";
-import { Send, Bot, User } from "lucide-react";
+import { Send, Bot, User, AlertCircle } from "lucide-react";
 import { motion } from "motion/react";
+import { useAuth } from "../contexts/AuthContext";
 
 interface Message {
   id: number;
@@ -25,6 +26,7 @@ interface AIAssistantProps {
 }
 
 export function AIAssistant({ open, onOpenChange }: AIAssistantProps) {
+  const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
@@ -35,6 +37,7 @@ export function AIAssistant({ open, onOpenChange }: AIAssistantProps) {
   ]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const quickSuggestions = [
@@ -48,11 +51,14 @@ export function AIAssistant({ open, onOpenChange }: AIAssistantProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  const handleSend = (text?: string) => {
+  const handleSend = async (text?: string) => {
     const messageText = text || inputValue.trim();
-    if (!messageText) return;
+    if (!messageText || !user?.id) return;
 
-    // Add user message
+    /* Limpiar error anterior */
+    setError(null);
+
+    /* Agregar mensaje del usuario */
     const userMessage: Message = {
       id: messages.length + 1,
       sender: 'user',
@@ -63,31 +69,59 @@ export function AIAssistant({ open, onOpenChange }: AIAssistantProps) {
     setMessages([...messages, userMessage]);
     setInputValue("");
 
-    // Simulate bot response after a short delay
+    /* Mostrar estado de carga */
     setIsTyping(true);
-    setTimeout(() => {
+
+    try {
+      /* Llamar a la API real */
+      const apiUrl = `${import.meta.env.VITE_API_BASE_URL}/chat/ask`;
+      console.log('📡 Llamando a API Chat:', apiUrl);
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          usuario_id: user.id,
+          pregunta: messageText,
+          contexto: 'Usuario interactuando desde MapViewer',
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Respuesta recibida de Gemini API:', data);
+
+      /* Crear mensaje del bot con respuesta real */
       const botMessage: Message = {
         id: messages.length + 2,
         sender: 'bot',
-        text: generateBotResponse(messageText),
+        text: data.data?.respuesta || 'No pude procesar tu pregunta. Intenta de nuevo.',
         timestamp: new Date(),
       };
-      setMessages((prev) => [...prev, botMessage]);
-      setIsTyping(false);
-    }, 800);
-  };
 
-  const generateBotResponse = (userText: string): string => {
-    const lowerText = userText.toLowerCase();
-    
-    if (lowerText.includes('pirineos')) {
-      return 'Según datos de AEMET, los Pirineos tienen riesgo moderado de aludes hoy. Zonas como Benasque y Baqueira presentan niveles 3/5. Te recomiendo consultar los reportes de usuarios en el mapa para información en tiempo real.';
-    } else if (lowerText.includes('benasque')) {
-      return 'Este fin de semana en Benasque se esperan temperaturas de -5°C a 2°C con nevadas intermitentes. El riesgo de aludes es moderado (3/5). Condiciones ideales para esquí de travesía con precauci��n.';
-    } else if (lowerText.includes('alertas') || lowerText.includes('alerta')) {
-      return 'Las alertas de AEMET indican zonas con condiciones peligrosas. El nivel va de 1 (riesgo bajo) a 5 (riesgo muy alto). Actualmente hay 3 alertas activas en zonas de alta montaña del Pirineo Central.';
-    } else {
-      return 'Entiendo tu pregunta. Estoy analizando datos meteorológicos y reportes de usuarios. ¿Podrías ser más específico sobre la zona o el tipo de información que necesitas?';
+      setMessages((prev) => [...prev, botMessage]);
+
+    } catch (err) {
+      console.error('❌ Error en AIAssistant:', err);
+      const errorMsg = err instanceof Error ? err.message : 'Error desconocido';
+      setError(errorMsg);
+
+      /* Mostrar mensaje de error al usuario */
+      const errorMessage: Message = {
+        id: messages.length + 2,
+        sender: 'bot',
+        text: `Perdón, tuve un problema: ${errorMsg}. Por favor intenta de nuevo.`,
+        timestamp: new Date(),
+      };
+
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsTyping(false);
     }
   };
 
@@ -119,6 +153,22 @@ export function AIAssistant({ open, onOpenChange }: AIAssistantProps) {
             </div>
           </div>
         </SheetHeader>
+
+        {/* Error Banner */}
+        {error && (
+          <div className="px-6 py-3 bg-red-50 border-b border-red-200 flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-red-800">{error}</div>
+          </div>
+        )}
+
+        {/* Auth Warning */}
+        {!user?.id && (
+          <div className="px-6 py-3 bg-yellow-50 border-b border-yellow-200 flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-yellow-800">Debes estar autenticado para usar el chat</div>
+          </div>
+        )}
 
         {/* Chat Area */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
@@ -229,15 +279,16 @@ export function AIAssistant({ open, onOpenChange }: AIAssistantProps) {
         <div className="px-6 py-4 border-t bg-white flex-shrink-0">
           <div className="flex gap-2">
             <Input
-              placeholder="Pregunta a la IA..."
+              placeholder={user?.id ? "Pregunta a la IA..." : "Inicia sesión para usar el chat"}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyPress={handleKeyPress}
+              disabled={!user?.id || isTyping}
               className="flex-1"
             />
             <Button
               onClick={() => handleSend()}
-              disabled={!inputValue.trim()}
+              disabled={!inputValue.trim() || !user?.id || isTyping}
               className="bg-blue-600 hover:bg-blue-700"
               size="icon"
             >
