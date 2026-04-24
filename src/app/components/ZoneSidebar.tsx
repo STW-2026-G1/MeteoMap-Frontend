@@ -187,7 +187,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
                   userName: c.usuario_id?.perfil?.nombre || "Usuario Anónimo",
                   avatar: c.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${c.usuario_id?._id}`,
                   message: c.contenido,
-                  timestamp: new Date(c.createdAt).toLocaleDateString(),
+                  timestamp: new Date(c.createdAt).toLocaleString(),
                   likes: uniqueLikes.size,
                   isLiked: !!hasLiked,
                   replies: []
@@ -210,7 +210,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
                         userName: r.usuario_id?.perfil?.nombre || "Usuario",
                         avatar: r.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?._id}`,
                         message: r.contenido,
-                        timestamp: new Date(r.createdAt).toLocaleDateString(),
+                        timestamp: new Date(r.createdAt).toLocaleString(),
                         likes: r.likes?.length || 0,
                         isLiked: currentUserId ? r.likes?.some((id: any) => String(id) === String(currentUserId)) : false
                      }));
@@ -258,7 +258,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
           userName: r.usuario_id?.perfil?.nombre || "Usuario",
           avatar: r.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?._id}`,
           message: r.contenido,
-          timestamp: new Date(r.createdAt).toLocaleDateString(),
+          timestamp: new Date(r.createdAt).toLocaleString(),
           likes: r.likes?.length || 0,
           isLiked: currentUserId ? r.likes?.some((id: any) => String(id) === String(currentUserId)) : false,
         }));
@@ -407,6 +407,44 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
       }
    };
 
+  const handleDeleteReply = async (replyId: string, commentId: string) => {
+    const confirmDelete = window.confirm("¿Estás seguro de que quieres eliminar esta respuesta?");
+    if (!confirmDelete) return;
+
+    const rawToken = localStorage.getItem('meteomap_token');
+    if (!rawToken) {
+      alert("Sesión expirada. Por favor, inicia sesión de nuevo.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/comments/${replyId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${rawToken}`,
+          'Content-Type': 'application/json'
+        },
+      });
+
+      if (response.ok) {
+        setDynamicComments(prev => prev.map(comment => {
+          if (comment.id === commentId && comment.replies) {
+            return {
+              ...comment,
+              replies: comment.replies.filter(reply => reply.id !== replyId)
+            };
+          }
+          return comment;
+        }));
+      } else {
+        const data = await response.json();
+        alert(data.message || "Error al borrar la respuesta");
+      }
+    } catch (error) {
+      console.error("Error en la petición DELETE:", error);
+    }
+  };
+
   const comments = dynamicComments.length > 0 ? dynamicComments : [];
 
   const handleAddReply = async (commentId: string) => {
@@ -448,7 +486,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
               userName: r.usuario_id?.perfil?.nombre || "Usuario",
               avatar: r.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?._id}`,
               message: r.contenido,
-              timestamp: new Date(r.createdAt).toLocaleDateString(),
+              timestamp: new Date(r.createdAt).toLocaleString(),
               likes: r.likes?.length || 0,
               isLiked: currentUserId ? r.likes?.includes(currentUserId) : false,
             }));
@@ -838,21 +876,39 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
                             </Button>
 
                             {expandedReplies.has(comment.id) && (
-                              <div className="mt-3 ml-8 space-y-2 border-l-2 border-blue-300 pl-3">
+                              <div className="mt-4 ml-8 space-y-3 border-l-2 border-blue-300 pl-4">
                                 {comment.replies.map((reply) => (
                                   <div
                                     key={reply.id}
-                                    className="bg-blue-50 rounded p-2 text-xs"
+                                    className="bg-gradient-to-r from-blue-50 to-blue-25 rounded-lg p-3 text-xs hover:shadow-sm transition-shadow border border-blue-100"
                                   >
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <Avatar className="h-5 w-5 flex-shrink-0">
-                                        <AvatarImage src={reply.avatar} alt={reply.userName} />
-                                        <AvatarFallback>{reply.userName.charAt(0).toUpperCase()}</AvatarFallback>
-                                      </Avatar>
-                                      <span className="font-medium text-gray-900">{reply.userName}</span>
-                                      <span className="text-gray-500 text-[10px]">{reply.timestamp}</span>
+                                    <div className="flex items-start justify-between gap-2 mb-2">
+                                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                                        <Avatar className="h-6 w-6 flex-shrink-0">
+                                          <AvatarImage src={reply.avatar} alt={reply.userName} />
+                                          <AvatarFallback>{reply.userName.charAt(0).toUpperCase()}</AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="font-semibold text-gray-900 text-xs">{reply.userName}</span>
+                                            <span className="text-gray-400 text-[11px]">•</span>
+                                            <span className="text-gray-500 text-[11px] whitespace-nowrap">{reply.timestamp}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      {currentUserId === reply.userId && (
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-6 px-1 gap-1 text-gray-400 hover:text-red-600 transition-colors flex-shrink-0"
+                                          onClick={() => handleDeleteReply(reply.id, comment.id)}
+                                          title="Eliminar respuesta"
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                      )}
                                     </div>
-                                    <p className="text-gray-700 text-xs">{reply.message}</p>
+                                    <p className="text-gray-700 text-xs leading-relaxed ml-8">{reply.message}</p>
                                   </div>
                                 ))}
                               </div>

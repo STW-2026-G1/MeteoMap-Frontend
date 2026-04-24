@@ -168,7 +168,7 @@ interface Report {
             userName: c.usuario_id?.perfil?.nombre || "Usuario Anónimo",
             avatar: c.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${c.usuario_id?._id}`,
             message: c.contenido,
-            timestamp: new Date(c.createdAt).toLocaleDateString(),
+            timestamp: new Date(c.createdAt).toLocaleString(),
             likes: c.likes?.length || 0,
             isLiked: currentUserId ? c.likes?.some((id: any) => String(id) === String(currentUserId)) : false,
             replies: []
@@ -189,7 +189,7 @@ interface Report {
                   userName: r.usuario_id?.perfil?.nombre || "Usuario",
                   avatar: r.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?._id}`,
                   message: r.contenido,
-                  timestamp: new Date(r.createdAt).toLocaleDateString(),
+                  timestamp: new Date(r.createdAt).toLocaleString(),
                   likes: r.likes?.length || 0,
                   isLiked: currentUserId ? r.likes?.some((id: any) => String(id) === String(currentUserId)) : false,
                 }));
@@ -396,7 +396,7 @@ interface Report {
             userName: c.usuario_id?.perfil?.nombre || "Usuario Anónimo",
             avatar: c.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${c.usuario_id?._id}`,
             message: c.contenido,
-            timestamp: new Date(c.createdAt).toLocaleDateString(),
+            timestamp: new Date(c.createdAt).toLocaleString(),
             likes: c.likes?.length || 0,
             isLiked: currentUserId ? c.likes?.some((id: any) => String(id) === String(currentUserId)) : false,
             replies: []
@@ -417,7 +417,7 @@ interface Report {
                   userName: r.usuario_id?.perfil?.nombre || "Usuario",
                   avatar: r.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?._id}`,
                   message: r.contenido,
-                  timestamp: new Date(r.createdAt).toLocaleDateString(),
+                  timestamp: new Date(r.createdAt).toLocaleString(),
                   likes: r.likes?.length || 0,
                   isLiked: currentUserId ? r.likes?.some((id: any) => String(id) === String(currentUserId)) : false,
                 }));
@@ -479,7 +479,7 @@ interface Report {
               userName: r.usuario_id?.perfil?.nombre || "Usuario",
               avatar: r.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?._id}`,
               message: r.contenido,
-              timestamp: new Date(r.createdAt).toLocaleDateString(),
+              timestamp: new Date(r.createdAt).toLocaleString(),
               likes: r.likes?.length || 0,
               isLiked: currentUserId ? r.likes?.some((id: any) => String(id) === String(currentUserId)) : false,
             }));
@@ -527,7 +527,7 @@ interface Report {
           userName: r.usuario_id?.perfil?.nombre || "Usuario",
           avatar: r.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?._id}`,
           message: r.contenido,
-          timestamp: new Date(r.createdAt).toLocaleDateString(),
+          timestamp: new Date(r.createdAt).toLocaleString(),
           likes: r.likes?.length || 0,
           isLiked: currentUserId ? r.likes?.some((id: any) => String(id) === String(currentUserId)) : false,
         }));
