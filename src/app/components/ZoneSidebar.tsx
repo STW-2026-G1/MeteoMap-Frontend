@@ -339,7 +339,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
             method: 'POST',
             headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${rawToken}`, // Ahora sí enviará el JWT
+            'Authorization': `Bearer ${rawToken}`, 
             },
             body: JSON.stringify({
             contenido: newCommentText,

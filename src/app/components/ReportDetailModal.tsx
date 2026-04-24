@@ -1,15 +1,17 @@
-import { X, Check, XCircle, TrendingUp, MapPin, Clock, User, AlertTriangle, Shield } from "lucide-react";
+import { X, Check, XCircle, TrendingUp, MapPin, Clock, User, AlertTriangle, Shield, ThumbsUp, MessageCircle, Send, Trash2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Progress } from "./ui/progress";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { Textarea } from "./ui/textarea";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "./ui/dialog";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface ReportData {
   id: string | number;
@@ -25,6 +27,18 @@ interface ReportData {
   totalVotes?: number;
 }
 
+interface Comment {
+  id: string;
+  userId: string;
+  userName: string;
+  avatar: string;
+  message: string;
+  timestamp: string;
+  likes: number;
+  isLiked: boolean;
+  replies?: Comment[];
+}
+
 interface ReportDetailModalProps {
   report: ReportData | null;
   zoneName: string;
@@ -36,6 +50,93 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
   const [userVote, setUserVote] = useState<'confirm' | 'deny' | null>(null);
   const [localConfirmations, setLocalConfirmations] = useState(0);
   const [localDenials, setLocalDenials] = useState(0);
+  
+  // Comment states
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState("");
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  // Get current user ID from localStorage
+  useEffect(() => {
+    const userData = localStorage.getItem('meteomap_user');
+    if (userData) {
+      try {
+        const parsedUser = JSON.parse(userData);
+        setCurrentUserId(parsedUser.id);
+      } catch (error) {
+        console.error("Error parsing user data:", error);
+      }
+    }
+  }, []);
+
+  // Load comments for the report
+  useEffect(() => {
+    if (!report || !open) return;
+
+    const fetchComments = async () => {
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+      const rawToken = localStorage.getItem('meteomap_token');
+      
+      try {
+        const response = await fetch(`${API_BASE_URL}/comments/report/${report.id}`, {
+          headers: rawToken ? { 'Authorization': `Bearer ${rawToken}` } : {}
+        });
+        const data = await response.json();
+
+        if (response.ok && data.comments) {
+          const mappedComments: Comment[] = data.comments.map((c: any) => ({
+            id: c._id,
+            userId: c.usuario_id?._id || c.usuario_id,
+            userName: c.usuario_id?.perfil?.nombre || "Usuario Anónimo",
+            avatar: c.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${c.usuario_id?._id}`,
+            message: c.contenido,
+            timestamp: new Date(c.createdAt).toLocaleDateString(),
+            likes: c.likes?.length || 0,
+            isLiked: currentUserId ? c.likes?.some((id: any) => String(id) === String(currentUserId)) : false,
+            replies: []
+          }));
+
+          setComments(mappedComments);
+
+          // Load replies for each comment
+          for (const comment of mappedComments) {
+            try {
+              const repliesResponse = await fetch(`${API_BASE_URL}/comments/${comment.id}/replies`, {
+                headers: rawToken ? { 'Authorization': `Bearer ${rawToken}` } : {}
+              });
+              const repliesData = await repliesResponse.json();
+              
+              if (repliesResponse.ok && repliesData.replies) {
+                const mappedReplies: Comment[] = repliesData.replies.map((r: any) => ({
+                  id: r._id || r.id,
+                  userId: r.usuario_id?._id || r.usuario_id,
+                  userName: r.usuario_id?.perfil?.nombre || "Usuario",
+                  avatar: r.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?._id}`,
+                  message: r.contenido,
+                  timestamp: new Date(r.createdAt).toLocaleDateString(),
+                  likes: r.likes?.length || 0,
+                  isLiked: currentUserId ? r.likes?.some((id: any) => String(id) === String(currentUserId)) : false,
+                }));
+                
+                setComments(prev => prev.map(c =>
+                  c.id === comment.id ? { ...c, replies: mappedReplies } : c
+                ));
+              }
+            } catch (error) {
+              console.error(`Error loading replies for comment ${comment.id}:`, error);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error loading comments:", error);
+      }
+    };
+
+    fetchComments();
+  }, [report?.id, open, currentUserId]);
 
   if (!report) return null;
 
@@ -110,6 +211,351 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
 
   const handleConfirm = () => handleVote('confirmar');
   const handleDeny = () => handleVote('desmentir');
+
+  // Handle like/unlike comment
+  const handleLike = async (commentId: string, isReply: boolean = false, parentId?: string) => {
+    const rawToken = localStorage.getItem('meteomap_token');
+    if (!rawToken) {
+      alert("Por favor inicia sesión para dar like a un comentario.");
+      return;
+    }
+
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+    const isAlreadyLiked = !isReply 
+      ? comments.find(c => c.id === commentId)?.isLiked 
+      : comments.find(c => c.id === parentId)?.replies?.find(r => r.id === commentId)?.isLiked;
+
+    const endpoint = isAlreadyLiked ? 'unlike' : 'like';
+    const method = isAlreadyLiked ? 'DELETE' : 'POST';
+    const url = `${API_BASE_URL}/comments/${commentId}/${endpoint}`;
+
+    // Optimistic update
+    if (!isReply) {
+      setComments(
+        comments.map((comment) => {
+          if (comment.id === commentId) {
+            return {
+              ...comment,
+              likes: isAlreadyLiked ? Math.max(0, comment.likes - 1) : comment.likes + 1,
+              isLiked: !isAlreadyLiked,
+            };
+          }
+          return comment;
+        })
+      );
+    } else if (parentId) {
+      setComments(
+        comments.map((comment) => {
+          if (comment.id === parentId && comment.replies) {
+            return {
+              ...comment,
+              replies: comment.replies.map((reply) => {
+                if (reply.id === commentId) {
+                  return {
+                    ...reply,
+                    likes: isAlreadyLiked ? Math.max(0, reply.likes - 1) : reply.likes + 1,
+                    isLiked: !isAlreadyLiked,
+                  };
+                }
+                return reply;
+              }),
+            };
+          }
+          return comment;
+        })
+      );
+    }
+
+    // Call backend
+    try {
+      const response = await fetch(url, {
+         method: method,
+         headers: {
+         'Authorization': `Bearer ${rawToken}`,
+         'Content-Type': 'application/json'
+         },
+      });
+
+      if (!response.ok) {
+         throw new Error("Error al procesar el like");
+      }
+   } catch (error) {
+      console.error("Error en la API de Like/Unlike:", error);
+      // Opcional: Revertir la actualización optimista aquí si la petición falla
+      alert("No se pudo guardar tu interacción. Por favor, intenta de nuevo.");
+   }
+  };
+
+  // Handle delete comment
+  const handleDeleteComment = async (commentId: string) => {
+    const confirmDelete = window.confirm("¿Estás seguro de que quieres eliminar este comentario?");
+    if (!confirmDelete) return;
+
+    const rawToken = localStorage.getItem('meteomap_token');
+    if (!rawToken) {
+      alert("Sesión expirada. Por favor, inicia sesión de nuevo.");
+      return;
+    }
+
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/comments/${commentId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${rawToken}`,
+          'Content-Type': 'application/json'
+        },
+      });
+
+      if (response.ok) {
+        setComments(comments.filter((comment) => comment.id !== commentId));
+      } else {
+        const data = await response.json();
+        alert(data.message || "Error deleting comment");
+      }
+    } catch (error) {
+      console.error("Error on DELETE request:", error);
+    }
+  };
+
+  // Handle delete reply
+  const handleDeleteReply = async (replyId: string, commentId: string) => {
+    const confirmDelete = window.confirm("¿Estás seguro de que quieres eliminar esta respuesta?");
+    if (!confirmDelete) return;
+
+    const rawToken = localStorage.getItem('meteomap_token');
+    if (!rawToken) {
+      alert("Sesión expirada. Por favor, inicia sesión de nuevo.");
+      return;
+    }
+
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/comments/${replyId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${rawToken}`,
+          'Content-Type': 'application/json'
+        },
+      });
+
+      if (response.ok) {
+        setComments(comments.map(comment => {
+          if (comment.id === commentId && comment.replies) {
+            return {
+              ...comment,
+              replies: comment.replies.filter(reply => reply.id !== replyId)
+            };
+          }
+          return comment;
+        }));
+      } else {
+        const data = await response.json();
+        alert(data.message || "Error deleting reply");
+      }
+    } catch (error) {
+      console.error("Error on DELETE request:", error);
+    }
+  };
+
+  // Handle add comment
+  const handleAddComment = async () => {
+    if (newComment.trim().length < 10) return;
+
+    const rawToken = localStorage.getItem('meteomap_token');
+    if (!rawToken) {
+      alert("No se encontró el token. Por favor, inicia sesión de nuevo.");
+      return;
+    }
+
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+      const response = await fetch(`${API_BASE_URL}/comments/report/${report.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${rawToken}`,
+        },
+        body: JSON.stringify({ contenido: newComment }),
+      });
+
+      const data = await response.json();
+
+      if (response.status === 201) {
+        setNewComment("");
+        
+        // Reload comments from backend
+        const commentsResponse = await fetch(`${API_BASE_URL}/comments/report/${report.id}`, {
+          headers: rawToken ? { 'Authorization': `Bearer ${rawToken}` } : {}
+        });
+        const commentsData = await commentsResponse.json();
+
+        if (commentsResponse.ok && commentsData.comments) {
+          const mappedComments: Comment[] = commentsData.comments.map((c: any) => ({
+            id: c._id,
+            userId: c.usuario_id?._id || c.usuario_id,
+            userName: c.usuario_id?.perfil?.nombre || "Usuario Anónimo",
+            avatar: c.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${c.usuario_id?._id}`,
+            message: c.contenido,
+            timestamp: new Date(c.createdAt).toLocaleDateString(),
+            likes: c.likes?.length || 0,
+            isLiked: currentUserId ? c.likes?.some((id: any) => String(id) === String(currentUserId)) : false,
+            replies: []
+          }));
+
+          setComments(mappedComments);
+
+          // Load replies for each comment
+          for (const comment of mappedComments) {
+            try {
+              const repliesResponse = await fetch(`${API_BASE_URL}/comments/${comment.id}/replies`, {
+                headers: rawToken ? { 'Authorization': `Bearer ${rawToken}` } : {}
+              });
+              const repliesData = await repliesResponse.json();
+              
+              if (repliesResponse.ok && repliesData.replies) {
+                const mappedReplies: Comment[] = repliesData.replies.map((r: any) => ({
+                  id: r._id || r.id,
+                  userId: r.usuario_id?._id || r.usuario_id,
+                  userName: r.usuario_id?.perfil?.nombre || "Usuario",
+                  avatar: r.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?._id}`,
+                  message: r.contenido,
+                  timestamp: new Date(r.createdAt).toLocaleDateString(),
+                  likes: r.likes?.length || 0,
+                  isLiked: currentUserId ? r.likes?.some((id: any) => String(id) === String(currentUserId)) : false,
+                }));
+                
+                setComments(prev => prev.map(c =>
+                  c.id === comment.id ? { ...c, replies: mappedReplies } : c
+                ));
+              }
+            } catch (error) {
+              console.error(`Error loading replies for comment ${comment.id}:`, error);
+            }
+          }
+        }
+      } else {
+        alert(data.message || "Error publishing comment");
+      }
+    } catch (error) {
+      console.error("Network error:", error);
+      alert("Network error sending comment");
+    }
+  };
+
+  // Handle add reply
+  const handleAddReply = async (parentId: string) => {
+    if (!replyText.trim()) return;
+
+    const rawToken = localStorage.getItem('meteomap_token');
+    if (!rawToken) {
+      alert("No se encontró el token. Por favor, inicia sesión de nuevo.");
+      return;
+    }
+
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+      const response = await fetch(`${API_BASE_URL}/comments/${parentId}/reply`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${rawToken}`,
+        },
+        body: JSON.stringify({ contenido: replyText }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setReplyText("");
+        setReplyingTo(null);
+        
+        // Load updated replies from backend
+        try {
+          const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+          const repliesResponse = await fetch(`${API_BASE_URL}/comments/${parentId}/replies`, {
+            headers: rawToken ? { 'Authorization': `Bearer ${rawToken}` } : {}
+          });
+          const repliesData = await repliesResponse.json();
+
+          if (repliesResponse.ok) {
+            const mappedReplies: Comment[] = repliesData.replies.map((r: any) => ({
+              id: r._id,
+              userId: r.usuario_id?._id || r.usuario_id,
+              userName: r.usuario_id?.perfil?.nombre || "Usuario",
+              avatar: r.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?._id}`,
+              message: r.contenido,
+              timestamp: new Date(r.createdAt).toLocaleDateString(),
+              likes: r.likes?.length || 0,
+              isLiked: currentUserId ? r.likes?.some((id: any) => String(id) === String(currentUserId)) : false,
+            }));
+
+            // Update parent comment with new replies
+            setComments(prev => prev.map(c => 
+              c.id === parentId ? { ...c, replies: mappedReplies } : c
+            ));
+
+            // Mark as expanded to see the new reply
+            setExpandedReplies(prev => new Set(prev).add(parentId));
+          }
+        } catch (error) {
+          console.error("Error loading updated replies:", error);
+        }
+      } else {
+        alert(data.message || "Error adding reply");
+      }
+    } catch (error) {
+      console.error("Error adding reply:", error);
+      alert("Network error sending reply");
+    }
+  };
+
+  // Fetch replies on demand
+  const fetchReplies = async (commentId: string) => {
+    // If already expanded, close them
+    if (expandedReplies.has(commentId)) {
+      setExpandedReplies(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(commentId);
+        return newSet;
+      });
+      return;
+    }
+
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+      const rawToken = localStorage.getItem('meteomap_token');
+      const response = await fetch(`${API_BASE_URL}/comments/${commentId}/replies`, {
+        headers: rawToken ? { 'Authorization': `Bearer ${rawToken}` } : {}
+      });
+      const data = await response.json();
+
+      if (response.ok) {
+        const mappedReplies: Comment[] = data.replies.map((r: any) => ({
+          id: r._id,
+          userId: r.usuario_id?._id || r.usuario_id,
+          userName: r.usuario_id?.perfil?.nombre || "Usuario",
+          avatar: r.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?._id}`,
+          message: r.contenido,
+          timestamp: new Date(r.createdAt).toLocaleDateString(),
+          likes: r.likes?.length || 0,
+          isLiked: currentUserId ? r.likes?.some((id: any) => String(id) === String(currentUserId)) : false,
+        }));
+
+        // Update parent comment with replies
+        setComments(prev => prev.map(c => 
+          c.id === commentId ? { ...c, replies: mappedReplies } : c
+        ));
+
+        // Mark as expanded
+        setExpandedReplies(prev => new Set(prev).add(commentId));
+      }
+    } catch (error) {
+      console.error("Error loading replies:", error);
+    }
+  };
 
   const riskType = report.riskType || "Placas de hielo";
   const description = report.description || report.condition;
@@ -245,8 +691,225 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
               Tu voto ayuda a determinar la fiabilidad de este reporte. Los reportes con baja confianza se ocultan automáticamente.
             </p>
           </div>
+
+          {/* Comments Section */}
+          <div className="border-t pt-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <MessageCircle className="h-5 w-5 text-blue-600" />
+              Comentarios ({comments.length})
+            </h3>
+
+            {/* Comments List */}
+            <div className="space-y-4 mb-6">
+              {comments.map((comment) => (
+                <div key={comment.id} className="space-y-3">
+                  {/* Main Comment */}
+                  <div className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors">
+                    <div className="flex gap-3">
+                      <Avatar className="h-10 w-10 flex-shrink-0">
+                        <AvatarImage src={comment.avatar} alt={comment.userName} />
+                        <AvatarFallback>
+                          {comment.userName.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-semibold text-gray-900">
+                            {comment.userName}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {comment.timestamp}
+                          </span>
+                        </div>
+
+                        <p className="text-sm text-gray-700 leading-relaxed mb-3">
+                          {comment.message}
+                        </p>
+
+                        <div className="flex items-center gap-3">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={`h-8 gap-1 ${
+                              comment.isLiked ? "text-blue-600" : "text-gray-600"
+                            }`}
+                            onClick={() => handleLike(comment.id)}
+                          >
+                            <ThumbsUp className="h-4 w-4" />
+                            <span className="text-xs font-medium">{comment.likes}</span>
+                          </Button>
+
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 gap-1 text-gray-600"
+                            onClick={() => {
+                              setReplyingTo(replyingTo === comment.id ? null : comment.id);
+                              setReplyText("");
+                            }}
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                            <span className="text-xs">Responder</span>
+                          </Button>
+
+                          {currentUserId === comment.userId && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 gap-1 text-gray-600 hover:text-red-600 transition-colors"
+                              onClick={() => handleDeleteComment(comment.id)}
+                              title="Eliminar comentario"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Replies Button */}
+                  {comment.replies && comment.replies.length > 0 && (
+                    <div className="mt-3 ml-12">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 gap-1 text-xs text-blue-600 hover:text-blue-700"
+                        onClick={() => fetchReplies(comment.id)}
+                      >
+                        {expandedReplies.has(comment.id) ? '▼' : '▶'} Ver respuestas ({comment.replies.length})
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Replies */}
+                  {comment.replies && comment.replies.length > 0 && expandedReplies.has(comment.id) && (
+                    <div className="ml-12 space-y-3 mt-3">
+                      {comment.replies.map((reply) => (
+                        <div
+                          key={reply.id}
+                          className="bg-blue-50 rounded-lg p-3 hover:bg-blue-100 transition-colors border-l-2 border-blue-400"
+                        >
+                          <div className="flex gap-3">
+                            <Avatar className="h-8 w-8 flex-shrink-0">
+                              <AvatarImage src={reply.avatar} alt={reply.userName} />
+                              <AvatarFallback>
+                                {reply.userName.slice(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-semibold text-sm text-gray-900">
+                                  {reply.userName}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  {reply.timestamp}
+                                </span>
+                              </div>
+
+                              <p className="text-sm text-gray-700 leading-relaxed mb-2">
+                                {reply.message}
+                              </p>
+
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className={`h-7 gap-1 ${
+                                    reply.isLiked ? "text-blue-600" : "text-gray-600"
+                                  }`}
+                                  onClick={() => handleLike(reply.id, true, comment.id)}
+                                >
+                                  <ThumbsUp className="h-3 w-3" />
+                                  <span className="text-xs">{reply.likes}</span>
+                                </Button>
+
+                                {currentUserId === reply.userId && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 gap-1 text-gray-600 hover:text-red-600 transition-colors"
+                                    onClick={() => handleDeleteReply(reply.id, comment.id)}
+                                    title="Eliminar respuesta"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Reply Input */}
+                  {replyingTo === comment.id && (
+                    <div className="ml-12 bg-white border border-blue-200 rounded-lg p-3">
+                      <Textarea
+                        placeholder="Escribe tu respuesta..."
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        rows={2}
+                        className="mb-2 resize-none text-sm"
+                      />
+                      <div className="flex gap-2 justify-end">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setReplyingTo(null);
+                            setReplyText("");
+                          }}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
+                          onClick={() => handleAddReply(comment.id)}
+                          disabled={!replyText.trim()}
+                        >
+                          <Send className="h-4 w-4 mr-1" />
+                          Responder
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Add Comment Section */}
+            <div className="border-t border-gray-200 pt-4">
+              <Textarea
+                placeholder="Añadir comentario..."
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                rows={3}
+                className="mb-3 resize-none"
+              />
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">
+                  {newComment.length < 10
+                    ? `Mínimo 10 caracteres (${newComment.length}/10)`
+                    : `${newComment.length} caracteres`}
+                </span>
+                <Button
+                  onClick={handleAddComment}
+                  disabled={newComment.trim().length < 10}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  Añadir comentario
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
+
