@@ -58,7 +58,7 @@ interface ZoneData {
   elevation: string;
   temperature: number;
   wind: number;
-  avalancheLevel: number;
+  weather: string;
   isFavorite: boolean;
   coordinates?: [number, number]; // [lng, lat]
   reports: UserReport[];
@@ -184,6 +184,7 @@ export default function MapViewer() {
           const [lng, lat] = zone.geolocalizacion?.coordinates || [0, 0];
           const temp = zone.cache_meteo?.datos_crudos?.current?.temperature ?? 0;
           const wind = zone.cache_meteo?.datos_crudos?.current?.wind_speed_10m ?? 0;
+         const weatherCode = zone.cache_meteo?.datos_crudos?.current?.codigo_clima ?? 0;
 
           transformedZonesData[zone._id] = {
             id: zone._id, // <--- USA EL ID DE MONGO, NO EL INDEX
@@ -191,7 +192,7 @@ export default function MapViewer() {
             elevation: '1.500m',
             temperature: temp,
             wind: wind,
-            avalancheLevel: 2,
+            weather: weatherCode,
             isFavorite: false,
             coordinates: [lng, lat],
             reports: [],
@@ -304,7 +305,7 @@ export default function MapViewer() {
                                 weatherData.data?.cache_meteo?.datos_crudos || {};
       const temperature = meteorologicalData.temperatura ?? 0;
       const wind = meteorologicalData.velocidad_viento ?? 0;
-      const weatherCode = meteorologicalData.codigo_clima ?? 0;
+      const weatherCode = meteorologicalData.descripcion ?? 0;
 
       /* Extraer coordenadas */
       const [lng, lat] = apiZone.geolocalizacion?.coordinates || [0, 0];
@@ -316,7 +317,7 @@ export default function MapViewer() {
         elevation: '1.500m',
         temperature: temperature,
         wind: wind,
-        avalancheLevel: 2,
+        weather: weatherCode,
         isFavorite: favoriteZones.has(zoneId),
         coordinates: [lng, lat],
         reports: [],
@@ -895,7 +896,7 @@ export default function MapViewer() {
             if (selectedZone) {
               // Pasar comentarios dinámicos como JSON en la URL
               const commentsParam = encodeURIComponent(JSON.stringify(dynamicComments));
-              navigate(`/foro?zone=${encodeURIComponent(selectedZone.name)}&id=${selectedZone.id}&elevation=${encodeURIComponent(selectedZone.elevation)}&temp=${selectedZone.temperature}&wind=${selectedZone.wind}&avalanche=${selectedZone.avalancheLevel}&comments=${commentsParam}`);
+              navigate(`/foro?zone=${encodeURIComponent(selectedZone.name)}&id=${selectedZone.id}&elevation=${encodeURIComponent(selectedZone.elevation)}&temp=${selectedZone.temperature}&wind=${selectedZone.wind}&avalanche=${selectedZone.weather}&comments=${commentsParam}`);
             }
           }}
         />

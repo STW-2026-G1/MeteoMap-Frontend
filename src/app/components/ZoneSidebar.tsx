@@ -1,4 +1,4 @@
-import { X, Star, AlertTriangle, Thermometer, Wind, TrendingUp, Clock, User, MessageCircle, ThumbsUp, Send, Trash2 } from "lucide-react";
+import { X, Star, Cloud, Thermometer, Wind, TrendingUp, Clock, User, MessageCircle, ThumbsUp, Send, Trash2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -8,7 +8,7 @@ import { Textarea } from "./ui/textarea";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { motion, AnimatePresence } from "motion/react";
 import { ReportDetailModal } from "./ReportDetailModal";
-import { useState, useEffect } from "react";
+import { useState, useEffect, SetStateAction } from "react";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 
@@ -46,7 +46,7 @@ interface ZoneData {
   elevation: string;
   temperature: number;
   wind: number;
-  avalancheLevel: number;
+  weather: number;
   isFavorite: boolean;
   coordinates?: [number, number];
   reports: UserReport[];
@@ -61,31 +61,6 @@ interface ZoneSidebarProps {
   onViewAllReports: (currentComments: Comment[]) => void;
 }
 
-const temperatureForecast = [
-  { time: 'Ahora', temp: -4 },
-  { time: '+1h', temp: -3 },
-  { time: '+2h', temp: -2 },
-  { time: '+3h', temp: -1 },
-  { time: '+4h', temp: 0 },
-  { time: '+5h', temp: 1 },
-  { time: '+6h', temp: 2 },
-];
-
-const avalancheLevelColors: { [key: number]: string } = {
-  1: "bg-green-500",
-  2: "bg-yellow-500",
-  3: "bg-orange-500",
-  4: "bg-red-500",
-  5: "bg-purple-500",
-};
-
-const avalancheLevelText: { [key: number]: string } = {
-  1: "Bajo",
-  2: "Moderado",
-  3: "Notable",
-  4: "Alto",
-  5: "Muy Alto",
-};
 
 export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, onViewAllReports }: ZoneSidebarProps) {
   if (!zone) return null;
@@ -106,6 +81,8 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
   const [replyText, setReplyText] = useState("");
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
   const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
+  const [forecastData, setForecastData] = useState<Array<{time: string; temp: number}> | null>(null);
+  const [forecastLoading, setForecastLoading] = useState(false);
 
   const handleReportClick = (report: UserReport) => {
     setSelectedReport(report);
@@ -129,6 +106,46 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (!zone.id) return;
+
+    const fetchForecast = async () => {
+      setForecastLoading(true);
+      try {
+        const response = await fetch(`${API_BASE_URL}/zones/${zone.id}/forecast`);
+        const data = await response.json();
+
+        console.log('Response:', response.ok);
+        console.log('Data completa:', data);
+        console.log('Cache meteo:', data.data?.cache_meteo);
+        console.log('Forecast datos_crudos:', data.data?.cache_meteo?.datos_crudos);
+
+        if (response.ok && data.data && data.data.cache_meteo?.datos_crudos) {
+          const forecastArray = data.data.cache_meteo.datos_crudos;
+         
+          const transformedForecast = forecastArray.map((item: any, index: number) => ({
+            time: item.hora,
+            temp: Math.round(item.temperatura)
+          }));
+
+          console.log('Array original:', forecastArray);
+          console.log('Array transformado:', transformedForecast);
+          setForecastData(transformedForecast);
+        } else {
+          console.warn('No hay datos de pronóstico');
+          setForecastData(null);
+        }
+      } catch (error) {
+        console.error("Error cargando pronóstico:", error);
+        setForecastData(null);
+      } finally {
+        setForecastLoading(false);
+      }
+    };
+
+    fetchForecast();
+  }, [zone.id]);
 
   useEffect(() => {
       if (!zone.id) return;
@@ -514,437 +531,444 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
   };
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ x: -400 }}
-        animate={{ x: 0 }}
-        exit={{ x: -400 }}
-        transition={{ type: "spring", damping: 25, stiffness: 200 }}
-        className="fixed left-0 top-16 bottom-0 w-full sm:w-96 bg-white shadow-2xl z-[2000] flex flex-col overflow-hidden"
-      >
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 flex-shrink-0">
-          <div className="flex items-start justify-between mb-2">
-            <div className="flex-1">
-              <h2 className="text-xl font-bold">{zone.name}</h2>
-              <p className="text-sm text-blue-100">{zone.elevation}</p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                size="icon"
-                variant="ghost"
-                className="text-white hover:bg-white/20"
-                onClick={() => onToggleFavorite(zone.id)}
-              >
-                <Star
-                  className={`h-5 w-5 ${zone.isFavorite ? 'fill-yellow-400 text-yellow-400' : ''}`}
-                />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="text-white hover:bg-white/20"
-                onClick={onClose}
-              >
-                <X className="h-5 w-5" />
-              </Button>
+    <>
+      <AnimatePresence>
+        <motion.div
+          initial={{ x: -450 }}
+          animate={{ x: 0 }}
+          exit={{ x: -450 }}
+          transition={{ type: "spring", damping: 25, stiffness: 200 }}
+          className="fixed left-0 top-16 bottom-0 w-full sm:w-[420px] bg-white shadow-2xl z-[2000] flex flex-col overflow-hidden"
+        >
+          {/* Header */}
+          <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 flex-shrink-0">
+            <div className="flex items-start justify-between mb-2">
+              <div className="flex-1">
+                <h2 className="text-xl font-bold">{zone.name}</h2>
+                <p className="text-sm text-blue-100">{zone.elevation}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="text-white hover:bg-white/20"
+                  onClick={() => onToggleFavorite(zone.id)}
+                >
+                  <Star
+                    className={`h-5 w-5 ${zone.isFavorite ? 'fill-yellow-400 text-yellow-400' : ''}`}
+                  />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="text-white hover:bg-white/20"
+                  onClick={onClose}
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4">
-          <div className="space-y-6">
-            {/* Current Status */}
-            <div className="mb-6">
-              <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" />
-                Estado Actual
-              </h3>
-              <div className="grid grid-cols-3 gap-3">
-                <Card className="p-3 text-center">
-                  <Thermometer className="h-5 w-5 text-orange-500 mx-auto mb-1" />
-                  <p className="text-2xl font-bold text-gray-900">{zone.temperature}°C</p>
-                  <p className="text-xs text-gray-500">Temperatura</p>
-                </Card>
-
-                <Card className="p-3 text-center">
-                  <Wind className="h-5 w-5 text-teal-500 mx-auto mb-1" />
-                  <p className="text-2xl font-bold text-gray-900">{zone.wind}</p>
-                  <p className="text-xs text-gray-500">km/h</p>
-                </Card>
-
-                <Card className="p-3 text-center">
-                  <AlertTriangle className="h-5 w-5 text-red-500 mx-auto mb-1" />
-                  <p className="text-2xl font-bold text-gray-900">{zone.avalancheLevel}/5</p>
-                  <p className="text-xs text-gray-500">Aludes</p>
-                </Card>
-              </div>
-
-              <div className="mt-3">
-                <Badge className={`${avalancheLevelColors[zone.avalancheLevel]} text-white w-full justify-center py-2`}>
-                  Riesgo de Aludes: {avalancheLevelText[zone.avalancheLevel]}
-                </Badge>
-              </div>
-            </div>
-
-            {/* Temperature Forecast */}
-            <div className="mb-6">
-              <h3 className="font-semibold text-gray-900 mb-3">Evolución Temperatura (6h)</h3>
-              <Card className="p-3">
-                <ResponsiveContainer width="100%" height={150}>
-                  <LineChart data={temperatureForecast}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis
-                      dataKey="time"
-                      tick={{ fontSize: 11, fill: '#6b7280' }}
-                      stroke="#9ca3af"
-                    />
-                    <YAxis
-                      tick={{ fontSize: 11, fill: '#6b7280' }}
-                      stroke="#9ca3af"
-                      domain={['dataMin - 1', 'dataMax + 1']}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#fff',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                        fontSize: '12px'
-                      }}
-                      formatter={(value) => [`${value}°C`, 'Temperatura']}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="temp"
-                      stroke="#3b82f6"
-                      strokeWidth={2}
-                      dot={{ fill: '#3b82f6', r: 4 }}
-                      activeDot={{ r: 6 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </Card>
-            </div>
-
-            {/* User Reports */}
-            <div>
-              <h3 className="font-semibold text-gray-900 mb-3">Reportes Recientes de Usuarios</h3>
-              <div className="space-y-3">
-                {dynamicReports.length > 0 ? (
-                  <>
-                    {dynamicReports.slice(0, 3).map((report) => (
-                      <Card
-                        key={report.id}
-                        className="p-3 hover:shadow-md transition-shadow cursor-pointer hover:border-blue-300"
-                        onClick={() => handleReportClick(report)}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            handleReportClick(report);
-                          }
-                        }}
-                      >
-                        <div className="flex gap-3">
-                          <Avatar className="h-10 w-10 flex-shrink-0">
-                            <AvatarImage src={report.avatar} alt={report.userName} />
-                            <AvatarFallback>
-                              {report.userName.charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                              <p className="font-medium text-gray-900 text-sm truncate">
-                                {report.userName}
-                              </p>
-                              <div className="flex flex-col items-end gap-0.5 text-gray-500 text-[10px] whitespace-nowrap">
-                                <div className="flex items-center gap-1">
-                                  <Clock className="h-2.5 w-2.5" />
-                                  {report.isEdited ? report.updatedAt : report.timestamp}
-                                </div>
-                                {report.isEdited && (
-                                  <span className="bg-gray-100 px-1 rounded text-[9px] font-bold uppercase text-gray-400">
-                                    Editado
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-lg leading-none">{report.categoryIcon}</span>
-                              <p className="text-sm text-gray-600 font-medium">{report.condition}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-
-                    {dynamicReports.length > 3 && (
-                      <Button variant="outline" className="w-full" onClick={() => onViewAllReports(dynamicComments)}>
-                        Ver todos los reportes de esta zona
-                      </Button>
-                    )}
-                  </>
-                ) : (
-                  <Card className="p-4 text-center text-gray-500">
-                    <User className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                    <p className="text-sm">No hay reportes en esta zona</p>
-                    <p className="text-xs mt-1">Sé el primero en compartir información</p>
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-4">
+            <div className="space-y-6">
+              {/* Current Status */}
+              <div className="mb-6">
+                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  Estado Actual
+                </h3>
+                <div className="grid grid-cols-3 gap-3">
+                  <Card className="p-3 text-center">
+                    <Thermometer className="h-5 w-5 text-orange-500 mx-auto mb-1" />
+                    <p className="text-2xl font-bold text-gray-900">{zone.temperature}°C</p>
+                    <p className="text-xs text-gray-500">Temperatura</p>
                   </Card>
-                )}
+
+                  <Card className="p-3 text-center">
+                    <Wind className="h-5 w-5 text-teal-500 mx-auto mb-1" />
+                    <p className="text-2xl font-bold text-gray-900">{zone.wind}</p>
+                    <p className="text-xs text-gray-500">km/h</p>
+                  </Card>
+
+                  <Card className="p-3 text-center flex flex-col justify-between min-h-[110px] ">
+                    <Cloud className="h-5 w-5 text-blue-500 mx-auto mb-1" />
+                    <p className="text-sm font-bold text-gray-900 leading-tight whitespace-normal">{zone.weather}</p>
+                    <p className="text-xs text-gray-500">Clima</p>
+                  </Card>
+                </div>
+
+               
               </div>
-            </div>
 
-            {/* Comments Section */}
-            <div>
-              <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <MessageCircle className="h-4 w-4" />
-                Comentarios de la Comunidad
-              </h3>
-
-              {!isAddingComment ? (
-                <Button
-                  variant="outline"
-                  className="w-full mb-3"
-                  onClick={() => setIsAddingComment(true)}
-                >
-                  <MessageCircle className="h-4 w-4 mr-2" />
-                  Añadir Comentario
-                </Button>
-              ) : (
-                <Card className="p-3 mb-3 border-blue-300">
-                  <div className="space-y-2">
-                    <Textarea
-                      placeholder="Comparte tu experiencia en esta zona..."
-                      value={newCommentText}
-                      onChange={(e) => setNewCommentText(e.target.value)}
-                      className="min-h-16 resize-none"
-                    />
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        className="flex-1 bg-blue-600 hover:bg-blue-700"
-                        onClick={handleAddComment}
-                        disabled={isSubmittingComment || !newCommentText.trim()}
-                      >
-                        {isSubmittingComment ? (
-                          <>
-                            <div className="h-3 w-3 rounded-full bg-white animate-spin mr-2" />
-                            Enviando...
-                          </>
-                        ) : (
-                          <>
-                            <Send className="h-3 w-3 mr-1" />
-                            Enviar
-                          </>
-                        )}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setIsAddingComment(false);
-                          setNewCommentText("");
-                        }}
-                      >
-                        Cancelar
-                      </Button>
+              {/* Temperature Forecast */}
+              {forecastData && (
+              <div className="mb-6">
+                <h3 className="font-semibold text-gray-900 mb-3">Evolución Temperatura (12h)</h3>
+                <Card className="p-3">
+                  {forecastLoading ? (
+                    <div className="h-[150px] flex items-center justify-center text-gray-500">
+                      <div className="h-4 w-4 rounded-full bg-blue-500 animate-spin mr-2"></div>
+                      Cargando pronóstico...
                     </div>
-                  </div>
+                  ) : (
+                  <ResponsiveContainer width="100%" height={150}>
+                    <LineChart data={forecastData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis
+                        dataKey="time"
+                        tick={{ fontSize: 11, fill: '#6b7280' }}
+                        stroke="#9ca3af"
+                      />
+                      <YAxis
+                        tick={{ fontSize: 11, fill: '#6b7280' }}
+                        stroke="#9ca3af"
+                        domain={['dataMin - 1', 'dataMax + 1']}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#fff',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          fontSize: '12px'
+                        }}
+                        formatter={(value) => [`${value}°C`, 'Temperatura']}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="temp"
+                        stroke="#3b82f6"
+                        strokeWidth={2}
+                        dot={{ fill: '#3b82f6', r: 4 }}
+                        activeDot={{ r: 6 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                  )}
                 </Card>
+              </div>
               )}
 
-              <div className="space-y-3">
-                {comments.length > 0 ? (
-                  <>
-                    {comments.slice(0, 3).map((comment) => (
-                      <Card key={comment.id} className="p-3">
-                        <div className="flex gap-3">
-                          <Avatar className="h-8 w-8 flex-shrink-0">
-                            <AvatarImage src={comment.avatar} alt={comment.userName} />
-                            <AvatarFallback>{comment.userName.charAt(0).toUpperCase()}</AvatarFallback>
-                          </Avatar>
+              {/* User Reports */}
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-3">Reportes Recientes de Usuarios</h3>
+                <div className="space-y-3">
+                  {dynamicReports.length > 0 ? (
+                    <>
+                      {dynamicReports.slice(0, 3).map((report) => (
+                        <Card
+                          key={report.id}
+                          className="p-3 hover:shadow-md transition-shadow cursor-pointer hover:border-blue-300"
+                          onClick={() => handleReportClick(report)}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              handleReportClick(report);
+                            }
+                          }}
+                        >
+                          <div className="flex gap-3">
+                            <Avatar className="h-10 w-10 flex-shrink-0">
+                              <AvatarImage src={report.avatar} alt={report.userName} />
+                              <AvatarFallback>
+                                {report.userName.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
 
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                              <p className="font-medium text-gray-900 text-sm">{comment.userName}</p>
-                              <div className="flex items-center gap-1 text-gray-500 text-xs whitespace-nowrap">
-                                <Clock className="h-3 w-3" />
-                                {comment.timestamp}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="font-medium text-gray-900 text-sm truncate">
+                                  {report.userName}
+                                </p>
+                                <div className="flex flex-col items-end gap-0.5 text-gray-500 text-[10px] whitespace-nowrap">
+                                  <div className="flex items-center gap-1">
+                                    <Clock className="h-2.5 w-2.5" />
+                                    {report.isEdited ? report.updatedAt : report.timestamp}
+                                  </div>
+                                  {report.isEdited && (
+                                    <span className="bg-gray-100 px-1 rounded text-[9px] font-bold uppercase text-gray-400">
+                                      Editado
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-lg leading-none">{report.categoryIcon}</span>
+                                <p className="text-sm text-gray-600 font-medium">{report.condition}</p>
                               </div>
                             </div>
-                            <p className="text-sm text-gray-600 mt-1">{comment.message}</p>
+                          </div>
+                        </Card>
+                      ))}
 
-                            <div className="mt-2 flex items-center gap-2">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className={`h-6 px-2 gap-1 ${
-                                  likedComments.has(comment.id)
-                                    ? 'text-blue-600'
-                                    : 'text-gray-500 hover:text-blue-600'
-                                }`}
-                                onClick={() => handleLikeComment(comment.id)}
-                              >
-                                <ThumbsUp className={`h-3 w-3 ${likedComments.has(comment.id) ? 'fill-current' : ''}`} />
-                                <span className="text-xs">
-                                  {comment.likes}
-                                </span>
-                              </Button>
+                      {dynamicReports.length > 3 && (
+                        <Button variant="outline" className="w-full" onClick={() => onViewAllReports(dynamicComments)}>
+                          Ver todos los reportes de esta zona
+                        </Button>
+                      )}
+                    </>
+                  ) : (
+                    <Card className="p-4 text-center text-gray-500">
+                      <User className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                      <p className="text-sm">No hay reportes en esta zona</p>
+                      <p className="text-xs mt-1">Sé el primero en compartir información</p>
+                    </Card>
+                  )}
+                </div>
+              </div>
 
-                              {currentUserId === comment.userId && (
+              {/* Comments Section */}
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <MessageCircle className="h-4 w-4" />
+                  Comentarios de la Comunidad
+                </h3>
+
+                {!isAddingComment ? (
+                  <Button
+                    variant="outline"
+                    className="w-full mb-3"
+                    onClick={() => setIsAddingComment(true)}
+                  >
+                    <MessageCircle className="h-4 w-4 mr-2" />
+                    Añadir Comentario
+                  </Button>
+                ) : (
+                  <Card className="p-3 mb-3 border-blue-300">
+                    <div className="space-y-2">
+                      <Textarea
+                        placeholder="Comparte tu experiencia en esta zona..."
+                        value={newCommentText}
+                        onChange={(e) => setNewCommentText(e.target.value)}
+                        className="min-h-16 resize-none"
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          className="flex-1 bg-blue-600 hover:bg-blue-700"
+                          onClick={handleAddComment}
+                          disabled={isSubmittingComment || !newCommentText.trim()}
+                        >
+                          {isSubmittingComment ? (
+                            <>
+                              <div className="h-3 w-3 rounded-full bg-white animate-spin mr-2" />
+                              Enviando...
+                            </>
+                          ) : (
+                            <>
+                              <Send className="h-3 w-3 mr-1" />
+                              Enviar
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setIsAddingComment(false);
+                            setNewCommentText("");
+                          }}
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                )}
+
+                <div className="space-y-3">
+                  {comments.length > 0 ? (
+                    <>
+                      {comments.slice(0, 3).map((comment) => (
+                        <Card key={comment.id} className="p-3">
+                          <div className="flex gap-3">
+                            <Avatar className="h-8 w-8 flex-shrink-0">
+                              <AvatarImage src={comment.avatar} alt={comment.userName} />
+                              <AvatarFallback>{comment.userName.charAt(0).toUpperCase()}</AvatarFallback>
+                            </Avatar>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="font-medium text-gray-900 text-sm">{comment.userName}</p>
+                                <div className="flex items-center gap-1 text-gray-500 text-xs whitespace-nowrap">
+                                  <Clock className="h-3 w-3" />
+                                  {comment.timestamp}
+                                </div>
+                              </div>
+                              <p className="text-sm text-gray-600 mt-1">{comment.message}</p>
+
+                              <div className="mt-2 flex items-center gap-2">
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className="h-6 px-2 gap-1 text-gray-400 hover:text-red-600 transition-colors"
-                                  onClick={() => handleDeleteComment(comment.id)}
-                                  title="Eliminar mi comentario"
+                                  className={`h-6 px-2 gap-1 ${
+                                    likedComments.has(comment.id)
+                                      ? 'text-blue-600'
+                                      : 'text-gray-500 hover:text-blue-600'
+                                  }`}
+                                  onClick={() => handleLikeComment(comment.id)}
                                 >
-                                  <Trash2 className="h-3.5 w-3.5" />
+                                  <ThumbsUp className={`h-3 w-3 ${likedComments.has(comment.id) ? 'fill-current' : ''}`} />
+                                  <span className="text-xs">
+                                    {comment.likes}
+                                  </span>
                                 </Button>
-                              )}
 
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-6 px-2 gap-1 text-gray-500 hover:text-blue-600 transition-colors"
-                                onClick={() => {
-                                  setReplyingTo(replyingTo === comment.id ? null : comment.id);
-                                  setReplyText("");
-                                }}
-                                title="Responder a este comentario"
-                              >
-                                <MessageCircle className="h-3 w-3" />
-                                <span className="text-xs">Responder</span>
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-
-                        {replyingTo === comment.id && (
-                          <div className="mt-3 ml-11 border-l-2 border-blue-300 pl-3">
-                            <Textarea
-                              placeholder="Escribe tu respuesta..."
-                              value={replyText}
-                              onChange={(e) => setReplyText(e.target.value)}
-                              rows={2}
-                              className="mb-2 resize-none text-sm"
-                            />
-                            <div className="flex gap-2 justify-end">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => {
-                                  setReplyingTo(null);
-                                  setReplyText("");
-                                }}
-                              >
-                                Cancelar
-                              </Button>
-                              <Button
-                                size="sm"
-                                className="bg-blue-600 hover:bg-blue-700 text-white"
-                                onClick={() => handleAddReply(comment.id)}
-                                disabled={isSubmittingReply || !replyText.trim()}
-                              >
-                                {isSubmittingReply ? (
-                                  <>
-                                    <div className="h-3 w-3 rounded-full bg-white animate-spin mr-2" />
-                                    Enviando...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Send className="h-3 w-3 mr-1" />
-                                    Responder
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-
-                        {comment.replies && comment.replies.length > 0 && (
-                          <div className="mt-3">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-6 px-2 gap-1 text-xs text-blue-600 hover:text-blue-700"
-                              onClick={() => fetchReplies(comment.id)}
-                            >
-                              {expandedReplies.has(comment.id) ? '▼' : '▶'} Ver respuestas ({comment.replies.length})
-                            </Button>
-
-                            {expandedReplies.has(comment.id) && (
-                              <div className="mt-4 ml-8 space-y-3 border-l-2 border-blue-300 pl-4">
-                                {comment.replies.map((reply) => (
-                                  <div
-                                    key={reply.id}
-                                    className="bg-gradient-to-r from-blue-50 to-blue-25 rounded-lg p-3 text-xs hover:shadow-sm transition-shadow border border-blue-100"
+                                {currentUserId === comment.userId && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 px-2 gap-1 text-gray-400 hover:text-red-600 transition-colors"
+                                    onClick={() => handleDeleteComment(comment.id)}
+                                    title="Eliminar mi comentario"
                                   >
-                                    <div className="flex items-start justify-between gap-2 mb-2">
-                                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                                        <Avatar className="h-6 w-6 flex-shrink-0">
-                                          <AvatarImage src={reply.avatar} alt={reply.userName} />
-                                          <AvatarFallback>{reply.userName.charAt(0).toUpperCase()}</AvatarFallback>
-                                        </Avatar>
-                                        <div className="flex-1 min-w-0">
-                                          <div className="flex items-center gap-2 flex-wrap">
-                                            <span className="font-semibold text-gray-900 text-xs">{reply.userName}</span>
-                                            <span className="text-gray-400 text-[11px]">•</span>
-                                            <span className="text-gray-500 text-[11px] whitespace-nowrap">{reply.timestamp}</span>
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 px-2 gap-1 text-gray-500 hover:text-blue-600 transition-colors"
+                                  onClick={() => {
+                                    setReplyingTo(replyingTo === comment.id ? null : comment.id);
+                                    setReplyText("");
+                                  }}
+                                  title="Responder a este comentario"
+                                >
+                                  <MessageCircle className="h-3 w-3" />
+                                  <span className="text-xs">Responder</span>
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {replyingTo === comment.id && (
+                            <div className="mt-3 ml-11 border-l-2 border-blue-300 pl-3">
+                              <Textarea
+                                placeholder="Escribe tu respuesta..."
+                                value={replyText}
+                                onChange={(e) => setReplyText(e.target.value)}
+                                rows={2}
+                                className="mb-2 resize-none text-sm"
+                              />
+                              <div className="flex gap-2 justify-end">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setReplyingTo(null);
+                                    setReplyText("");
+                                  }}
+                                >
+                                  Cancelar
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                                  onClick={() => handleAddReply(comment.id)}
+                                  disabled={isSubmittingReply || !replyText.trim()}
+                                >
+                                  {isSubmittingReply ? (
+                                    <>
+                                      <div className="h-3 w-3 rounded-full bg-white animate-spin mr-2" />
+                                      Enviando...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Send className="h-3 w-3 mr-1" />
+                                      Responder
+                                    </>
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+
+                          {comment.replies && comment.replies.length > 0 && (
+                            <div className="mt-3">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 px-2 gap-1 text-xs text-blue-600 hover:text-blue-700"
+                                onClick={() => fetchReplies(comment.id)}
+                              >
+                                {expandedReplies.has(comment.id) ? '▼' : '▶'} Ver respuestas ({comment.replies.length})
+                              </Button>
+
+                              {expandedReplies.has(comment.id) && (
+                                <div className="mt-4 ml-8 space-y-3 border-l-2 border-blue-300 pl-4">
+                                  {comment.replies.map((reply) => (
+                                    <div
+                                      key={reply.id}
+                                      className="bg-gradient-to-r from-blue-50 to-blue-25 rounded-lg p-3 text-xs hover:shadow-sm transition-shadow border border-blue-100"
+                                    >
+                                      <div className="flex items-start justify-between gap-2 mb-2">
+                                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                                          <Avatar className="h-6 w-6 flex-shrink-0">
+                                            <AvatarImage src={reply.avatar} alt={reply.userName} />
+                                            <AvatarFallback>{reply.userName.charAt(0).toUpperCase()}</AvatarFallback>
+                                          </Avatar>
+                                          <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                              <span className="font-semibold text-gray-900 text-xs">{reply.userName}</span>
+                                              <span className="text-gray-400 text-[11px]">•</span>
+                                              <span className="text-gray-500 text-[11px] whitespace-nowrap">{reply.timestamp}</span>
+                                            </div>
                                           </div>
                                         </div>
+                                        {currentUserId === reply.userId && (
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-6 px-1 gap-1 text-gray-400 hover:text-red-600 transition-colors flex-shrink-0"
+                                            onClick={() => handleDeleteReply(reply.id, comment.id)}
+                                            title="Eliminar respuesta"
+                                          >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                          </Button>
+                                        )}
                                       </div>
-                                      {currentUserId === reply.userId && (
-                                        <Button
-                                          size="sm"
-                                          variant="ghost"
-                                          className="h-6 px-1 gap-1 text-gray-400 hover:text-red-600 transition-colors flex-shrink-0"
-                                          onClick={() => handleDeleteReply(reply.id, comment.id)}
-                                          title="Eliminar respuesta"
-                                        >
-                                          <Trash2 className="h-3.5 w-3.5" />
-                                        </Button>
-                                      )}
+                                      <p className="text-gray-700 text-xs leading-relaxed ml-8">{reply.message}</p>
                                     </div>
-                                    <p className="text-gray-700 text-xs leading-relaxed ml-8">{reply.message}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </Card>
-                    ))}
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </Card>
+                      ))}
 
-                    {comments.length > 3 && (
-                      <Button variant="outline" className="w-full text-sm" onClick={() => onViewAllReports(dynamicComments)}>
-                        Ver todos los comentarios ({dynamicComments.length})
-                      </Button>
-                    )}
-                  </>
-                ) : (
-                  <Card className="p-4 text-center text-gray-500">
-                    <MessageCircle className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                    <p className="text-sm">No hay comentarios aún</p>
-                    <p className="text-xs mt-1">¡Sé el primero en comentar!</p>
-                  </Card>
-                )}
+                      {comments.length > 3 && (
+                        <Button variant="outline" className="w-full text-sm" onClick={() => onViewAllReports(dynamicComments)}>
+                          Ver todos los comentarios ({dynamicComments.length})
+                        </Button>
+                      )}
+                    </>
+                  ) : (
+                    <Card className="p-4 text-center text-gray-500">
+                      <MessageCircle className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                      <p className="text-sm">No hay comentarios aún</p>
+                      <p className="text-xs mt-1">¡Sé el primero en comentar!</p>
+                    </Card>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div className="flex-shrink-0 p-4 bg-white border-t border-gray-200 shadow-lg">
-          <Button
-            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-md"
-            onClick={onCreateReport}
-          >
-            Crear Nuevo Reporte
-          </Button>
-        </div>
-      </motion.div>
+          <div className="flex-shrink-0 p-4 bg-white border-t border-gray-200 shadow-lg">
+            <Button
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-md"
+              onClick={onCreateReport}
+            >
+              Crear Nuevo Reporte
+            </Button>
+          </div>
+        </motion.div>
+      </AnimatePresence>
 
       <ReportDetailModal
         report={selectedReport}
@@ -952,6 +976,6 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
       />
-    </AnimatePresence>
+    </>
   );
 }
