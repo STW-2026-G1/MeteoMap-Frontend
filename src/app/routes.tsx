@@ -10,6 +10,11 @@ import ZoneForumPage from "./pages/ZoneForumPage";
 import StatsPage from "./pages/StatsPage";
 import ProfilePage from "./pages/ProfilePage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import AdminLayout from "./pages/admin/AdminLayout";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminModeration from "./pages/admin/AdminModeration";
+import AdminZones from "./pages/admin/AdminZones";
 
 export const router = createBrowserRouter([
   {
@@ -51,6 +56,32 @@ export const router = createBrowserRouter([
   {
     path: "/reset-password",
     Component: ResetPasswordPage,
+  },
+  {
+    path: "/admin",
+    Component: AdminLayout,
+    children: [
+      {
+        index: true,
+        Component: AdminDashboard,
+      },
+      {
+        path: "dashboard",
+        Component: AdminDashboard,
+      },
+      {
+        path: "usuarios",
+        Component: AdminUsers,
+      },
+      {
+        path: "moderacion",
+        Component: AdminModeration,
+      },
+      {
+        path: "configuracion",
+        Component: AdminZones,
+      },
+    ],
   },
   {
     path: "*",
