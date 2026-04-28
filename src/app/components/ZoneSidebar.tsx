@@ -118,11 +118,11 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
 
         console.log('Response:', response.ok);
         console.log('Data completa:', data);
-        console.log('Cache meteo:', data.data?.cache_meteo);
-        console.log('Forecast datos_crudos:', data.data?.cache_meteo?.datos_crudos);
+        console.log('Datos crudos forecast:', data.data?.datos_crudos);
 
-        if (response.ok && data.data && data.data.cache_meteo?.datos_crudos) {
-          const forecastArray = data.data.cache_meteo.datos_crudos;
+        // El controller devuelve los datos transformados en "datos_crudos"
+        if (response.ok && data.data && Array.isArray(data.data.datos_crudos)) {
+          const forecastArray = data.data.datos_crudos;
          
           const transformedForecast = forecastArray.map((item: any, index: number) => ({
             time: item.hora,

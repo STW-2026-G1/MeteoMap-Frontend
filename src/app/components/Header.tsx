@@ -1,9 +1,11 @@
 import { Link, useNavigate } from "react-router";
 import { Button } from "./ui/button";
-import { Cloud, Menu, X, BarChart3, LogOut } from "lucide-react";
+import { Cloud, Menu, X, BarChart3, LogOut, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { ImageWithFallback } from "./common/ImageWithFallback";
+import { useWeatherSync } from "../../hooks/useWeatherSync";
+import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,13 +18,29 @@ import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
+  const { syncWeather } = useWeatherSync();
   const navigate = useNavigate();
 
   const handleLogout = () => {
     logout();
     setMobileMenuOpen(false);
     navigate("/");
+  };
+
+  const handleWeatherSync = async () => {
+    setIsSyncing(true);
+    toast.loading("Actualizando datos meteorológicos...");
+    
+    try {
+      await syncWeather();
+      toast.success("✓ Datos meteorológicos actualizados");
+    } catch (error) {
+      toast.error("Error al actualizar datos meteorológicos");
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   return (
@@ -48,6 +66,18 @@ export function Header() {
             {/* Auth buttons / User menu */}
             {isAuthenticated ? (
               <>
+                {/* Weather Sync Button */}
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="text-gray-700 hover:text-blue-600"
+                  onClick={handleWeatherSync}
+                  disabled={isSyncing}
+                  title="Sincronizar datos meteorológicos"
+                >
+                  <RefreshCw className={`h-5 w-5 ${isSyncing ? "animate-spin" : ""}`} />
+                </Button>
+
                 {/* Stats/Chart Button */}
                 <Button variant="ghost" size="icon" className="text-gray-700" asChild>
                   <Link to="/estadisticas">
@@ -175,6 +205,16 @@ export function Header() {
                       <BarChart3 className="h-5 w-5" />
                       Estadísticas
                     </Link>
+
+                    <Button
+                      variant="ghost"
+                      className="justify-start w-full text-gray-700 hover:text-blue-600"
+                      onClick={handleWeatherSync}
+                      disabled={isSyncing}
+                    >
+                      <RefreshCw className={`h-5 w-5 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
+                      {isSyncing ? "Sincronizando..." : "Actualizar Meteorología"}
+                    </Button>
 
                     <Button
                       variant="outline"
