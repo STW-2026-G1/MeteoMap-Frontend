@@ -1,4 +1,4 @@
-import { X, Star, Cloud, Thermometer, Wind, TrendingUp, Clock, User, MessageCircle, ThumbsUp, Send, Trash2 } from "lucide-react";
+import { X, Star, Cloud, Thermometer, Wind, TrendingUp, Clock, User, MessageCircle, ThumbsUp, Send, Trash2, Edit2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -83,6 +83,9 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
   const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
   const [forecastData, setForecastData] = useState<Array<{time: string; temp: number}> | null>(null);
   const [forecastLoading, setForecastLoading] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
 
   const handleReportClick = (report: UserReport) => {
     setSelectedReport(report);
@@ -462,6 +465,75 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
     }
   };
 
+  const updateEditedComment = (commentId: string, newText: string): boolean => {
+    let found = false;
+    const updateInTree = (comments: Comment[]): Comment[] => {
+      return comments.map(comment => {
+        if (comment.id === commentId) {
+          found = true;
+          return { ...comment, message: newText };
+        }
+        if (comment.replies && comment.replies.length > 0) {
+          const updatedReplies = updateInTree(comment.replies);
+          if (updatedReplies !== comment.replies) {
+            found = true;
+            return { ...comment, replies: updatedReplies };
+          }
+        }
+        return comment;
+      });
+    };
+    
+    setDynamicComments(prev => {
+      const updated = updateInTree(prev);
+      if (found) {
+        return updated;
+      }
+      return prev;
+    });
+    
+    return found;
+  };
+
+  const handleEditComment = async (commentId: string, newText: string) => {
+    if (!newText.trim()) {
+      alert("El comentario no puede estar vacío");
+      return;
+    }
+
+    const rawToken = localStorage.getItem('meteomap_token');
+    if (!rawToken) {
+      alert("Sesión expirada. Por favor, inicia sesión de nuevo.");
+      return;
+    }
+
+    setIsSubmittingEdit(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/comments/${commentId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${rawToken}`,
+        },
+        body: JSON.stringify({ contenido: newText }),
+      });
+
+      if (response.ok) {
+        updateEditedComment(commentId, newText);
+        setEditingCommentId(null);
+        setEditingText("");
+      } else {
+        const data = await response.json();
+        alert(data.message || "Error al actualizar el comentario");
+      }
+    } catch (error) {
+      console.error("Error en la petición PUT:", error);
+      alert("Error al actualizar el comentario");
+    } finally {
+      setIsSubmittingEdit(false);
+    }
+  };
+
   const comments = dynamicComments.length > 0 ? dynamicComments : [];
 
   const handleAddReply = async (commentId: string) => {
@@ -797,51 +869,105 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
                                   {comment.timestamp}
                                 </div>
                               </div>
-                              <p className="text-sm text-gray-600 mt-1">{comment.message}</p>
+                              {editingCommentId === comment.id ? (
+                                <div className="mt-2 space-y-2">
+                                  <Textarea
+                                    value={editingText}
+                                    onChange={(e) => setEditingText(e.target.value)}
+                                    className="min-h-16 resize-none text-sm"
+                                  />
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      className="bg-blue-600 hover:bg-blue-700 text-white flex-1"
+                                      onClick={() => handleEditComment(comment.id, editingText)}
+                                      disabled={isSubmittingEdit || !editingText.trim() || editingText === comment.message}
+                                    >
+                                      {isSubmittingEdit ? (
+                                        <>
+                                          <div className="h-3 w-3 rounded-full bg-white animate-spin mr-2" />
+                                          Guardando...
+                                        </>
+                                      ) : (
+                                        'Guardar'
+                                      )}
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => {
+                                        setEditingCommentId(null);
+                                        setEditingText("");
+                                      }}
+                                    >
+                                      Cancelar
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  <p className="text-sm text-gray-600 mt-1">{comment.message}</p>
 
-                              <div className="mt-2 flex items-center gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className={`h-6 px-2 gap-1 ${
-                                    likedComments.has(comment.id)
-                                      ? 'text-blue-600'
-                                      : 'text-gray-500 hover:text-blue-600'
-                                  }`}
-                                  onClick={() => handleLikeComment(comment.id)}
-                                >
-                                  <ThumbsUp className={`h-3 w-3 ${likedComments.has(comment.id) ? 'fill-current' : ''}`} />
-                                  <span className="text-xs">
-                                    {comment.likes}
-                                  </span>
-                                </Button>
+                                  <div className="mt-2 flex items-center gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className={`h-8 gap-1 transition-colors ${
+                                        likedComments.has(comment.id)
+                                          ? 'text-blue-600 hover:text-blue-700'
+                                          : 'text-gray-600 hover:text-blue-600'
+                                      }`}
+                                      onClick={() => handleLikeComment(comment.id)}
+                                      title="Me gusta"
+                                    >
+                                      <ThumbsUp className={`h-4 w-4 ${likedComments.has(comment.id) ? 'fill-current' : ''}`} />
+                                      <span className="text-xs">
+                                        {comment.likes}
+                                      </span>
+                                    </Button>
 
-                                {currentUserId === comment.userId && (
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-6 px-2 gap-1 text-gray-400 hover:text-red-600 transition-colors"
-                                    onClick={() => handleDeleteComment(comment.id)}
-                                    title="Eliminar mi comentario"
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                )}
+                                    {currentUserId === comment.userId && (
+                                      <>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-8 gap-1 text-gray-400 hover:text-blue-600 transition-colors"
+                                          onClick={() => {
+                                            setEditingCommentId(comment.id);
+                                            setEditingText(comment.message);
+                                          }}
+                                          title="Editar comentario"
+                                        >
+                                          <Edit2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-8 gap-1 text-gray-400 hover:text-red-600 transition-colors"
+                                          onClick={() => handleDeleteComment(comment.id)}
+                                          title="Eliminar mi comentario"
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </>
+                                    )}
 
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-6 px-2 gap-1 text-gray-500 hover:text-blue-600 transition-colors"
-                                  onClick={() => {
-                                    setReplyingTo(replyingTo === comment.id ? null : comment.id);
-                                    setReplyText("");
-                                  }}
-                                  title="Responder a este comentario"
-                                >
-                                  <MessageCircle className="h-3 w-3" />
-                                  <span className="text-xs">Responder</span>
-                                </Button>
-                              </div>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-8 gap-1 text-gray-600 hover:text-blue-600 transition-colors"
+                                      onClick={() => {
+                                        setReplyingTo(replyingTo === comment.id ? null : comment.id);
+                                        setReplyText("");
+                                      }}
+                                      title="Responder"
+                                    >
+                                      <MessageCircle className="h-4 w-4" />
+                                      <span className="text-xs">Responder</span>
+                                    </Button>
+                                  </div>
+                                </>
+                              )}
                             </div>
                           </div>
 
@@ -905,33 +1031,79 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
                                       key={reply.id}
                                       className="bg-gradient-to-r from-blue-50 to-blue-25 rounded-lg p-3 text-xs hover:shadow-sm transition-shadow border border-blue-100"
                                     >
-                                      <div className="flex items-start justify-between gap-2 mb-2">
-                                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                                          <Avatar className="h-6 w-6 flex-shrink-0">
-                                            <AvatarImage src={reply.avatar} alt={reply.userName} />
-                                            <AvatarFallback>{reply.userName.charAt(0).toUpperCase()}</AvatarFallback>
-                                          </Avatar>
-                                          <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 flex-wrap">
-                                              <span className="font-semibold text-gray-900 text-xs">{reply.userName}</span>
-                                              <span className="text-gray-400 text-[11px]">•</span>
-                                              <span className="text-gray-500 text-[11px] whitespace-nowrap">{reply.timestamp}</span>
-                                            </div>
+                                      {editingCommentId === reply.id ? (
+                                        <div className="space-y-2">
+                                          <Textarea
+                                            value={editingText}
+                                            onChange={(e) => setEditingText(e.target.value)}
+                                            className="min-h-12 resize-none text-xs"
+                                          />
+                                          <div className="flex gap-2">
+                                            <Button
+                                              size="sm"
+                                              className="bg-blue-600 hover:bg-blue-700 text-white flex-1"
+                                              onClick={() => handleEditComment(reply.id, editingText)}
+                                              disabled={isSubmittingEdit || !editingText.trim() || editingText === reply.message}
+                                            >
+                                              {isSubmittingEdit ? 'Guardando...' : 'Guardar'}
+                                            </Button>
+                                            <Button
+                                              size="sm"
+                                              variant="ghost"
+                                              onClick={() => {
+                                                setEditingCommentId(null);
+                                                setEditingText("");
+                                              }}
+                                            >
+                                              Cancelar
+                                            </Button>
                                           </div>
                                         </div>
-                                        {currentUserId === reply.userId && (
-                                          <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            className="h-6 px-1 gap-1 text-gray-400 hover:text-red-600 transition-colors flex-shrink-0"
-                                            onClick={() => handleDeleteReply(reply.id, comment.id)}
-                                            title="Eliminar respuesta"
-                                          >
-                                            <Trash2 className="h-3.5 w-3.5" />
-                                          </Button>
-                                        )}
-                                      </div>
-                                      <p className="text-gray-700 text-xs leading-relaxed ml-8">{reply.message}</p>
+                                      ) : (
+                                        <>
+                                          <div className="flex items-start justify-between gap-2 mb-2">
+                                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                              <Avatar className="h-6 w-6 flex-shrink-0">
+                                                <AvatarImage src={reply.avatar} alt={reply.userName} />
+                                                <AvatarFallback>{reply.userName.charAt(0).toUpperCase()}</AvatarFallback>
+                                              </Avatar>
+                                              <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                  <span className="font-semibold text-gray-900 text-xs">{reply.userName}</span>
+                                                  <span className="text-gray-400 text-[11px]">•</span>
+                                                  <span className="text-gray-500 text-[11px] whitespace-nowrap">{reply.timestamp}</span>
+                                                </div>
+                                              </div>
+                                            </div>
+                                            {currentUserId === reply.userId && (
+                                              <div className="flex gap-1">
+                                                <Button
+                                                  size="sm"
+                                                  variant="ghost"
+                                                  className="h-6 px-1 gap-1 text-gray-400 hover:text-blue-600 transition-colors flex-shrink-0"
+                                                  onClick={() => {
+                                                    setEditingCommentId(reply.id);
+                                                    setEditingText(reply.message);
+                                                  }}
+                                                  title="Editar respuesta"
+                                                >
+                                                  <Edit2 className="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Button
+                                                  size="sm"
+                                                  variant="ghost"
+                                                  className="h-6 px-1 gap-1 text-gray-400 hover:text-red-600 transition-colors flex-shrink-0"
+                                                  onClick={() => handleDeleteReply(reply.id, comment.id)}
+                                                  title="Eliminar respuesta"
+                                                >
+                                                  <Trash2 className="h-3.5 w-3.5" />
+                                                </Button>
+                                              </div>
+                                            )}
+                                          </div>
+                                          <p className="text-gray-700 text-xs leading-relaxed ml-8">{reply.message}</p>
+                                        </>
+                                      )}
                                     </div>
                                   ))}
                                 </div>
