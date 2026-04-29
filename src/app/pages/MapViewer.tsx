@@ -62,7 +62,7 @@ interface ZoneData {
   elevation: string;
   temperature: number;
   wind: number;
-  weather: string;
+  weather: number;
   isFavorite: boolean;
   coordinates?: [number, number]; // [lng, lat]
   reports: UserReport[];
@@ -132,7 +132,7 @@ export default function MapViewer() {
   const [searchResults, setSearchResults] = useState<ZoneData[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* ========================================================================== */
   /* EFECTO 1: API Data Fetching & Transformation                             */
@@ -366,7 +366,7 @@ export default function MapViewer() {
         wind: wind,
         weather: weatherCode,
         isFavorite: favoriteZones.has(zoneId),
-        coordinates: [lng, lat],
+        coordinates: [lng, lat] as [number, number],
         reports: [],
       };
 
@@ -787,9 +787,9 @@ export default function MapViewer() {
             elevation: '1.500m', // O zone.altitud si lo tienes
             temperature: currentData?.temperatura ?? 0,
             wind: currentData?.velocidad_viento ?? 0,
-            weather: currentData?.descripcion,
+            weather: currentData?.codigo_clima ?? 0,
             isFavorite: favoriteZones.has(zone._id),
-            coordinates: [lng, lat],
+            coordinates: [lng, lat] as [number, number],
             reports: [],
          };
          }).slice(0, 10);
@@ -817,7 +817,7 @@ export default function MapViewer() {
             wind: zone.cache_meteo?.datos_crudos?.current?.wind_speed_10m ?? 0,
             weather: zone.cache_meteo?.datos_crudos?.current?.codigo_clima ?? 0,
             isFavorite: favoriteZones.has(zone._id),
-            coordinates: [lng, lat],
+            coordinates: [lng, lat] as [number, number],
             reports: [],
           };
         })

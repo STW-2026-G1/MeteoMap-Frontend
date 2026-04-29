@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router";
 import { Button } from "./ui/button";
-import { Cloud, Menu, X, BarChart3, LogOut, RefreshCw } from "lucide-react";
+import { Cloud, Menu, X, BarChart3, LogOut, RefreshCw, Shield } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { ImageWithFallback } from "./common/ImageWithFallback";
@@ -22,6 +22,7 @@ export function Header() {
   const { user, isAuthenticated, logout } = useAuth();
   const { syncWeather } = useWeatherSync();
   const navigate = useNavigate();
+  const isAdmin = user?.rol === "ADMIN";
 
   const handleLogout = () => {
     logout();
@@ -121,6 +122,14 @@ export function Header() {
                         Estadísticas
                       </Link>
                     </DropdownMenuItem>
+                    {isAdmin && (
+                      <DropdownMenuItem asChild>
+                        <Link to="/admin" className="cursor-pointer">
+                          <Shield className="h-4 w-4 mr-2" />
+                          Panel Admin
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600">
                       <LogOut className="h-4 w-4 mr-2" />
@@ -205,6 +214,17 @@ export function Header() {
                       <BarChart3 className="h-5 w-5" />
                       Estadísticas
                     </Link>
+
+                    {isAdmin && (
+                      <Link
+                        to="/admin"
+                        className="flex items-center gap-2 text-lg text-gray-700 hover:text-blue-600 transition-colors py-2"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <Shield className="h-5 w-5" />
+                        Panel Admin
+                      </Link>
+                    )}
 
                     <Button
                       variant="ghost"

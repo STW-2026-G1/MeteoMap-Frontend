@@ -4,14 +4,20 @@ import { useAuth } from "../contexts/AuthContext";
 
 interface ProtectedRouteProps {
   children: ReactNode;
+  allowedRoles?: string[];
+  unauthorizedRedirectTo?: string;
 }
 
 /**
  * Componente que protege rutas privadas redirigiendo al login
  * si el usuario no está autenticado.
  */
-export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { isAuthenticated, loading } = useAuth();
+export function ProtectedRoute({
+  children,
+  allowedRoles,
+  unauthorizedRedirectTo = "/mapa",
+}: ProtectedRouteProps) {
+  const { user, isAuthenticated, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -28,6 +34,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   if (!isAuthenticated) {
     // Redirigir a login pero guardar la ubicación actual para volver después
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (allowedRoles?.length && (!user?.rol || !allowedRoles.includes(user.rol))) {
+    return <Navigate to={unauthorizedRedirectTo} replace />;
   }
 
   return <>{children}</>;
