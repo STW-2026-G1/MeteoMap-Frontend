@@ -34,6 +34,7 @@ interface MapMarker {
   lng: number;
   type: 'snow' | 'ice' | 'alert';
   label: string;
+  color?: string;
 }
 
 interface UserReport {
@@ -106,33 +107,16 @@ export default function MapViewer() {
   /* ========================================================================== */
   const [apiZones, setApiZones] = useState<any[]>([]);
   const [markers, setMarkers] = useState<MapMarker[]>([]);
+  // Nuevos estados para las alertas
+  const [aemetAlerts, setAemetAlerts] = useState<any[]>([]);
+  const [alertMarkers, setAlertMarkers] = useState<MapMarker[]>([]);
+  const [aemetLoading, setAemetLoading] = useState(false);
+  
+  // Añade también una referencia para los marcadores de alertas en el mapa (junto a userMarkersRef en la línea 45)
+  const alertMarkersRef = useRef<L.Marker[]>([]);
   const [zonesDataState, setZonesDataState] = useState<{ [key: string]: ZoneData }>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  /* ========================================================================== */
-  /* DATOS ESTÁTICOS - Weather & Meteorological Data                          */
-  /* Coordenadas y valores meteorológicos de ejemplo para visualización        */
-  /* ========================================================================== */
-  const temperatureData = [
-    { lat: 42.60, lng: 0.70, temp: -2, color: '#f97316' },
-    { lat: 42.70, lng: 0.95, temp: 5, color: '#ef4444' },
-    { lat: 42.50, lng: 0.60, temp: -5, color: '#eab308' },
-    { lat: 42.65, lng: 0.90, temp: 1, color: '#ea580c' },
-  ];
-
-  const precipitationData = [
-    { lat: 42.58, lng: 0.65, precip: 15 },
-    { lat: 42.52, lng: 0.85, precip: 8 },
-    { lat: 42.68, lng: 0.78, precip: 22 },
-  ];
-
-  const windData = [
-    { lat: 42.72, lng: 0.88, speed: 25, rotation: 45 },
-    { lat: 42.52, lng: 0.70, speed: 18, rotation: 90 },
-    { lat: 42.67, lng: 0.92, speed: 32, rotation: 12 },
-    { lat: 42.58, lng: 0.82, speed: 15, rotation: -45 },
-  ];
 
   // Referencia a los datos de zonas transformadas
   const zonesData = zonesDataState;
@@ -217,18 +201,56 @@ export default function MapViewer() {
     fetchAndTransformZones();
   }, []);
 
-  /* ========================================================================== */
-  /* HOOK AEMET: Alertas meteorológicas desde AEMET                            */
-  /* Carga y gestiona las alertas de riesgo meteorológico                      */
-  /* ========================================================================== */
-  const { alerts: aemetAlerts, loading: aemetLoading, fetchAlerts: refreshAemetAlerts } = useAemetAlerts(
-    mapInstanceRef.current,
-    layers.aemetAlerts,
-    layerOpacity.aemetAlerts / 100
-  );
 
+/* ========================================================================== */
+  /* EFECTO 2: Obtener Alertas de la API                                          */
   /* ========================================================================== */
-  /* EFECTO 2: Cargar zonas favoritas del usuario autenticado                */
+  const refreshAemetAlerts = async () => {
+    try {
+      setAemetLoading(true);
+      const apiUrl = `${SERVER_URL}/aemet-alerts`; // Asegúrate de que esta sea la ruta correcta de tu backend
+      console.log('Fetching alerts from:', apiUrl);
+
+      const response = await fetch(apiUrl);
+      if (!response.ok) throw new Error(`API Error: ${response.status}`);
+
+      const apiResponse = await response.json();
+      const alertsFromApi = apiResponse.data || apiResponse;
+
+      const transformedAlertMarkers: MapMarker[] = alertsFromApi.map((alert: any) => {
+        // Adaptar según tu modelo: alert.coordenadas.latitud o alert.geolocalizacion...
+        const lat = alert.coordenadas?.latitud || alert.geolocalizacion?.coordinates?.[1] || 0;
+        const lng = alert.coordenadas?.longitud || alert.geolocalizacion?.coordinates?.[0] || 0;
+        // Determinar el color correcto según la severidad de la AEMET
+        let markerColor = '#f59e0b'; // Amarillo: moderado (por defecto)
+        if (alert.nivelNumerico >= 3) markerColor = '#ef4444'; // Rojo: crítico
+        else if (alert.nivelNumerico === 2) markerColor = '#f97316'; // Naranja:
+        
+        return {
+           id: alert.id || alert._id,
+           lat: lat,
+           lng: lng,
+           type: 'alert' as const, // Forzamos el tipo 'alert' para que use el círculo rojo
+           label: alert.tipo || "Alerta",
+           color: markerColor,
+        };
+      });
+
+      setAemetAlerts(alertsFromApi);
+      setAlertMarkers(transformedAlertMarkers);
+    } catch (err) {
+      console.error('❌ Error loading alerts:', err);
+    } finally {
+      setAemetLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshAemetAlerts();
+  }, []);
+ 
+  /* ========================================================================== */
+  /* EFECTO 3: Cargar zonas favoritas del usuario autenticado                */
   /* Obtiene las zonas marcadas como favoritas desde el backend               */
   /* ========================================================================== */
   useEffect(() => {
@@ -271,7 +293,7 @@ export default function MapViewer() {
    * Selecciona una zona para mostrar su información en el sidebar
    * Llama a la API para obtener datos meteorológicos actualizados
    * @param zoneId - ID de posición en el array (1-indexed)
-   *** TODO: DECIDIR SI LLAMAR A LA API EN CADA CLICK O NO
+   *
    */
   const handleZoneSelect = async (zoneId: string) => {
     try {
@@ -373,7 +395,7 @@ export default function MapViewer() {
       animate: true,
     });
 
-    console.log('📍 Navegando a alerta:', alert.tipo, 'en', alert.zona);
+    console.log('Navegando a alerta:', alert.tipo, 'en', alert.zona);
   };
 
   /**
@@ -480,7 +502,7 @@ export default function MapViewer() {
       case 'ice':
         return createCustomIcon('#06b6d4');
       case 'alert':
-        return createCustomIcon('#ef4444');
+        return createCustomIcon('#f59e0b');
       default:
         return createCustomIcon('#6b7280');
     }
@@ -528,7 +550,6 @@ export default function MapViewer() {
       const leafletMarker = L.marker([marker.lat, marker.lng], {
         icon: getMarkerIcon(marker.type),
       }).addTo(map);
-
       const popupContent = `
         <div style="display: flex; align-items: center; gap: 8px;">
           ${getIconSvg(marker.type)}
@@ -544,57 +565,29 @@ export default function MapViewer() {
 
       userMarkersRef.current.push(leafletMarker);
     });
+      /* Agregar marcadores de alertas al mapa */
+      alertMarkers.forEach((marker) => {
+        const leafletMarker = L.marker([marker.lat, marker.lng], {
+          icon: getMarkerIcon(marker.type), // Como es tipo 'alert', usará el círculo rojo
+        }).addTo(map);
 
-    /* Agregar marcadores de temperatura al mapa */
-    temperatureData.forEach((data) => {
-      const marker = L.marker([data.lat, data.lng], {
-        icon: L.divIcon({
-          className: 'custom-weather-marker',
-          html: `<div style="background-color: ${data.color}cc; color: white; padding: 6px 12px; border-radius: 8px; font-weight: 600; font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); white-space: nowrap;">${data.temp}°C</div>`,
-          iconSize: [60, 30],
-          iconAnchor: [30, 15],
-        }),
+        const popupContent = `
+          <div style="display: flex; align-items: center; gap: 8px;">
+            ${getIconSvg(marker.type)}
+            <span style="font-weight: 500;">${marker.label}</span>
+          </div>
+        `;
+
+        leafletMarker.bindPopup(popupContent);
+
+        // Usamos la función de centrado que ya tenías
+        leafletMarker.on('click', () => {
+          const fullAlert = aemetAlerts.find(a => (a.id || a._id) === marker.id);
+          if (fullAlert) handleAemetAlertClick(fullAlert);
+        });
+
+        alertMarkersRef.current.push(leafletMarker);
       });
-
-      weatherLayersRef.current.temperature.push(marker);
-    });
-
-    /* Agregar marcadores de precipitación al mapa */
-    precipitationData.forEach((data) => {
-      const marker = L.marker([data.lat, data.lng], {
-        icon: L.divIcon({
-          className: 'custom-weather-marker',
-          html: `<div style="background-color: #2563ebcc; color: white; padding: 6px 12px; border-radius: 8px; font-weight: 600; font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); white-space: nowrap;">${data.precip} mm/h</div>`,
-          iconSize: [80, 30],
-          iconAnchor: [40, 15],
-        }),
-      });
-
-      weatherLayersRef.current.precipitation.push(marker);
-    });
-
-    /* Agregar marcadores de viento al mapa */
-    windData.forEach((data) => {
-      const marker = L.marker([data.lat, data.lng], {
-        icon: L.divIcon({
-          className: 'custom-weather-marker',
-          html: `
-            <div style="background-color: #0d9488cc; color: white; padding: 6px 12px; border-radius: 8px; font-weight: 600; font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); white-space: nowrap; display: flex; align-items: center; gap: 4px;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(${data.rotation}deg);">
-                <path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/>
-                <path d="M9.6 4.6A2 2 0 1 1 11 8H2"/>
-                <path d="M12.6 19.4A2 2 0 1 0 14 16H2"/>
-              </svg>
-              <span>${data.speed} km/h</span>
-            </div>
-          `,
-          iconSize: [120, 30],
-          iconAnchor: [60, 15],
-        }),
-      });
-
-      weatherLayersRef.current.wind.push(marker);
-    });
 
     /* Limpieza de recursos cuando se desmonta el componente */
     return () => {
@@ -609,79 +602,109 @@ export default function MapViewer() {
     };
   }, [loading, markers]);
 
-  /* ========================================================================== */
-  /* EFECTO 3: Layer Visibility & Opacity Control                              */
-  /* Controla la visibilidad y opacidad de capas meteorológicas y marcadores   */
-  /* Se actualiza cuando cambian los estados de capas u opacidad              */
+ /* ========================================================================== */
+  /* EFECTO 3: Construir marcadores de Alertas en memoria                       */
   /* ========================================================================== */
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
 
-    /* Control de visibilidad de marcadores de zonas */
-    userMarkersRef.current.forEach((marker, index) => {
-      const markerData = markers[index];
+    // 1. Limpiar los marcadores antiguos por completo
+    alertMarkersRef.current.forEach(marker => marker.remove());
+    alertMarkersRef.current = [];
 
-      let shouldShow = true;
+    // 2. Crear los nuevos marcadores en memoria
+    alertMarkers.forEach((marker) => {
+      // Usar el color dinámico si lo tiene, si no, usar el genérico
+      const icon = marker.type === 'alert' && marker.color 
+        ? createCustomIcon(marker.color) 
+        : getMarkerIcon(marker.type);
 
-      if (!layers.userReports) {
-        shouldShow = false;
-      } else if (!layers.avalanche && markerData.type === 'alert') {
-        shouldShow = false;
+      const leafletMarker = L.marker([marker.lat, marker.lng], { icon });
+
+      // Buscamos la alerta completa en el estado usando el ID
+      const fullAlert = aemetAlerts.find(a => (a.id || a._id) === marker.id);
+      
+      leafletMarker.on('click', () => {
+        if (fullAlert) handleAemetAlertClick(fullAlert);
+      });
+
+      // 3. Construir el contenido del Popup
+      let popupContent = '<div style="padding: 10px;">Cargando información...</div>';
+
+      if (fullAlert) {
+        // Formateo de fechas guardadas en variables seguras
+        const inicioStr = fullAlert.validez_inicio ? new Date(fullAlert.validez_inicio).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Desconocida';
+        const finStr = fullAlert.validez_fin ? new Date(fullAlert.validez_fin).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Desconocida';
+
+        // HTML del popup usando las variables formateadas
+        popupContent = `
+          <div style="min-width: 240px; max-width: 300px; max-height: 380px; overflow-y: auto; font-family: sans-serif; padding-right: 4px;">
+            
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; border-bottom: 2px solid ${marker.color || '#f59e0b'}; padding-bottom: 4px;">
+              ${getIconSvg(marker.type)}
+              <span style="font-weight: bold; text-transform: uppercase; color: ${marker.color || '#f59e0b'}; letter-spacing: 0.5px;">
+                NIVEL ${fullAlert.nivel || 'DESCONOCIDO'}
+              </span>
+            </div>
+            
+            <div style="margin-bottom: 10px;">
+              <div style="font-weight: 800; font-size: 1.1em; margin-bottom: 4px; color: #1f2937; line-height: 1.2;">
+                ${fullAlert.tipo || 'Alerta Meteorológica'}
+              </div>
+              <div style="color: #4b5563; font-size: 0.9em; margin-bottom: 8px;">
+                📍 <strong>${fullAlert.zona || 'Zona no especificada'}</strong>
+              </div>
+              
+              <div style="font-size: 0.9em; line-height: 1.4; background: #f3f4f6; padding: 8px; border-radius: 6px; border-left: 4px solid ${marker.color || '#d1d5db'}; color: #374151;">
+                ${fullAlert.descripcion || 'Sin descripción disponible.'}
+              </div>
+            </div>
+
+            ${fullAlert.instrucciones && fullAlert.instrucciones !== 'No hay instrucciones adicionales.' ? `
+              <div style="margin-bottom: 10px; background: #fffbeb; border: 1px solid #fef3c7; padding: 8px; border-radius: 6px;">
+                <span style="color: #92400e; font-size: 0.85em; font-weight: bold; display: block; margin-bottom: 3px;">⚠️ Instrucciones oficiales:</span>
+                <span style="color: #92400e; font-size: 0.85em; line-height: 1.3; display: block;">${fullAlert.instrucciones}</span>
+              </div>
+            ` : ''}
+
+            <div style="font-size: 0.85em; background: #f8fafc; padding: 8px; border-radius: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; color: #475569; margin-bottom: 10px; border: 1px solid #e2e8f0;">
+              <div style="grid-column: span 2;"><strong>Probabilidad:</strong> <span style="float: right;">${fullAlert.probabilidad || 'N/A'}</span></div>
+              <div style="grid-column: span 2;"><strong>Certidumbre:</strong> <span style="float: right;">${fullAlert.certidumbre || 'N/A'}</span></div>
+              <div style="grid-column: span 2;"><strong>Urgencia:</strong> <span style="float: right;">${fullAlert.urgencia || 'N/A'}</span></div>
+            </div>
+
+            <div style="font-size: 0.8em; border-top: 1px solid #e2e8f0; padding-top: 8px; color: #64748b; display: grid; gap: 4px;">
+              <div style="display: flex; justify-content: space-between;"><strong>Inicio:</strong> <span>${inicioStr}</span></div>
+              <div style="display: flex; justify-content: space-between;"><strong>Fin:</strong> <span>${finStr}</span></div>
+              
+              ${fullAlert.enlace ? `
+                <a href="${fullAlert.enlace}" target="_blank" rel="noopener noreferrer" style="color: #2563eb; text-decoration: none; font-weight: bold; margin-top: 8px; display: block; text-align: center; background: #eff6ff; padding: 6px; border-radius: 4px;">
+                  Ver aviso en AEMET ↗
+                </a>
+              ` : ''}
+            </div>
+          </div>
+        `;
       }
 
-      if (shouldShow && !map.hasLayer(marker)) {
-        marker.addTo(map);
-      } else if (!shouldShow && map.hasLayer(marker)) {
-        map.removeLayer(marker);
+      // Añadimos el popup al marcador
+      leafletMarker.bindPopup(popupContent, {
+        maxWidth: 320, 
+      });
+
+      // Si la capa está activa desde el principio, lo pintamos ya
+      if (layers.aemetAlerts) {
+        leafletMarker.addTo(map);
+        const element = leafletMarker.getElement();
+        if (element) element.style.opacity = `${layerOpacity.aemetAlerts / 100}`;
       }
+
+      // Guardamos la referencia
+      alertMarkersRef.current.push(leafletMarker);
     });
 
-    /* Control de visibilidad y opacidad de marcadores de temperatura */
-    weatherLayersRef.current.temperature.forEach((marker) => {
-      if (layers.temperature) {
-        if (!map.hasLayer(marker)) {
-          marker.addTo(map);
-        }
-        const element = marker.getElement();
-        if (element) {
-          element.style.opacity = `${layerOpacity.temperature / 100}`;
-        }
-      } else if (map.hasLayer(marker)) {
-        map.removeLayer(marker);
-      }
-    });
-
-    /* Control de visibilidad y opacidad de marcadores de precipitación */
-    weatherLayersRef.current.precipitation.forEach((marker) => {
-      if (layers.precipitation) {
-        if (!map.hasLayer(marker)) {
-          marker.addTo(map);
-        }
-        const element = marker.getElement();
-        if (element) {
-          element.style.opacity = `${layerOpacity.precipitation / 100}`;
-        }
-      } else if (map.hasLayer(marker)) {
-        map.removeLayer(marker);
-      }
-    });
-
-    /* Control de visibilidad y opacidad de marcadores de viento */
-    weatherLayersRef.current.wind.forEach((marker) => {
-      if (layers.wind) {
-        if (!map.hasLayer(marker)) {
-          marker.addTo(map);
-        }
-        const element = marker.getElement();
-        if (element) {
-          element.style.opacity = `${layerOpacity.wind / 100}`;
-        }
-      } else if (map.hasLayer(marker)) {
-        map.removeLayer(marker);
-      }
-    });
-  }, [layers, layerOpacity, markers]);
+  }, [alertMarkers, aemetAlerts, layers.aemetAlerts]);
 
   /**
    * Aumenta el nivel de zoom del mapa
@@ -816,8 +839,8 @@ export default function MapViewer() {
                           {/* Ordenar alertas por severidad: rojo > amarillo > verde */}
                           {[
                             ...aemetAlerts.filter(a => a.nivelNumerico >= 3), // Rojo: crítico
-                            ...aemetAlerts.filter(a => a.nivelNumerico === 2), // Amarillo: warning
-                            ...aemetAlerts.filter(a => a.nivelNumerico === 1), // Verde: información
+                            ...aemetAlerts.filter(a => a.nivelNumerico === 2), // Naranja: warning
+                            ...aemetAlerts.filter(a => a.nivelNumerico === 1), // amarillo: moderado
                           ].map((alert) => {
                             // Determinar color del borde y fondo según severidad
                             let borderColor = '#f87171'; // Rojo por defecto
@@ -828,8 +851,12 @@ export default function MapViewer() {
                               borderColor = '#ef4444'; // Rojo: crítico
                               bgColor = '#fca5a5';
                               hoverColor = '#f87171';
-                            } else {
-                              borderColor = '#f59e0b'; // Amarillo: warning
+                            }else if (alert.nivelNumerico == 2) {
+                              borderColor = '#f87171'; // Naranja: warning
+                              bgColor = '#fee2e2';
+                              hoverColor = '#fecaca'; 
+                            }else if (alert.nivelNumerico == 1) {
+                              borderColor = '#f59e0b'; // Amarillo: moderado
                               bgColor = '#fef3c7';
                               hoverColor = '#fde68a';
                             }

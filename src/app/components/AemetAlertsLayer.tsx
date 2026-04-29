@@ -10,16 +10,22 @@ interface AlertData {
   id: string;
   zona: string;
   tipo: string;
+  titular: string;
   nivel: string;
   nivelNumerico: number;
   descripcion: string;
+  instrucciones: string;
+  probabilidad: string;
+  certidumbre: string;
+  urgencia: string;
+  enlace: string;
   coordenadas: {
     latitud: number;
     longitud: number;
   };
-  fecha_inicio: string;
-  fecha_fin: string;
-  icono: string;
+  emision: string;
+  validez_inicio: string;
+  validez_fin: string;
   color: string;
 }
 
@@ -152,20 +158,45 @@ export function useAemetAlerts(map: L.Map | null, isVisible: boolean, opacity: n
 
         // Agregar popup con información
         const popupContent = `
-          <div class="alert-popup" style="font-family: sans-serif; max-width: 250px; padding: 8px;">
-            <h3 style="margin: 0 0 8px 0; display: flex; align-items: center; gap: 8px; color: rgba(0, 0, 0, 1);">
-              <span style="font-size: 20px;">⚠️</span>
+          <div class="alert-popup" style="font-family: sans-serif; max-width: 280px; max-height: 350px; overflow-y: auto; padding: 4px;">
+            <h3 style="margin: 0 0 8px 0; display: flex; align-items: center; gap: 8px; color: #1f2937; font-size: 16px;">
+              <span>⚠️</span>
               <strong>${alert.tipo}</strong>
             </h3>
-            <p style="margin: 4px 0; color: #666;"><strong>Zona:</strong> ${alert.zona}</p>
-            <p style="margin: 4px 0; color: #666;"><strong>Nivel:</strong> <span style="color: ${alert.color}; font-weight: bold;">${alert.nivel}</span></p>
-            <p style="margin: 4px 0; color: #666;"><strong>Descripción:</strong> ${alert.descripcion}</p>
-            <p style="margin: 4px 0; color: #999; font-size: 12px;">
-              <strong>Activa hasta:</strong> ${new Date(alert.fecha_fin).toLocaleDateString('es-ES')}
+            
+            <div style="background-color: ${alert.color}20; padding: 6px 8px; border-radius: 4px; border-left: 4px solid ${alert.color}; margin-bottom: 8px;">
+              <p style="margin: 0; color: #374151; font-weight: bold; font-size: 13px;">${alert.zona}</p>
+              <p style="margin: 2px 0 0 0; color: ${alert.color}; font-weight: bold; font-size: 12px; text-transform: uppercase;">
+                NIVEL ${alert.nivel}
+              </p>
+            </div>
+
+            <p style="margin: 6px 0; color: #4b5563; font-size: 13px; line-height: 1.4;">
+              <strong>Descripción:</strong> ${alert.descripcion}
             </p>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 8px 0; padding: 6px; background: #f3f4f6; border-radius: 4px; font-size: 11px; color: #4b5563;">
+              <p style="margin: 0;"><strong>Probabilidad:</strong> ${alert.probabilidad}</p>
+              <p style="margin: 0;"><strong>Certidumbre:</strong> ${alert.certidumbre}</p>
+            </div>
+
+            <div style="margin: 8px 0; padding: 8px; background: #fffbeb; border-radius: 4px; border: 1px solid #fef3c7;">
+              <p style="margin: 0; color: #92400e; font-size: 12px; line-height: 1.4;">
+                <strong>Instrucciones:</strong> ${alert.instrucciones}
+              </p>
+            </div>
+
+            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #6b7280;">
+              <p style="margin: 2px 0;"><strong>Inicio:</strong> ${new Date(alert.validez_inicio).toLocaleString('es-ES')}</p>
+              <p style="margin: 2px 0;"><strong>Fin:</strong> ${new Date(alert.validez_fin).toLocaleString('es-ES')}</p>
+              <p style="margin: 6px 0 0 0;">
+                <a href="${alert.enlace}" target="_blank" rel="noopener noreferrer" style="color: #2563eb; text-decoration: none; font-weight: bold;">
+                  Ver aviso oficial en AEMET ↗
+                </a>
+              </p>
+            </div>
           </div>
         `;
-
         marker.bindPopup(popupContent, {
           maxWidth: 280,
           className: 'alert-popup-style',
@@ -274,7 +305,7 @@ export function AemetAlertsPanel({ alerts, loading, onRefresh }: AemetAlertsPane
             className="w-full p-3 text-left hover:bg-gray-50 flex items-center justify-between"
           >
             <div className="flex items-center gap-3 flex-1">
-              <span className="text-2xl">{alert.icono}</span>
+              <AlertTriangle className="h-6 w-6" style={{ color: alert.color }} />
               <div>
                 <p className="font-semibold">{alert.tipo}</p>
                 <p className="text-sm text-gray-600">{alert.zona}</p>
@@ -294,10 +325,10 @@ export function AemetAlertsPanel({ alerts, loading, onRefresh }: AemetAlertsPane
                 <strong>Descripción:</strong> {alert.descripcion}
               </p>
               <p>
-                <strong>Inicio:</strong> {new Date(alert.fecha_inicio).toLocaleString('es-ES')}
+                <strong>Inicio:</strong> {new Date(alert.validez_inicio).toLocaleString('es-ES')}
               </p>
               <p>
-                <strong>Fin previsto:</strong> {new Date(alert.fecha_fin).toLocaleString('es-ES')}
+                <strong>Fin previsto:</strong> {new Date(alert.validez_fin).toLocaleString('es-ES')}
               </p>
             </div>
           )}
