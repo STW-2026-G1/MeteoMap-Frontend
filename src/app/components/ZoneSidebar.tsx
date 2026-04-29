@@ -46,7 +46,7 @@ interface ZoneData {
   elevation: string;
   temperature: number;
   wind: number;
-  weather: number;
+  weather: string;
   isFavorite: boolean;
   coordinates?: [number, number];
   reports: UserReport[];

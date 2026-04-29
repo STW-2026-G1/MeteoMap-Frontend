@@ -22,7 +22,10 @@ import {
   IceCreamCone,
   MessageCircle,
   Wind,
-  Users
+  Users,
+  X,
+  MapPin,
+  Loader
 } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -120,6 +123,16 @@ export default function MapViewer() {
 
   // Referencia a los datos de zonas transformadas
   const zonesData = zonesDataState;
+
+  /* ========================================================================== */
+  /* ESTADO - Search Zones                                                     */
+  /* Gestiona la búsqueda de zonas por nombre                                  */
+  /* ========================================================================== */
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchResults, setSearchResults] = useState<ZoneData[]>([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   /* ========================================================================== */
   /* EFECTO 1: API Data Fetching & Transformation                             */
@@ -282,6 +295,18 @@ export default function MapViewer() {
     };
 
     loadFavorites();
+  }, []);
+
+  /* ========================================================================== */
+  /* EFECTO 4: Cleanup para timeouts de búsqueda                               */
+  /* Limpia el timeout cuando se desmonta el componente o cuando cambia query  */
+  /* ========================================================================== */
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
   }, []);
 
   /* ========================================================================== */
@@ -724,6 +749,110 @@ export default function MapViewer() {
     }
   };
 
+  /**
+   * Busca zonas por nombre. Intenta primero con la API, si falla busca localmente.
+   * @param query - Término de búsqueda
+   */
+  const handleSearchZones = async (query: string) => {
+    setSearchQuery(query);
+    
+    // Si la búsqueda tiene menos de 2 caracteres, limpiar resultados
+    if (query.length < 2) {
+      setSearchResults([]);
+      setShowSearchResults(false);
+      return;
+    }
+
+    setIsSearching(true);
+    
+    try {
+      // Intentar buscar en la API con timeout de 2 segundos
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+      const apiUrl = `${SERVER_URL}/zones/search?query=${encodeURIComponent(query)}`;
+      const response = await fetch(apiUrl, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const data = await response.json();
+        const results = (data.data || []).map((zone: any) => {
+         const [lng, lat] = zone.geolocalizacion?.coordinates || [0, 0];
+         
+         const currentData = zone.cache_meteo?.current?.datos_crudos;
+
+         return {
+            id: zone._id,
+            name: zone.nombre || 'Zona sin nombre',
+            elevation: '1.500m', // O zone.altitud si lo tienes
+            temperature: currentData?.temperatura ?? 0,
+            wind: currentData?.velocidad_viento ?? 0,
+            weather: currentData?.descripcion,
+            isFavorite: favoriteZones.has(zone._id),
+            coordinates: [lng, lat],
+            reports: [],
+         };
+         }).slice(0, 10);
+
+        setSearchResults(results);
+        setShowSearchResults(true);
+      } else {
+        throw new Error('API search failed');
+      }
+    } catch (err) {
+      // Fallback: buscar localmente filtrando apiZones
+      console.log('API search failed, using local search:', err);
+      
+      const localResults = apiZones
+        .filter(zone => 
+          zone.nombre?.toLowerCase().includes(query.toLowerCase())
+        )
+        .map(zone => {
+          const [lng, lat] = zone.geolocalizacion?.coordinates || [0, 0];
+          return {
+            id: zone._id,
+            name: zone.nombre || 'Zona sin nombre',
+            elevation: '1.500m',
+            temperature: zone.cache_meteo?.datos_crudos?.current?.temperature ?? 0,
+            wind: zone.cache_meteo?.datos_crudos?.current?.wind_speed_10m ?? 0,
+            weather: zone.cache_meteo?.datos_crudos?.current?.codigo_clima ?? 0,
+            isFavorite: favoriteZones.has(zone._id),
+            coordinates: [lng, lat],
+            reports: [],
+          };
+        })
+        .slice(0, 10);
+
+      setSearchResults(localResults);
+      setShowSearchResults(true);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  /**
+   * Selecciona una zona desde los resultados de búsqueda
+   * Hace zoom al mapa, centra y cierra el dropdown
+   * @param zone - Zona seleccionada
+   */
+  const handleSelectZone = (zone: ZoneData) => {
+    setSelectedZone(zone);
+    
+    // Hacer zoom suave a las coordenadas (nivel 10)
+    if (mapInstanceRef.current && zone.coordinates) {
+      const [lng, lat] = zone.coordinates;
+      mapInstanceRef.current.flyTo([lat, lng], 10, {
+        duration: 1.5,
+        animate: true,
+      });
+    }
+
+    // Cerrar dropdown y limpiar búsqueda
+    setShowSearchResults(false);
+    setSearchQuery('');
+    setSearchResults([]);
+  };
+
   /* ========================================================================== */
   /* RENDER - Main Component Output                                            */
   /* Estructura principal del componente con mapa, controles y paneles laterales*/
@@ -763,9 +892,57 @@ export default function MapViewer() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
               <Input
                 type="text"
-                placeholder="Buscar zona, pico o ruta..."
-                className="pl-10 border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                placeholder="Introduzca la zona que desea buscar..."
+                value={searchQuery}
+                onChange={(e) => handleSearchZones(e.target.value)}
+                onFocus={() => searchResults.length > 0 && setShowSearchResults(true)}
+                className="pl-10 pr-10 border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
               />
+              {isSearching ? (
+                <Loader className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 animate-spin" />
+              ) : searchQuery && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSearchResults([]);
+                    setShowSearchResults(false);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-0 hover:text-gray-600"
+                  aria-label="Clear search"
+                >
+                  <X className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                </button>
+              )}
+
+              {/* Dropdown de resultados de búsqueda */}
+              {showSearchResults && searchResults.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-[1001] max-h-80 overflow-y-auto">
+                  {searchResults.map((zone, idx) => (
+                    <div key={zone.id}>
+                      <button
+                        onClick={() => handleSelectZone(zone)}
+                        className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors flex items-start gap-3 border-0"
+                      >
+                        <MapPin className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-gray-900 truncate">{zone.name}</div>
+                          <div className="text-sm text-gray-500 flex gap-2">
+                            <span>📍 {zone.coordinates?.[1]?.toFixed(2)}, {zone.coordinates?.[0]?.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      </button>
+                      {idx < searchResults.length - 1 && <div className="border-t border-gray-100" />}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Mensaje cuando no hay resultados */}
+              {showSearchResults && searchResults.length === 0 && searchQuery.length >= 2 && !isSearching && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-[1001] px-4 py-3 text-sm text-gray-500 text-center">
+                  No se encontraron zonas
+                </div>
+              )}
             </div>
           </Card>
         </div>
