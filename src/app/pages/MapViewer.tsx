@@ -787,7 +787,7 @@ export default function MapViewer() {
             elevation: '1.500m', // O zone.altitud si lo tienes
             temperature: currentData?.temperatura ?? 0,
             wind: currentData?.velocidad_viento ?? 0,
-            weather: currentData?.codigo_clima ?? 0,
+            weather: currentData?.descripcion ?? 0,
             isFavorite: favoriteZones.has(zone._id),
             coordinates: [lng, lat] as [number, number],
             reports: [],
@@ -815,7 +815,7 @@ export default function MapViewer() {
             elevation: '1.500m',
             temperature: zone.cache_meteo?.datos_crudos?.current?.temperature ?? 0,
             wind: zone.cache_meteo?.datos_crudos?.current?.wind_speed_10m ?? 0,
-            weather: zone.cache_meteo?.datos_crudos?.current?.codigo_clima ?? 0,
+            weather: zone.cache_meteo?.datos_crudos?.current?.descripcion ?? 0,
             isFavorite: favoriteZones.has(zone._id),
             coordinates: [lng, lat] as [number, number],
             reports: [],
