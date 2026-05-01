@@ -15,6 +15,7 @@ import { useState, useEffect } from "react";
 
 interface ReportData {
   id: string | number;
+  userId: string; // ID del autor del reporte
   userName: string;
   avatar: string;
   condition: string;
@@ -25,6 +26,7 @@ interface ReportData {
   confirmations?: number;
   denials?: number;
   totalVotes?: number;
+  estado?: string;
 }
 
 interface Comment {
@@ -50,6 +52,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
   const [userVote, setUserVote] = useState<'confirm' | 'deny' | null>(null);
   const [localConfirmations, setLocalConfirmations] = useState(0);
   const [localDenials, setLocalDenials] = useState(0);
+  const [localEstado, setLocalEstado] = useState<string | undefined>(report?.estado);
 
   // Comment states
   const [comments, setComments] = useState<Comment[]>([]);
@@ -61,6 +64,12 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+
+  useEffect(() => {
+    setLocalEstado(report?.estado);
+    setLocalConfirmations(0);
+    setLocalDenials(0);
+  }, [report?.id, report?.estado]);
 
   // Get current user ID from localStorage
   useEffect(() => {
@@ -160,7 +169,14 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
   const confidenceBadge = getConfidenceBadge(confidenceLevel);
   const ConfidenceIcon = confidenceBadge.icon;
 
+  const isOwner = String(currentUserId) === String(report.userId);
+
   const handleVote = async (accion: 'confirmar' | 'desmentir') => {
+    if (isOwner) {
+      alert("No puedes validar tus propios reportes.");
+      return;
+    }
+
     const token = localStorage.getItem("meteomap_token");
     if (!token) {
       alert("Debes iniciar sesión para validar un reporte.");
@@ -191,6 +207,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
 
         setLocalConfirmations(newConfirmations - (report.confirmations ?? 0));
         setLocalDenials(newDenials - (report.denials ?? 0));
+        setLocalEstado(resData.report.estado);
       }
 
       if (accion === 'confirmar') {
@@ -655,9 +672,12 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
         <div className="px-6 pb-6 space-y-6 pt-4">
           {/* User Info */}
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold text-lg">
-              {report.userName.charAt(0).toUpperCase()}
-            </div>
+            <Avatar className="h-12 w-12 border-2 border-blue-100">
+              <AvatarImage src={report.avatar} alt={report.userName} />
+              <AvatarFallback className="bg-gradient-to-br from-blue-400 to-purple-500 text-white">
+                {report.userName.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
             <div className="flex-1">
               <p className="font-semibold text-gray-900">{report.userName}</p>
               <div className="flex items-center gap-3 text-sm text-gray-500">
@@ -692,6 +712,18 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
 
           {/* Community Validation Section */}
           <div className="border-t pt-6">
+            {(confirmations + localConfirmations) < 3 && (
+              <div className="mb-6 p-4 rounded-lg bg-orange-50 border border-orange-200 flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-orange-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-orange-900 text-sm">Reporte en espera de validación</p>
+                  <p className="text-sm text-orange-800">
+                    Este reporte aún no tiene suficientes confirmaciones. Se necesitan al menos 3 para ser considerado verificado por la comunidad.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-blue-600" />
               Validación Comunitaria
@@ -703,6 +735,12 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
                 <div className="flex items-center gap-2">
                   <ConfidenceIcon className={`h-5 w-5 text-white p-1 rounded ${confidenceBadge.color}`} />
                   <span className="font-semibold text-gray-900">{confidenceBadge.text}</span>
+                  {localEstado === "LEGITIMO" && (
+                    <Badge className="ml-1 bg-green-100 text-green-700 border-green-200 h-5 px-1.5 text-[10px] uppercase font-bold flex items-center gap-0.5">
+                      <Shield className="h-2.5 w-2.5 fill-green-700" />
+                      Verificado
+                    </Badge>
+                  )}
                 </div>
                 <span className="text-2xl font-bold text-blue-600">{Math.round(confidenceLevel)}%</span>
               </div>
@@ -719,10 +757,11 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
               <Button
                 size="lg"
                 onClick={handleConfirm}
+                disabled={isOwner}
                 className={`h-auto py-4 flex flex-col gap-2 transition-all ${userVote === 'confirm'
                     ? 'bg-green-600 hover:bg-green-700 text-white ring-4 ring-green-200'
                     : 'bg-green-500 hover:bg-green-600 text-white'
-                  }`}
+                  } ${isOwner ? 'opacity-50 cursor-not-allowed grayscale' : ''}`}
               >
                 <Check className="h-8 w-8" />
                 <div className="text-center">
@@ -735,10 +774,11 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
               <Button
                 size="lg"
                 onClick={handleDeny}
+                disabled={isOwner}
                 className={`h-auto py-4 flex flex-col gap-2 transition-all ${userVote === 'deny'
                     ? 'bg-red-600 hover:bg-red-700 text-white ring-4 ring-red-200'
                     : 'bg-red-500 hover:bg-red-600 text-white'
-                  }`}
+                  } ${isOwner ? 'opacity-50 cursor-not-allowed grayscale' : ''}`}
               >
                 <XCircle className="h-8 w-8" />
                 <div className="text-center">
@@ -748,8 +788,14 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
               </Button>
             </div>
 
-            {/* User Vote Feedback */}
-            {userVote && (
+            {/* User Vote Feedback / Owner Message */}
+            {isOwner ? (
+              <div className="mt-4 p-3 rounded-lg bg-gray-50 border border-gray-200 text-center">
+                <p className="text-sm text-gray-600">
+                  Eres el autor de este reporte. No puedes validarlo tú mismo.
+                </p>
+              </div>
+            ) : userVote && (
               <div className="mt-4 p-3 rounded-lg bg-blue-50 border border-blue-200 text-center">
                 <p className="text-sm text-blue-800">
                   {userVote === 'confirm'

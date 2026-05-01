@@ -128,6 +128,7 @@ export default function ZoneForumPage() {
               confirmations: r.validaciones?.usuarios_confirmaron?.length ?? 0,
               denials: r.validaciones?.usuarios_desmintieron?.length ?? 0,
               location: zoneName,
+              estado: r.estado,
             };
           });
           setReports(mappedReports);

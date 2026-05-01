@@ -85,10 +85,16 @@ export function AIAssistant({ open, onOpenChange }: AIAssistantProps) {
     'Explicar alertas actuales',
   ];
 
-  // Auto scroll to bottom when messages change
+  // Auto scroll to bottom when messages change or panel opens
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isTyping]);
+    const scrollToBottom = () => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    // Pequeño timeout para esperar a que la animación del Sheet termine
+    const timer = setTimeout(scrollToBottom, 100);
+    return () => clearTimeout(timer);
+  }, [messages, isTyping, open]);
 
   const handleSend = async (text?: string) => {
     const messageText = text || inputValue.trim();

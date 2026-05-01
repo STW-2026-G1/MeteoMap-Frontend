@@ -14,6 +14,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000
 
 interface UserReport {
   id: string;
+  userId: string; // ID del autor del reporte
   userName: string;
   avatar: string;
   condition: string;
@@ -165,6 +166,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
 
                   return {
                      id: r._id,
+                     userId: r.usuario_id?._id,
                      userName: r.usuario_id?.perfil?.nombre || "Usuario",
                      avatar: r.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?._id || r.usuario_id}`,
                      condition: r.categoria_id?.nombre || r.categoria?.nombre,
@@ -177,6 +179,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
                      confirmations: r.validaciones?.usuarios_confirmaron?.length ?? 0,
                      denials: r.validaciones?.usuarios_desmintieron?.length ?? 0,
                      location: zone.name,
+                     estado: r.estado,
                   };
                });
                setDynamicReports(mappedReports);
