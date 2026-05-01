@@ -9,50 +9,10 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { motion, AnimatePresence } from "motion/react";
 import { ReportDetailModal } from "./ReportDetailModal";
 import { useState, useEffect, SetStateAction } from "react";
+import { ZoneData, UserReport, Comment } from "../types/weather";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 
-interface UserReport {
-  id: string;
-  userId: string; // ID del autor del reporte
-  userName: string;
-  avatar: string;
-  condition: string;
-  timestamp: string;
-  updatedAt: string;
-  isEdited: boolean;
-  categoryIcon: string;
-  riskType?: string;
-  description?: string;
-  confirmations?: number;
-  denials?: number;
-  location?: string;
-}
-
-interface Comment {
-  id: string; 
-  userId?: string;
-  userName: string;
-  avatar: string;
-  message: string;
-  timestamp: string;
-  likes: number;
-  isLiked: boolean;
-  replies?: Comment[];
-}
-
-interface ZoneData {
-  id: string;
-  name: string;
-  elevation: string;
-  temperature: number;
-  wind: number;
-  weather: number;
-  isFavorite: boolean;
-  coordinates?: [number, number];
-  reports: UserReport[];
-  comments?: Comment[];
-}
 
 interface ZoneSidebarProps {
   zone: ZoneData | null;

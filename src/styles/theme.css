@@ -178,4 +178,44 @@
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
   }
+
+  /* Minimalist Map Styles */
+  .leaflet-container {
+    background: #f8fafc !important;
+  }
+
+  .leaflet-tile-container {
+    filter: grayscale(0.0) brightness(0.99) contrast(0.99);
+  }
+
+  .leaflet-control-attribution {
+    background: rgba(255, 255, 255, 0.7) !important;
+    backdrop-filter: blur(4px);
+    border-radius: 4px;
+    margin: 4px !important;
+    padding: 0 6px !important;
+    font-size: 10px !important;
+    color: #94a3b8 !important;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+  }
+
+  .leaflet-control-attribution a {
+    color: #64748b !important;
+  }
+
+  .leaflet-bar {
+    border: none !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+  }
+
+  .leaflet-bar a {
+    background-color: white !important;
+    color: #475569 !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+  }
+
+  .leaflet-bar a:hover {
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
+  }
 }

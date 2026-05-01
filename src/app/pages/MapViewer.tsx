@@ -11,11 +11,11 @@ import { AIAssistant } from "../components/AIAssistant";
 import { ZoneSidebar } from "../components/ZoneSidebar";
 import { CreateReportModal } from "../components/CreateReportModal";
 import { useAemetAlerts } from "../components/AemetAlertsLayer";
-import { 
-  Search, 
-  Plus, 
-  Minus, 
-  Snowflake, 
+import {
+  Search,
+  Plus,
+  Minus,
+  Snowflake,
   AlertTriangle,
   CloudRain,
   Thermometer,
@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { ZoneData, UserReport, Comment } from "../types/weather";
 
 const SERVER_URL = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:3000/api';
 interface MapMarker {
@@ -38,34 +39,6 @@ interface MapMarker {
   type: 'snow' | 'ice' | 'alert';
   label: string;
   color?: string;
-}
-
-interface UserReport {
-  id: string;
-  userName: string;
-  avatar: string;
-  condition: string;
-  timestamp: string;
-  updatedAt: string;
-  isEdited: boolean;
-  categoryIcon: string;
-  riskType?: string;
-  description?: string;
-  confirmations?: number;
-  denials?: number;
-  location?: string;
-}
-
-interface ZoneData {
-  id: string;
-  name: string;
-  elevation: string;
-  temperature: number;
-  wind: number;
-  weather: number;
-  isFavorite: boolean;
-  coordinates?: [number, number]; // [lng, lat]
-  reports: UserReport[];
 }
 
 export default function MapViewer() {
@@ -114,7 +87,7 @@ export default function MapViewer() {
   const [aemetAlerts, setAemetAlerts] = useState<any[]>([]);
   const [alertMarkers, setAlertMarkers] = useState<MapMarker[]>([]);
   const [aemetLoading, setAemetLoading] = useState(false);
-  
+
   // Añade también una referencia para los marcadores de alertas en el mapa (junto a userMarkersRef en la línea 45)
   const alertMarkersRef = useRef<L.Marker[]>([]);
   const [zonesDataState, setZonesDataState] = useState<{ [key: string]: ZoneData }>({});
@@ -164,15 +137,15 @@ export default function MapViewer() {
 
         /* Paso 2: Transformar datos a formato MapMarker para renderizado */
         const transformedMarkers: MapMarker[] = zonesFromApi.map((zone: any) => {
-            const [lng, lat] = zone.geolocalizacion?.coordinates || [0, 0];
-            return {
-               id: zone._id, // <--- USA EL ID DE MONGO, NO EL INDEX
-               lat: lat,
-               lng: lng,
-               type: 'snow' as const,
-               label: zone.nombre || "Zona sin nombre",
-            };
-         });
+          const [lng, lat] = zone.geolocalizacion?.coordinates || [0, 0];
+          return {
+            id: zone._id, // <--- USA EL ID DE MONGO, NO EL INDEX
+            lat: lat,
+            lng: lng,
+            type: 'snow' as const,
+            label: zone.nombre || "Zona sin nombre",
+          };
+        });
 
         /* Paso 3: Transformar datos a formato ZoneData para UI sidebar */
         const transformedZonesData: { [key: string]: ZoneData } = {};
@@ -181,7 +154,7 @@ export default function MapViewer() {
           const [lng, lat] = zone.geolocalizacion?.coordinates || [0, 0];
           const temp = zone.cache_meteo?.datos_crudos?.current?.temperature ?? 0;
           const wind = zone.cache_meteo?.datos_crudos?.current?.wind_speed_10m ?? 0;
-         const weatherCode = zone.cache_meteo?.datos_crudos?.current?.codigo_clima ?? 0;
+          const weatherCode = zone.cache_meteo?.datos_crudos?.current?.codigo_clima ?? 0;
 
           transformedZonesData[zone._id] = {
             id: zone._id, // <--- USA EL ID DE MONGO, NO EL INDEX
@@ -215,7 +188,7 @@ export default function MapViewer() {
   }, []);
 
 
-/* ========================================================================== */
+  /* ========================================================================== */
   /* EFECTO 2: Obtener Alertas de la API                                          */
   /* ========================================================================== */
   const refreshAemetAlerts = async () => {
@@ -238,14 +211,14 @@ export default function MapViewer() {
         let markerColor = '#f59e0b'; // Amarillo: moderado (por defecto)
         if (alert.nivelNumerico >= 3) markerColor = '#ef4444'; // Rojo: crítico
         else if (alert.nivelNumerico === 2) markerColor = '#f97316'; // Naranja:
-        
+
         return {
-           id: alert.id || alert._id,
-           lat: lat,
-           lng: lng,
-           type: 'alert' as const, // Forzamos el tipo 'alert' para que use el círculo rojo
-           label: alert.tipo || "Alerta",
-           color: markerColor,
+          id: alert.id || alert._id,
+          lat: lat,
+          lng: lng,
+          type: 'alert' as const, // Forzamos el tipo 'alert' para que use el círculo rojo
+          label: alert.tipo || "Alerta",
+          color: markerColor,
         };
       });
 
@@ -261,7 +234,7 @@ export default function MapViewer() {
   useEffect(() => {
     refreshAemetAlerts();
   }, []);
- 
+
   /* ========================================================================== */
   /* EFECTO 3: Cargar zonas favoritas del usuario autenticado                */
   /* Obtiene las zonas marcadas como favoritas desde el backend               */
@@ -283,7 +256,7 @@ export default function MapViewer() {
 
         if (response.ok) {
           const data = await response.json();
-          const favoriteIds = data.preferencias.map((pref: any) => 
+          const favoriteIds = data.preferencias.map((pref: any) =>
             typeof pref === 'string' ? pref : pref._id
           );
           setFavoriteZones(new Set(favoriteIds));
@@ -324,7 +297,7 @@ export default function MapViewer() {
     try {
       /* Obtener la zona desde apiZones (índice es zoneId - 1) */
       const apiZone = apiZones.find(z => z._id === zoneId);
-      
+
       if (!apiZone) {
         console.warn('Zona no encontrada con índice:', zoneId);
         return;
@@ -339,7 +312,7 @@ export default function MapViewer() {
       console.log('Fetching updated weather from:', weatherApiUrl);
 
       const weatherResponse = await fetch(weatherApiUrl);
-      
+
       if (!weatherResponse.ok) {
         throw new Error(`Weather API Error: ${weatherResponse.status} ${weatherResponse.statusText}`);
       }
@@ -348,8 +321,8 @@ export default function MapViewer() {
       console.log('Weather data received:', weatherData);
 
       /* Paso 2: Extraer datos meteorológicos de la respuesta */
-      const meteorologicalData = weatherData.data?.datos_meteorologicos || 
-                                weatherData.data?.cache_meteo?.datos_crudos || {};
+      const meteorologicalData = weatherData.data?.datos_meteorologicos ||
+        weatherData.data?.cache_meteo?.datos_crudos || {};
       const temperature = meteorologicalData.temperatura ?? 0;
       const wind = meteorologicalData.velocidad_viento ?? 0;
       const weatherCode = meteorologicalData.descripcion ?? 0;
@@ -384,7 +357,7 @@ export default function MapViewer() {
 
     } catch (err) {
       console.error('Error al seleccionar zona:', err);
-      
+
       /* Fallback: mostrar zona con datos cargados previamente */
       const zone = zonesData[zoneId];
       if (zone) {
@@ -562,10 +535,11 @@ export default function MapViewer() {
       zoomControl: false,
     }).setView([42.65, 0.75], 8);
 
-    /* Agregar capa de tiles de OpenStreetMap */
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      maxZoom: 18,
+    /* Agregar capa de tiles de CartoDB Positron (Minimalista) */
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains: 'abcd',
+      maxZoom: 20,
     }).addTo(map);
 
     mapInstanceRef.current = map;
@@ -590,29 +564,29 @@ export default function MapViewer() {
 
       userMarkersRef.current.push(leafletMarker);
     });
-      /* Agregar marcadores de alertas al mapa */
-      alertMarkers.forEach((marker) => {
-        const leafletMarker = L.marker([marker.lat, marker.lng], {
-          icon: getMarkerIcon(marker.type), // Como es tipo 'alert', usará el círculo rojo
-        }).addTo(map);
+    /* Agregar marcadores de alertas al mapa */
+    alertMarkers.forEach((marker) => {
+      const leafletMarker = L.marker([marker.lat, marker.lng], {
+        icon: getMarkerIcon(marker.type), // Como es tipo 'alert', usará el círculo rojo
+      }).addTo(map);
 
-        const popupContent = `
+      const popupContent = `
           <div style="display: flex; align-items: center; gap: 8px;">
             ${getIconSvg(marker.type)}
             <span style="font-weight: 500;">${marker.label}</span>
           </div>
         `;
 
-        leafletMarker.bindPopup(popupContent);
+      leafletMarker.bindPopup(popupContent);
 
-        // Usamos la función de centrado que ya tenías
-        leafletMarker.on('click', () => {
-          const fullAlert = aemetAlerts.find(a => (a.id || a._id) === marker.id);
-          if (fullAlert) handleAemetAlertClick(fullAlert);
-        });
-
-        alertMarkersRef.current.push(leafletMarker);
+      // Usamos la función de centrado que ya tenías
+      leafletMarker.on('click', () => {
+        const fullAlert = aemetAlerts.find(a => (a.id || a._id) === marker.id);
+        if (fullAlert) handleAemetAlertClick(fullAlert);
       });
+
+      alertMarkersRef.current.push(leafletMarker);
+    });
 
     /* Limpieza de recursos cuando se desmonta el componente */
     return () => {
@@ -627,7 +601,7 @@ export default function MapViewer() {
     };
   }, [loading, markers]);
 
- /* ========================================================================== */
+  /* ========================================================================== */
   /* EFECTO 3: Construir marcadores de Alertas en memoria                       */
   /* ========================================================================== */
   useEffect(() => {
@@ -641,15 +615,15 @@ export default function MapViewer() {
     // 2. Crear los nuevos marcadores en memoria
     alertMarkers.forEach((marker) => {
       // Usar el color dinámico si lo tiene, si no, usar el genérico
-      const icon = marker.type === 'alert' && marker.color 
-        ? createCustomIcon(marker.color) 
+      const icon = marker.type === 'alert' && marker.color
+        ? createCustomIcon(marker.color)
         : getMarkerIcon(marker.type);
 
       const leafletMarker = L.marker([marker.lat, marker.lng], { icon });
 
       // Buscamos la alerta completa en el estado usando el ID
       const fullAlert = aemetAlerts.find(a => (a.id || a._id) === marker.id);
-      
+
       leafletMarker.on('click', () => {
         if (fullAlert) handleAemetAlertClick(fullAlert);
       });
@@ -715,7 +689,7 @@ export default function MapViewer() {
 
       // Añadimos el popup al marcador
       leafletMarker.bindPopup(popupContent, {
-        maxWidth: 320, 
+        maxWidth: 320,
       });
 
       // Si la capa está activa desde el principio, lo pintamos ya
@@ -755,7 +729,7 @@ export default function MapViewer() {
    */
   const handleSearchZones = async (query: string) => {
     setSearchQuery(query);
-    
+
     // Si la búsqueda tiene menos de 2 caracteres, limpiar resultados
     if (query.length < 2) {
       setSearchResults([]);
@@ -764,7 +738,7 @@ export default function MapViewer() {
     }
 
     setIsSearching(true);
-    
+
     try {
       // Intentar buscar en la API con timeout de 2 segundos
       const controller = new AbortController();
@@ -777,11 +751,11 @@ export default function MapViewer() {
       if (response.ok) {
         const data = await response.json();
         const results = (data.data || []).map((zone: any) => {
-         const [lng, lat] = zone.geolocalizacion?.coordinates || [0, 0];
-         
-         const currentData = zone.cache_meteo?.current?.datos_crudos;
+          const [lng, lat] = zone.geolocalizacion?.coordinates || [0, 0];
 
-         return {
+          const currentData = zone.cache_meteo?.current?.datos_crudos;
+
+          return {
             id: zone._id,
             name: zone.nombre || 'Zona sin nombre',
             elevation: '1.500m', // O zone.altitud si lo tienes
@@ -791,8 +765,8 @@ export default function MapViewer() {
             isFavorite: favoriteZones.has(zone._id),
             coordinates: [lng, lat] as [number, number],
             reports: [],
-         };
-         }).slice(0, 10);
+          };
+        }).slice(0, 10);
 
         setSearchResults(results);
         setShowSearchResults(true);
@@ -802,9 +776,9 @@ export default function MapViewer() {
     } catch (err) {
       // Fallback: buscar localmente filtrando apiZones
       console.log('API search failed, using local search:', err);
-      
+
       const localResults = apiZones
-        .filter(zone => 
+        .filter(zone =>
           zone.nombre?.toLowerCase().includes(query.toLowerCase())
         )
         .map(zone => {
@@ -837,7 +811,7 @@ export default function MapViewer() {
    */
   const handleSelectZone = (zone: ZoneData) => {
     setSelectedZone(zone);
-    
+
     // Hacer zoom suave a las coordenadas (nivel 10)
     if (mapInstanceRef.current && zone.coordinates) {
       const [lng, lat] = zone.coordinates;
@@ -949,14 +923,14 @@ export default function MapViewer() {
 
         {/* Panel de control de capas - Versión Desktop */}
         <div className="absolute top-20 right-4 z-[1000] w-72 hidden md:block max-h-[calc(100vh-7rem)] overflow-y-auto">
-         
-           
+
+
         </div>
 
         {/* Panel de control de capas - Versión Mobile */}
         <div className="absolute bottom-20 left-4 right-4 z-[1000] md:hidden">
           <Card className="p-3">
-         
+
           </Card>
         </div>
 
@@ -1028,11 +1002,11 @@ export default function MapViewer() {
                               borderColor = '#ef4444'; // Rojo: crítico
                               bgColor = '#fca5a5';
                               hoverColor = '#f87171';
-                            }else if (alert.nivelNumerico == 2) {
+                            } else if (alert.nivelNumerico == 2) {
                               borderColor = '#f87171'; // Naranja: warning
                               bgColor = '#fee2e2';
-                              hoverColor = '#fecaca'; 
-                            }else if (alert.nivelNumerico == 1) {
+                              hoverColor = '#fecaca';
+                            } else if (alert.nivelNumerico == 1) {
                               borderColor = '#f59e0b'; // Amarillo: moderado
                               bgColor = '#fef3c7';
                               hoverColor = '#fde68a';
