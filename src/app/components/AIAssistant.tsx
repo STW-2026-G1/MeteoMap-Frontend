@@ -9,9 +9,11 @@ import {
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { ScrollArea } from "./ui/scroll-area";
-import { Send, Bot, User, AlertCircle } from "lucide-react";
+import { Send, Bot, User, AlertCircle, Maximize2, Minimize2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useAuth } from "../contexts/AuthContext";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface Message {
   id: number;
@@ -38,6 +40,7 @@ export function AIAssistant({ open, onOpenChange }: AIAssistantProps) {
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const quickSuggestions = [
@@ -74,10 +77,11 @@ export function AIAssistant({ open, onOpenChange }: AIAssistantProps) {
 
     try {
       /* Llamar a la API real */
-      const apiUrl = `${import.meta.env.VITE_API_BASE_URL}/chat/ask`;
-      console.log('📡 Llamando a API Chat:', apiUrl);
+      const apiUrlBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+      const apiUrlChat = `${apiUrlBase}/chat/ask`;
+      console.log('📡 Llamando a API Chat:', apiUrlChat);
 
-      const response = await fetch(apiUrl, {
+      const response = await fetch(apiUrlChat, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -138,9 +142,15 @@ export function AIAssistant({ open, onOpenChange }: AIAssistantProps) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:w-[400px] md:w-[450px] p-0 flex flex-col">
+      <SheetContent
+        side="right"
+        className={`p-0 flex flex-col transition-all duration-300 ease-in-out border-l shadow-2xl ${isExpanded
+          ? "w-full sm:w-[85vw] md:w-[700px] lg:w-[900px]"
+          : "w-full sm:w-[400px] md:w-[450px]"
+          }`}
+      >
         {/* Header */}
-        <SheetHeader className="px-6 py-4 border-b flex-shrink-0">
+        <SheetHeader className="px-6 py-4 border-b flex-shrink-0 flex-row items-center justify-between space-y-0">
           <div className="flex items-center gap-3">
             <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-2 rounded-lg">
               <Bot className="h-5 w-5 text-white" />
@@ -152,6 +162,19 @@ export function AIAssistant({ open, onOpenChange }: AIAssistantProps) {
               </SheetDescription>
             </div>
           </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="hidden sm:flex text-slate-500 hover:text-slate-900"
+            title={isExpanded ? "Contraer" : "Expandir"}
+          >
+            {isExpanded ? (
+              <Minimize2 className="h-4 w-4" />
+            ) : (
+              <Maximize2 className="h-4 w-4" />
+            )}
+          </Button>
         </SheetHeader>
 
         {/* Error Banner */}
@@ -176,17 +199,15 @@ export function AIAssistant({ open, onOpenChange }: AIAssistantProps) {
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex gap-3 ${
-                  message.sender === 'user' ? 'flex-row-reverse' : 'flex-row'
-                }`}
+                className={`flex gap-3 ${message.sender === 'user' ? 'flex-row-reverse' : 'flex-row'
+                  }`}
               >
                 {/* Avatar */}
                 <div
-                  className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${
-                    message.sender === 'bot'
-                      ? 'bg-gradient-to-br from-blue-500 to-purple-600'
-                      : 'bg-slate-700'
-                  }`}
+                  className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${message.sender === 'bot'
+                    ? 'bg-gradient-to-br from-blue-500 to-purple-600'
+                    : 'bg-slate-700'
+                    }`}
                 >
                   {message.sender === 'bot' ? (
                     <Bot className="h-4 w-4 text-white" />
@@ -197,18 +218,35 @@ export function AIAssistant({ open, onOpenChange }: AIAssistantProps) {
 
                 {/* Message Bubble */}
                 <div
-                  className={`flex-1 max-w-[80%] ${
-                    message.sender === 'user' ? 'text-right' : 'text-left'
-                  }`}
+                  className={`flex-1 max-w-[80%] ${message.sender === 'user' ? 'text-right' : 'text-left'
+                    }`}
                 >
                   <div
-                    className={`inline-block px-4 py-2 rounded-2xl ${
-                      message.sender === 'bot'
-                        ? 'bg-slate-100 text-slate-900'
-                        : 'bg-blue-600 text-white'
-                    }`}
+                    className={`inline-block px-4 py-2 rounded-2xl ${message.sender === 'bot'
+                      ? 'bg-slate-100 text-slate-900'
+                      : 'bg-blue-600 text-white'
+                      }`}
                   >
-                    <p className="text-sm leading-relaxed">{message.text}</p>
+                    {message.sender === 'bot' ? (
+                      <div className="markdown-content text-sm leading-relaxed">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            p: (props) => <p className="mb-2 last:mb-0">{props.children}</p>,
+                            strong: (props) => <span className="font-bold">{props.children}</span>,
+                            em: (props) => <span className="italic">{props.children}</span>,
+                            ul: (props) => <ul className="list-disc ml-4 mb-2">{props.children}</ul>,
+                            ol: (props) => <ol className="list-decimal ml-4 mb-2">{props.children}</ol>,
+                            li: (props) => <li className="mb-1">{props.children}</li>,
+                            a: (props) => <a href={props.href} className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">{props.children}</a>,
+                          }}
+                        >
+                          {message.text}
+                        </ReactMarkdown>
+                      </div>
+                    ) : (
+                      <p className="text-sm leading-relaxed">{message.text}</p>
+                    )}
                   </div>
                   <div className="mt-1 px-1">
                     <span className="text-xs text-slate-500">
