@@ -117,20 +117,26 @@ export function AIAssistant({ open, onOpenChange }: AIAssistantProps) {
       const apiUrlChat = `${apiUrlBase}/chat/ask`;
       console.log('📡 Llamando a API Chat:', apiUrlChat);
 
+      const token = localStorage.getItem('meteomap_token');
+
       const response = await fetch(apiUrlChat, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          usuario_id: user.id,
           pregunta: messageText,
           contexto: 'Usuario interactuando desde MapViewer',
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        if (response.status === 429) {
+          throw new Error('Has alcanzado el límite de 10 peticiones diarias al asistente de IA. Para garantizar un servicio justo para todos, este límite se reinicia cada medianoche. ¡Vuelve mañana!');
+        }
+        throw new Error(errorData.message || errorData.error || `API Error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
@@ -140,7 +146,7 @@ export function AIAssistant({ open, onOpenChange }: AIAssistantProps) {
       const botMessage: Message = {
         id: messages.length + 2,
         sender: 'bot',
-        text: data.data?.respuesta || 'No pude procesar tu pregunta. Intenta de nuevo.',
+        text: data.data?.respuesta || 'No pude procesar tu pregunta. Inténtalo de nuevo.',
         timestamp: new Date(),
       };
 
@@ -152,10 +158,11 @@ export function AIAssistant({ open, onOpenChange }: AIAssistantProps) {
       setError(errorMsg);
 
       /* Mostrar mensaje de error al usuario */
+      const isLimitError = errorMsg.includes('límite');
       const errorMessage: Message = {
         id: messages.length + 2,
         sender: 'bot',
-        text: `Perdón, tuve un problema: ${errorMsg}. Por favor intenta de nuevo.`,
+        text: isLimitError ? errorMsg : `Perdón, tuve un problema: ${errorMsg}. Por favor, inténtalo de nuevo.`,
         timestamp: new Date(),
       };
 
@@ -301,10 +308,16 @@ export function AIAssistant({ open, onOpenChange }: AIAssistantProps) {
             {isTyping && (
               <div className="flex gap-3 flex-row">
                 {/* Avatar */}
-                <div
-                  className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600`}
-                >
-                  <Bot className="h-4 w-4 text-white" />
+                <div className="flex-shrink-0">
+                  <div
+                    className={`h-9 w-9 rounded-full overflow-hidden flex items-center justify-center ring-2 ring-offset-1 ring-blue-500 bg-blue-50`}
+                  >
+                    <img
+                      src={`https://api.dicebear.com/9.x/bottts/svg?seed=${user?.id || 'meteomap'}`}
+                      alt="Bot Avatar"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
                 </div>
 
                 {/* Message Bubble with animated dots */}

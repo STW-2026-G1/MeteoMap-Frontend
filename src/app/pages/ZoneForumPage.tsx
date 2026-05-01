@@ -39,106 +39,106 @@ interface Comment {
 }
 
 interface Report {
-    id: number | string;
-    userId: string; // ID del usuario propietario del reporte
-    userName: string;
-    avatar: string;
-    condition: string;
-    timestamp: string;
-    updatedAt: string;
-    isEdited: boolean;
-    categoryName: string;
-    categoryIcon: string;
-    riskType?: string;
-    description?: string;
-    confirmations?: number;
-    denials?: number;
-    location?: string;
-  }
+  id: number | string;
+  userId: string; // ID del usuario propietario del reporte
+  userName: string;
+  avatar: string;
+  condition: string;
+  timestamp: string;
+  updatedAt: string;
+  isEdited: boolean;
+  categoryName: string;
+  categoryIcon: string;
+  riskType?: string;
+  description?: string;
+  confirmations?: number;
+  denials?: number;
+  location?: string;
+}
 
-  export default function ZoneForumPage() {
-    const [searchParams] = useSearchParams();
-    const navigate = useNavigate();
-    const { user } = useAuth(); // Obtener usuario autenticado
-    const mapRef = useRef<HTMLDivElement>(null);
-    const mapInstanceRef = useRef<L.Map | null>(null);
+export default function ZoneForumPage() {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { user } = useAuth(); // Obtener usuario autenticado
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
 
-    const zoneName = searchParams.get("zone") || "Zona Desconocida";
-    const zoneId = searchParams.get("id") || "1";
-    const zoneElevation = searchParams.get("elevation") || "N/A";
-    const zoneTemp = searchParams.get("temp") || "-2";
-    const zoneWind = searchParams.get("wind") || "18";
-    const zoneAvalanche = searchParams.get("avalanche") || "2";
-    const commentsParam = searchParams.get("comments");
+  const zoneName = searchParams.get("zone") || "Zona Desconocida";
+  const zoneId = searchParams.get("id") || "1";
+  const zoneElevation = searchParams.get("elevation") || "N/A";
+  const zoneTemp = searchParams.get("temp") || "-2";
+  const zoneWind = searchParams.get("wind") || "18";
+  const zoneAvalanche = searchParams.get("avalanche") || "2";
+  const commentsParam = searchParams.get("comments");
 
-   const [newComment, setNewComment] = useState("");
-    const [replyingTo, setReplyingTo] = useState<string | null>(null);
-    const [replyText, setReplyText] = useState("");
-    const [selectedReport, setSelectedReport] = useState<Report | null>(null);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
-    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-    const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
-    const [editingText, setEditingText] = useState("");
-    const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
-    
-    const [reports, setReports] = useState<Report[]>([]);
+  const [newComment, setNewComment] = useState("");
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
 
-    // Obtener el ID del usuario actual del localStorage
-    useEffect(() => {
-      const userData = localStorage.getItem('meteomap_user');
-      if (userData) {
-        try {
-          const parsedUser = JSON.parse(userData);
-          setCurrentUserId(parsedUser.id);
-        } catch (error) {
-          console.error("Error parsing user data:", error);
-        }
+  const [reports, setReports] = useState<Report[]>([]);
+
+  // Obtener el ID del usuario actual del localStorage
+  useEffect(() => {
+    const userData = localStorage.getItem('meteomap_user');
+    if (userData) {
+      try {
+        const parsedUser = JSON.parse(userData);
+        setCurrentUserId(parsedUser.id);
+      } catch (error) {
+        console.error("Error parsing user data:", error);
       }
-    }, []);
+    }
+  }, []);
 
-    // Fetch reports from Backend
-    useEffect(() => {
-      const fetchReports = async () => {
-        try {
-          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/reports?zonaId=${zoneId}`);
-          const data = await response.json();
-          if (response.ok && data.reports) {
-            const mappedReports = data.reports.map((r: any) => {
-              const createdAt = new Date(r.createdAt);
-              const updatedAt = new Date(r.updatedAt);
-              const isEdited = Math.abs(updatedAt.getTime() - createdAt.getTime()) > 1000;
-              
-              const categoryName = r.categoria_id?.nombre || "Categoría desconocida";
-              const categoryIcon = r.categoria_id?.icono_marcador || "⚠️";
+  // Fetch reports from Backend
+  useEffect(() => {
+    const fetchReports = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/reports?zonaId=${zoneId}`);
+        const data = await response.json();
+        if (response.ok && data.reports) {
+          const mappedReports = data.reports.map((r: any) => {
+            const createdAt = new Date(r.createdAt);
+            const updatedAt = new Date(r.updatedAt);
+            const isEdited = Math.abs(updatedAt.getTime() - createdAt.getTime()) > 1000;
 
-              return {
-                id: r._id,
-                userId: r.usuario_id?._id,
-                userName: r.usuario_id?.perfil?.nombre || "Usuario",
-                avatar: r.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?.avatar_seed || r.usuario_id?._id || "usuario"}`,
-                condition: r.contenido?.descripcion?.slice(0, 50) + (r.contenido?.descripcion?.length > 50 ? "..." : ""),
-                timestamp: createdAt.toLocaleString(),
-                updatedAt: updatedAt.toLocaleString(),
-                isEdited,
-                categoryName,
-                categoryIcon,
-                riskType: categoryName,
-                description: r.contenido?.descripcion,
-                confirmations: r.validaciones?.usuarios_confirmaron?.length ?? 0,
-                denials: r.validaciones?.usuarios_desmintieron?.length ?? 0,
-                location: zoneName,
-              };
-            });
-            setReports(mappedReports);
-          }
-        } catch (error) {
-          console.error("Error fetching reports in forum:", error);
+            const categoryName = r.categoria_id?.nombre || "Categoría desconocida";
+            const categoryIcon = r.categoria_id?.icono_marcador || "⚠️";
+
+            return {
+              id: r._id,
+              userId: r.usuario_id?._id,
+              userName: r.usuario_id?.perfil?.nombre || "Usuario",
+              avatar: r.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?.avatar_seed || r.usuario_id?._id || "usuario"}`,
+              condition: r.contenido?.descripcion?.slice(0, 50) + (r.contenido?.descripcion?.length > 50 ? "..." : ""),
+              timestamp: createdAt.toLocaleString(),
+              updatedAt: updatedAt.toLocaleString(),
+              isEdited,
+              categoryName,
+              categoryIcon,
+              riskType: categoryName,
+              description: r.contenido?.descripcion,
+              confirmations: r.validaciones?.usuarios_confirmaron?.length ?? 0,
+              denials: r.validaciones?.usuarios_desmintieron?.length ?? 0,
+              location: zoneName,
+            };
+          });
+          setReports(mappedReports);
         }
-      };
+      } catch (error) {
+        console.error("Error fetching reports in forum:", error);
+      }
+    };
 
-      fetchReports();
-    }, [zoneId, zoneName]);
+    fetchReports();
+  }, [zoneId, zoneName]);
   // Obtener comentarios dinámicos del parámetro o usar mock
   const getInitialComments = (): Comment[] => {
     if (commentsParam) {
@@ -160,7 +160,7 @@ interface Report {
   useEffect(() => {
     const fetchComments = async () => {
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
-      
+
       try {
         const response = await fetch(`${API_BASE_URL}/comments/zone/${zoneId}`);
         const data = await response.json();
@@ -185,7 +185,7 @@ interface Report {
             try {
               const repliesResponse = await fetch(`${API_BASE_URL}/comments/${comment.id}/replies`);
               const repliesData = await repliesResponse.json();
-              
+
               if (repliesResponse.ok && repliesData.replies) {
                 const mappedReplies: Comment[] = repliesData.replies.map((r: any) => ({
                   id: r._id || r.id,
@@ -197,7 +197,7 @@ interface Report {
                   likes: r.likes?.length || 0,
                   isLiked: currentUserId ? r.likes?.some((id: any) => String(id) === String(currentUserId)) : false,
                 }));
-                
+
                 setComments(prev => prev.map(c =>
                   c.id === comment.id ? { ...c, replies: mappedReplies } : c
                 ));
@@ -216,81 +216,81 @@ interface Report {
   }, [zoneId, currentUserId]);
 
   const handleLike = async (commentId: string, isReply: boolean = false, parentId?: string) => {
-      const rawToken = localStorage.getItem('meteomap_token');
-      if (!rawToken) {
-         alert("No se encontró el token. Por favor, inicia sesión de nuevo.");
-         return;
+    const rawToken = localStorage.getItem('meteomap_token');
+    if (!rawToken) {
+      alert("No se encontró el token. Por favor, inicia sesión de nuevo.");
+      return;
+    }
+
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+
+    // 1. Encontrar el estado actual del like
+    const isAlreadyLiked = !isReply
+      ? comments.find(c => c.id === commentId)?.isLiked
+      : comments.find(c => c.id === parentId)?.replies?.find(r => r.id === commentId)?.isLiked;
+
+    // 2. Determinar Método y URL
+    // Si ya tiene like, llamamos a /unlike con DELETE. Si no, a /like con POST.
+    const endpoint = isAlreadyLiked ? 'unlike' : 'like';
+    const method = isAlreadyLiked ? 'DELETE' : 'POST';
+    const url = `${API_BASE_URL}/comments/${commentId}/${endpoint}`;
+
+    // 3. Actualización Optimista (UI)
+    if (!isReply) {
+      setComments(
+        comments.map((comment) => {
+          if (comment.id === commentId) {
+            return {
+              ...comment,
+              likes: isAlreadyLiked ? Math.max(0, comment.likes - 1) : comment.likes + 1,
+              isLiked: !isAlreadyLiked,
+            };
+          }
+          return comment;
+        })
+      );
+    } else if (parentId) {
+      setComments(
+        comments.map((comment) => {
+          if (comment.id === parentId && comment.replies) {
+            return {
+              ...comment,
+              replies: comment.replies.map((reply) => {
+                if (reply.id === commentId) {
+                  return {
+                    ...reply,
+                    likes: isAlreadyLiked ? Math.max(0, reply.likes - 1) : reply.likes + 1,
+                    isLiked: !isAlreadyLiked,
+                  };
+                }
+                return reply;
+              }),
+            };
+          }
+          return comment;
+        })
+      );
+    }
+
+    // 4. Petición real a la API
+    try {
+      const response = await fetch(url, {
+        method: method,
+        headers: {
+          'Authorization': `Bearer ${rawToken}`,
+          'Content-Type': 'application/json'
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Error al procesar el like");
       }
-
-      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
-      
-      // 1. Encontrar el estado actual del like
-      const isAlreadyLiked = !isReply 
-         ? comments.find(c => c.id === commentId)?.isLiked 
-         : comments.find(c => c.id === parentId)?.replies?.find(r => r.id === commentId)?.isLiked;
-
-      // 2. Determinar Método y URL
-      // Si ya tiene like, llamamos a /unlike con DELETE. Si no, a /like con POST.
-      const endpoint = isAlreadyLiked ? 'unlike' : 'like';
-      const method = isAlreadyLiked ? 'DELETE' : 'POST';
-      const url = `${API_BASE_URL}/comments/${commentId}/${endpoint}`;
-
-      // 3. Actualización Optimista (UI)
-      if (!isReply) {
-         setComments(
-            comments.map((comment) => {
-            if (comment.id === commentId) {
-               return {
-                  ...comment,
-                  likes: isAlreadyLiked ? Math.max(0, comment.likes - 1) : comment.likes + 1,
-                  isLiked: !isAlreadyLiked,
-               };
-            }
-            return comment;
-            })
-         );
-      } else if (parentId) {
-         setComments(
-            comments.map((comment) => {
-            if (comment.id === parentId && comment.replies) {
-               return {
-                  ...comment,
-                  replies: comment.replies.map((reply) => {
-                  if (reply.id === commentId) {
-                     return {
-                        ...reply,
-                        likes: isAlreadyLiked ? Math.max(0, reply.likes - 1) : reply.likes + 1,
-                        isLiked: !isAlreadyLiked,
-                     };
-                  }
-                  return reply;
-                  }),
-               };
-            }
-            return comment;
-            })
-         );
-      }
-
-      // 4. Petición real a la API
-      try {
-         const response = await fetch(url, {
-            method: method,
-            headers: {
-            'Authorization': `Bearer ${rawToken}`,
-            'Content-Type': 'application/json'
-            },
-         });
-
-         if (!response.ok) {
-            throw new Error("Error al procesar el like");
-         }
-      } catch (error) {
-         console.error("Error en la API de Like/Unlike:", error);
-         // Opcional: Revertir la actualización optimista aquí si la petición falla
-         alert("No se pudo guardar tu interacción. Por favor, intenta de nuevo.");
-      }
-   };
+    } catch (error) {
+      console.error("Error en la API de Like/Unlike:", error);
+      // Opcional: Revertir la actualización optimista aquí si la petición falla
+      alert("No se pudo guardar tu interacción. Por favor, inténtalo de nuevo.");
+    }
+  };
 
   const handleDeleteComment = async (commentId: string) => {
     const confirmDelete = window.confirm("¿Estás seguro de que quieres eliminar este comentario?");
@@ -382,7 +382,7 @@ interface Report {
         return comment;
       });
     };
-    
+
     setComments(prev => {
       const updated = updateInTree(prev);
       if (found) {
@@ -390,7 +390,7 @@ interface Report {
       }
       return prev;
     });
-    
+
     return found;
   };
 
@@ -459,7 +459,7 @@ interface Report {
 
       if (response.status === 201) {
         setNewComment("");
-        
+
         // Recargar comentarios desde el backend
         const commentsResponse = await fetch(`${API_BASE_URL}/comments/zone/${zoneId}`);
         const commentsData = await commentsResponse.json();
@@ -484,7 +484,7 @@ interface Report {
             try {
               const repliesResponse = await fetch(`${API_BASE_URL}/comments/${comment.id}/replies`);
               const repliesData = await repliesResponse.json();
-              
+
               if (repliesResponse.ok && repliesData.replies) {
                 const mappedReplies: Comment[] = repliesData.replies.map((r: any) => ({
                   id: r._id || r.id,
@@ -496,7 +496,7 @@ interface Report {
                   likes: r.likes?.length || 0,
                   isLiked: currentUserId ? r.likes?.some((id: any) => String(id) === String(currentUserId)) : false,
                 }));
-                
+
                 setComments(prev => prev.map(c =>
                   c.id === comment.id ? { ...c, replies: mappedReplies } : c
                 ));
@@ -541,7 +541,7 @@ interface Report {
         // Limpiamos los campos
         setReplyText("");
         setReplyingTo(null);
-        
+
         // Cargamos las respuestas actualizadas desde el backend
         try {
           const repliesResponse = await fetch(`${API_BASE_URL}/comments/${parentId}/replies`);
@@ -560,7 +560,7 @@ interface Report {
             }));
 
             // Actualizamos el comentario padre con sus respuestas
-            setComments(prev => prev.map(c => 
+            setComments(prev => prev.map(c =>
               c.id === parentId ? { ...c, replies: mappedReplies } : c
             ));
 
@@ -608,7 +608,7 @@ interface Report {
         }));
 
         // Actualizamos el comentario padre con sus respuestas
-        setComments(prev => prev.map(c => 
+        setComments(prev => prev.map(c =>
           c.id === commentId ? { ...c, replies: mappedReplies } : c
         ));
 
@@ -1113,7 +1113,7 @@ interface Report {
                         </div>
                       </div>
 
-                      <p 
+                      <p
                         className="text-sm text-gray-700 mb-3 cursor-pointer hover:text-gray-900"
                         onClick={() => handleReportClick(report)}
                       >

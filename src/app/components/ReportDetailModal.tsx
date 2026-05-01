@@ -50,7 +50,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
   const [userVote, setUserVote] = useState<'confirm' | 'deny' | null>(null);
   const [localConfirmations, setLocalConfirmations] = useState(0);
   const [localDenials, setLocalDenials] = useState(0);
-  
+
   // Comment states
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
@@ -82,7 +82,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
     const fetchComments = async () => {
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
       const rawToken = localStorage.getItem('meteomap_token');
-      
+
       try {
         const response = await fetch(`${API_BASE_URL}/comments/report/${report.id}`, {
           headers: rawToken ? { 'Authorization': `Bearer ${rawToken}` } : {}
@@ -111,7 +111,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
                 headers: rawToken ? { 'Authorization': `Bearer ${rawToken}` } : {}
               });
               const repliesData = await repliesResponse.json();
-              
+
               if (repliesResponse.ok && repliesData.replies) {
                 const mappedReplies: Comment[] = repliesData.replies.map((r: any) => ({
                   id: r._id || r.id,
@@ -123,7 +123,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
                   likes: r.likes?.length || 0,
                   isLiked: currentUserId ? r.likes?.some((id: any) => String(id) === String(currentUserId)) : false,
                 }));
-                
+
                 setComments(prev => prev.map(c =>
                   c.id === comment.id ? { ...c, replies: mappedReplies } : c
                 ));
@@ -188,7 +188,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
         // Backend returns the exact validations count from arrays, we update our local offset to match it exactly.
         const newConfirmations = resData.report.validaciones.usuarios_confirmaron?.length || 0;
         const newDenials = resData.report.validaciones.usuarios_desmintieron?.length || 0;
-        
+
         setLocalConfirmations(newConfirmations - (report.confirmations ?? 0));
         setLocalDenials(newDenials - (report.denials ?? 0));
       }
@@ -224,8 +224,8 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
     }
 
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
-    const isAlreadyLiked = !isReply 
-      ? comments.find(c => c.id === commentId)?.isLiked 
+    const isAlreadyLiked = !isReply
+      ? comments.find(c => c.id === commentId)?.isLiked
       : comments.find(c => c.id === parentId)?.replies?.find(r => r.id === commentId)?.isLiked;
 
     const endpoint = isAlreadyLiked ? 'unlike' : 'like';
@@ -272,21 +272,21 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
     // Call backend
     try {
       const response = await fetch(url, {
-         method: method,
-         headers: {
-         'Authorization': `Bearer ${rawToken}`,
-         'Content-Type': 'application/json'
-         },
+        method: method,
+        headers: {
+          'Authorization': `Bearer ${rawToken}`,
+          'Content-Type': 'application/json'
+        },
       });
 
       if (!response.ok) {
-         throw new Error("Error al procesar el like");
+        throw new Error("Error al procesar el like");
       }
-   } catch (error) {
+    } catch (error) {
       console.error("Error en la API de Like/Unlike:", error);
       // Opcional: Revertir la actualización optimista aquí si la petición falla
-      alert("No se pudo guardar tu interacción. Por favor, intenta de nuevo.");
-   }
+      alert("No se pudo guardar tu interacción. Por favor, inténtalo de nuevo.");
+    }
   };
 
   // Handle delete comment
@@ -382,7 +382,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
         return comment;
       });
     };
-    
+
     setComments(prev => {
       const updated = updateInTree(prev);
       if (found) {
@@ -390,7 +390,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
       }
       return prev;
     });
-    
+
     return found;
   };
 
@@ -460,7 +460,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
 
       if (response.status === 201) {
         setNewComment("");
-        
+
         // Reload comments from backend
         const commentsResponse = await fetch(`${API_BASE_URL}/comments/report/${report.id}`, {
           headers: rawToken ? { 'Authorization': `Bearer ${rawToken}` } : {}
@@ -489,7 +489,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
                 headers: rawToken ? { 'Authorization': `Bearer ${rawToken}` } : {}
               });
               const repliesData = await repliesResponse.json();
-              
+
               if (repliesResponse.ok && repliesData.replies) {
                 const mappedReplies: Comment[] = repliesData.replies.map((r: any) => ({
                   id: r._id || r.id,
@@ -501,7 +501,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
                   likes: r.likes?.length || 0,
                   isLiked: currentUserId ? r.likes?.some((id: any) => String(id) === String(currentUserId)) : false,
                 }));
-                
+
                 setComments(prev => prev.map(c =>
                   c.id === comment.id ? { ...c, replies: mappedReplies } : c
                 ));
@@ -546,7 +546,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
       if (response.ok) {
         setReplyText("");
         setReplyingTo(null);
-        
+
         // Load updated replies from backend
         try {
           const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
@@ -568,7 +568,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
             }));
 
             // Update parent comment with new replies
-            setComments(prev => prev.map(c => 
+            setComments(prev => prev.map(c =>
               c.id === parentId ? { ...c, replies: mappedReplies } : c
             ));
 
@@ -620,7 +620,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
         }));
 
         // Update parent comment with replies
-        setComments(prev => prev.map(c => 
+        setComments(prev => prev.map(c =>
           c.id === commentId ? { ...c, replies: mappedReplies } : c
         ));
 
@@ -719,11 +719,10 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
               <Button
                 size="lg"
                 onClick={handleConfirm}
-                className={`h-auto py-4 flex flex-col gap-2 transition-all ${
-                  userVote === 'confirm'
+                className={`h-auto py-4 flex flex-col gap-2 transition-all ${userVote === 'confirm'
                     ? 'bg-green-600 hover:bg-green-700 text-white ring-4 ring-green-200'
                     : 'bg-green-500 hover:bg-green-600 text-white'
-                }`}
+                  }`}
               >
                 <Check className="h-8 w-8" />
                 <div className="text-center">
@@ -736,11 +735,10 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
               <Button
                 size="lg"
                 onClick={handleDeny}
-                className={`h-auto py-4 flex flex-col gap-2 transition-all ${
-                  userVote === 'deny'
+                className={`h-auto py-4 flex flex-col gap-2 transition-all ${userVote === 'deny'
                     ? 'bg-red-600 hover:bg-red-700 text-white ring-4 ring-red-200'
                     : 'bg-red-500 hover:bg-red-600 text-white'
-                }`}
+                  }`}
               >
                 <XCircle className="h-8 w-8" />
                 <div className="text-center">
@@ -754,7 +752,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
             {userVote && (
               <div className="mt-4 p-3 rounded-lg bg-blue-50 border border-blue-200 text-center">
                 <p className="text-sm text-blue-800">
-                  {userVote === 'confirm' 
+                  {userVote === 'confirm'
                     ? '✓ Has confirmado este reporte. Gracias por ayudar a la comunidad.'
                     : '✗ Has desmentido este reporte. Tu feedback ayuda a mantener la información precisa.'}
                 </p>
@@ -843,9 +841,8 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className={`h-8 gap-1 transition-colors ${
-                                  comment.isLiked ? "text-blue-600 hover:text-blue-700" : "text-gray-600 hover:text-blue-600"
-                                }`}
+                                className={`h-8 gap-1 transition-colors ${comment.isLiked ? "text-blue-600 hover:text-blue-700" : "text-gray-600 hover:text-blue-600"
+                                  }`}
                                 onClick={() => handleLike(comment.id)}
                                 title="Me gusta"
                               >
@@ -976,9 +973,8 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    className={`h-8 gap-1 transition-colors ${
-                                      reply.isLiked ? "text-blue-600 hover:text-blue-700" : "text-gray-600 hover:text-blue-600"
-                                    }`}
+                                    className={`h-8 gap-1 transition-colors ${reply.isLiked ? "text-blue-600 hover:text-blue-700" : "text-gray-600 hover:text-blue-600"
+                                      }`}
                                     onClick={() => handleLike(reply.id, true, comment.id)}
                                     title="Me gusta"
                                   >

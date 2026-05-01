@@ -517,7 +517,7 @@ export default function ProfilePage() {
         navigate("/login");
       }, 1500);
     } catch (err) {
-      setPasswordError("Error de conexión. Intenta de nuevo.");
+      setPasswordError("Error de conexión. Inténtalo de nuevo.");
     } finally {
       setPasswordLoading(false);
     }
@@ -554,7 +554,7 @@ export default function ProfilePage() {
         navigate("/");
       }, 2000);
     } catch (err) {
-      setDeleteError("Error de conexión. Intenta de nuevo.");
+      setDeleteError("Error de conexión. Inténtalo de nuevo.");
     } finally {
       setDeleteLoading(false);
     }
@@ -1064,8 +1064,8 @@ export default function ProfilePage() {
                               <div className={`flex-1 rounded-full ${passwordStrength === "strong" ? "bg-green-500" : "bg-gray-200"}`} />
                             </div>
                             <p className={`text-xs font-medium ${passwordStrength === "weak" ? "text-red-600" :
-                                passwordStrength === "medium" ? "text-yellow-600" :
-                                  "text-green-600"
+                              passwordStrength === "medium" ? "text-yellow-600" :
+                                "text-green-600"
                               }`}>
                               Contraseña {passwordStrength || "débil"}
                             </p>
