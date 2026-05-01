@@ -759,8 +759,8 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
                 onClick={handleConfirm}
                 disabled={isOwner}
                 className={`h-auto py-4 flex flex-col gap-2 transition-all ${userVote === 'confirm'
-                    ? 'bg-green-600 hover:bg-green-700 text-white ring-4 ring-green-200'
-                    : 'bg-green-500 hover:bg-green-600 text-white'
+                  ? 'bg-green-600 hover:bg-green-700 text-white ring-4 ring-green-200'
+                  : 'bg-green-500 hover:bg-green-600 text-white'
                   } ${isOwner ? 'opacity-50 cursor-not-allowed grayscale' : ''}`}
               >
                 <Check className="h-8 w-8" />
@@ -776,8 +776,8 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
                 onClick={handleDeny}
                 disabled={isOwner}
                 className={`h-auto py-4 flex flex-col gap-2 transition-all ${userVote === 'deny'
-                    ? 'bg-red-600 hover:bg-red-700 text-white ring-4 ring-red-200'
-                    : 'bg-red-500 hover:bg-red-600 text-white'
+                  ? 'bg-red-600 hover:bg-red-700 text-white ring-4 ring-red-200'
+                  : 'bg-red-500 hover:bg-red-600 text-white'
                   } ${isOwner ? 'opacity-50 cursor-not-allowed grayscale' : ''}`}
               >
                 <XCircle className="h-8 w-8" />
@@ -807,7 +807,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
 
             {/* Info Text */}
             <p className="text-xs text-gray-500 text-center mt-4">
-              Tu voto ayuda a determinar la fiabilidad de este reporte. Los reportes con baja confianza se ocultan automáticamente.
+              Tu voto ayuda a determinar la fiabilidad de este reporte.
             </p>
           </div>
 
