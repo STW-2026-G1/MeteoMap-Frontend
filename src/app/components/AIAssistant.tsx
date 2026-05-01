@@ -52,7 +52,7 @@ export function AIAssistant({ open, onOpenChange }: AIAssistantProps) {
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing) return;
-      
+
       const newWidth = window.innerWidth - e.clientX;
       // Límites de ancho: mínimo 320px, máximo 90% del ancho de pantalla
       if (newWidth >= 320 && newWidth <= window.innerWidth * 0.9) {
@@ -81,7 +81,7 @@ export function AIAssistant({ open, onOpenChange }: AIAssistantProps) {
 
   const quickSuggestions = [
     'Riesgo en Pirineos hoy',
-    'Previsión finde Benasque',
+    'Previsión finde Picos de Europa',
     'Explicar alertas actuales',
   ];
 
@@ -232,17 +232,27 @@ export function AIAssistant({ open, onOpenChange }: AIAssistantProps) {
                   }`}
               >
                 {/* Avatar */}
-                <div
-                  className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${message.sender === 'bot'
-                    ? 'bg-gradient-to-br from-blue-500 to-purple-600'
-                    : 'bg-slate-700'
-                    }`}
-                >
-                  {message.sender === 'bot' ? (
-                    <Bot className="h-4 w-4 text-white" />
-                  ) : (
-                    <User className="h-4 w-4 text-white" />
-                  )}
+                <div className="flex-shrink-0">
+                  <div
+                    className={`h-9 w-9 rounded-full overflow-hidden flex items-center justify-center ring-2 ring-offset-1 ${message.sender === 'bot'
+                      ? 'ring-blue-500 bg-blue-50'
+                      : 'ring-slate-300 bg-slate-100'
+                      }`}
+                  >
+                    {message.sender === 'bot' ? (
+                      <img
+                        src={`https://api.dicebear.com/9.x/bottts/svg?seed=${user?.id || 'meteomap'}`}
+                        alt="Bot Avatar"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <img
+                        src={user?.avatar_url || `https://api.dicebear.com/9.x/${user?.avatar_style || 'avataaars'}/svg?seed=${user?.avatar_seed || user?.id || 'user'}`}
+                        alt="User Avatar"
+                        className="h-full w-full object-cover"
+                      />
+                    )}
+                  </div>
                 </div>
 
                 {/* Message Bubble */}
