@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Sheet,
   SheetContent,
@@ -9,7 +9,7 @@ import {
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { ScrollArea } from "./ui/scroll-area";
-import { Send, Bot, User, AlertCircle, Maximize2, Minimize2 } from "lucide-react";
+import { Send, Bot, User, AlertCircle } from "lucide-react";
 import { motion } from "motion/react";
 import { useAuth } from "../contexts/AuthContext";
 import ReactMarkdown from 'react-markdown';
@@ -40,8 +40,44 @@ export function AIAssistant({ open, onOpenChange }: AIAssistantProps) {
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [panelWidth, setPanelWidth] = useState(450);
+  const [isResizing, setIsResizing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const startResizing = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  }, []);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      
+      const newWidth = window.innerWidth - e.clientX;
+      // Límites de ancho: mínimo 320px, máximo 90% del ancho de pantalla
+      if (newWidth >= 320 && newWidth <= window.innerWidth * 0.9) {
+        setPanelWidth(newWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+    }
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "default";
+      document.body.style.userSelect = "auto";
+    };
+  }, [isResizing]);
 
   const quickSuggestions = [
     'Riesgo en Pirineos hoy',
@@ -144,11 +180,17 @@ export function AIAssistant({ open, onOpenChange }: AIAssistantProps) {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className={`p-0 flex flex-col transition-all duration-300 ease-in-out border-l shadow-2xl ${isExpanded
-          ? "w-full sm:w-[85vw] md:w-[700px] lg:w-[900px]"
-          : "w-full sm:w-[400px] md:w-[450px]"
-          }`}
+        style={{ width: `${panelWidth}px`, maxWidth: '100vw' }}
+        className="p-0 flex flex-col border-l shadow-2xl sm:max-w-none"
       >
+        {/* Resize Handle */}
+        <div
+          onMouseDown={startResizing}
+          className={`absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-blue-500/30 transition-colors z-50 flex items-center justify-center ${isResizing ? 'bg-blue-500/40' : ''}`}
+        >
+          <div className="w-0.5 h-8 bg-slate-300 rounded-full opacity-50" />
+        </div>
+
         {/* Header */}
         <SheetHeader className="px-6 py-4 border-b flex-shrink-0 flex-row items-center justify-between space-y-0">
           <div className="flex items-center gap-3">
@@ -162,19 +204,6 @@ export function AIAssistant({ open, onOpenChange }: AIAssistantProps) {
               </SheetDescription>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="hidden sm:flex text-slate-500 hover:text-slate-900"
-            title={isExpanded ? "Contraer" : "Expandir"}
-          >
-            {isExpanded ? (
-              <Minimize2 className="h-4 w-4" />
-            ) : (
-              <Maximize2 className="h-4 w-4" />
-            )}
-          </Button>
         </SheetHeader>
 
         {/* Error Banner */}
