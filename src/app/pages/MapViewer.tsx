@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { ZoneData, UserReport, Comment } from "../types/weather";
+import { ZoneData } from "../types/weather";
 
 const SERVER_URL = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:3000/api';
 interface MapMarker {
@@ -535,11 +535,10 @@ export default function MapViewer() {
       zoomControl: false,
     }).setView([42.65, 0.75], 8);
 
-    /* Agregar capa de tiles de CartoDB Positron (Minimalista) */
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: 'abcd',
-      maxZoom: 20,
+    /* Agregar capa de tiles de OpenStreetMap */
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 18,
     }).addTo(map);
 
     mapInstanceRef.current = map;
