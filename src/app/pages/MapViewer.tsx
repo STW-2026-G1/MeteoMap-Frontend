@@ -117,6 +117,7 @@ export default function MapViewer() {
   /* ========================================================================== */
   const [isRefreshingAlerts, setIsRefreshingAlerts] = useState(false);
   const [activeAlertLevels, setActiveAlertLevels] = useState<string[]>(['verde', 'amarillo', 'naranja', 'rojo']);
+  
   // Variable que recoge las alertas filtradas por color
   const filteredAlerts = aemetAlerts.filter(alert => 
     activeAlertLevels.includes(alert.nivel.toLowerCase())
@@ -218,23 +219,23 @@ export default function MapViewer() {
       const apiResponse = await response.json();
       const alertsFromApi = apiResponse.data || apiResponse;
 
-      const transformedAlertMarkers: MapMarker[] = alertsFromApi.map((alert: any) => {
-        // Adaptar según tu modelo: alert.coordenadas.latitud o alert.geolocalizacion...
-        const lat = alert.coordenadas?.latitud || alert.geolocalizacion?.coordinates?.[1] || 0;
-        const lng = alert.coordenadas?.longitud || alert.geolocalizacion?.coordinates?.[0] || 0;
+      // const transformedAlertMarkers: MapMarker[] = alertsFromApi.map((alert: any) => {
+      //   // Adaptar según tu modelo: alert.coordenadas.latitud o alert.geolocalizacion...
+      //   const lat = alert.coordenadas?.latitud || alert.geolocalizacion?.coordinates?.[1] || 0;
+      //   const lng = alert.coordenadas?.longitud || alert.geolocalizacion?.coordinates?.[0] || 0;
        
 
-        return {
-          id: alert.id,
-          lat: lat,
-          lng: lng,
-          label: alert.tipo || "Alerta",
-          color: alert.color || '#f59e0b',
-        };
-      });
+      //   return {
+      //     id: alert.id,
+      //     lat: lat,
+      //     lng: lng,
+      //     label: alert.tipo || "Alerta",
+      //     color: alert.color || '#f59e0b',
+      //   };
+      // });
 
       setAemetAlerts(alertsFromApi);
-      setAlertMarkers(transformedAlertMarkers);
+      // setAlertMarkers(transformedAlertMarkers);
     } catch (err) {
       console.error('❌ Error loading alerts:', err);
     } finally {
@@ -245,6 +246,33 @@ export default function MapViewer() {
   useEffect(() => {
     refreshAemetAlerts();
   }, []);
+
+  // Este efecto "vigila" las alertas y los niveles activos
+useEffect(() => {
+  // 1. Filtramos las alertas según los colores seleccionados por el usuario
+  const filtered = aemetAlerts.filter(alert => 
+    activeAlertLevels.includes(alert.nivel.toLowerCase())
+  );
+
+  // 2. Las transformamos al formato que entiende el mapa (MapMarker)
+  const transformed: MapMarker[] = filtered.map((alert: any) => {
+    const lat = alert.coordenadas?.latitud || alert.geolocalizacion?.coordinates?.[1] || 0;
+    const lng = alert.coordenadas?.longitud || alert.geolocalizacion?.coordinates?.[0] || 0;
+
+    return {
+      id: alert.id || alert._id,
+      lat: lat,
+      lng: lng,
+      label: alert.tipo || "Alerta",
+      color: alert.color || '#f59e0b',
+    };
+  });
+
+  // 3. Actualizamos el estado de los marcadores. 
+  // Al cambiar 'alertMarkers', se disparará automáticamente el efecto que pinta el mapa.
+  setAlertMarkers(transformed);
+
+}, [aemetAlerts, activeAlertLevels]);
 
   /* ========================================================================== */
   /* EFECTO 3: Cargar zonas favoritas del usuario autenticado                */
@@ -399,8 +427,8 @@ export default function MapViewer() {
       return;
     }
 
-    // Centrar el mapa en la alerta con zoom 12
-    mapInstanceRef.current.setView([latitud, longitud], 9, {
+    // Centrar el mapa en la alerta con zoom 9
+    mapInstanceRef.current.setView([latitud + 0.3, longitud], 9, {
       animate: true,
     });
 
@@ -437,8 +465,8 @@ export default function MapViewer() {
     prev.includes(level) 
       ? prev.filter(l => l !== level) 
       : [...prev, level]
-  );
-};
+    );
+  };
 
   /**
    * Alterna el estado favorito de una zona
@@ -712,7 +740,7 @@ export default function MapViewer() {
       alertMarkersRef.current.push(leafletMarker);
     });
 
-  }, [alertMarkers, aemetAlerts, layers.aemetAlerts]);
+  }, [alertMarkers, aemetAlerts, layers.aemetAlerts, activeAlertLevels]);
 
   /**
    * Aumenta el nivel de zoom del mapa
@@ -953,86 +981,86 @@ export default function MapViewer() {
             <Minus className="h-5 w-5" />
           </Button>
         </div>
-
         {/* Desplegable de Alertas AEMET - Reemplaza la leyenda */}
         {layers.aemetAlerts && (
-          <div className="absolute top-20 right-4 z-[1000] w-72 hidden md:block max-h-[calc(100vh-7rem)] sm:block">
+          <div className="absolute top-20 right-4 z-[1000] w-85 hidden md:block max-h-[calc(100vh-7rem)] sm:block">
             <Card className="bg-white shadow-lg">
               <Accordion type="single" collapsible className="w-full">
                 <AccordionItem value="aemet-alerts">
+                  {/* AHORA LOS BOTONES ESTÁN DENTRO DEL TRIGGER */}
                   <AccordionTrigger className="px-4 py-3 hover:bg-red-50 text-left">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-                      <AlertTriangle className="h-5 w-5 text-red-600" />
-                      <span>
-                        Alertas AEMET {filteredAlerts.length > 0 && `(${filteredAlerts.length})`}
-                      </span>
-                      {/* BOTÓN DE REFRESCAR */}
-                      
-                    </div>
-                  </AccordionTrigger>                                 
-                  <div className="pr-4 flex items-center gap-1">
-                          {/* DESPLEGABLE DE FILTROS POR COLOR */}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-slate-400 hover:bg-white hover:text-slate-900 transition-colors duration-200 cursor-pointer"
-                                title="Filtrar por nivel de riesgo"
-                              >
-                                <Filter className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48 bg-white">
-                              <DropdownMenuLabel>Filtrar por riesgo</DropdownMenuLabel>
-                              <DropdownMenuSeparator />
-                              
-                              {[
-                                { id: 'verde', label: 'Nivel Verde', color: 'bg-emerald-500' },
-                                { id: 'amarillo', label: 'Nivel Amarillo', color: 'bg-yellow-400' },
-                                { id: 'naranja', label: 'Nivel Naranja', color: 'bg-orange-500' },
-                                { id: 'rojo', label: 'Nivel Rojo', color: 'bg-red-600' }
-                              ].map((level) => (
-                                <DropdownMenuCheckboxItem
-                                  key={level.id}
-                                  checked={activeAlertLevels.includes(level.id)}
-                                  onCheckedChange={() => toggleAlertLevel(level.id)}
-                                  onSelect={(e) => e.preventDefault()} // Evita que se cierre al marcar
-                                  className="cursor-pointer"
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <div className={`h-2 w-2 rounded-full ${level.color}`} />
-                                    {level.label}
-                                  </div>
-                                </DropdownMenuCheckboxItem>
-                              ))}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-
-                          {/* BOTÓN DE REFRESCAR */}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-slate-400 hover:bg-white hover:text-slate-900 transition-colors duration-200 cursor-pointer"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              handleRefreshAemet();
-                            }}
-                            disabled={isRefreshingAlerts}
-                            title="Actualizar alertas"
-                          >
-                            <RefreshCw className={`h-4 w-4 ${isRefreshingAlerts ? 'animate-spin text-slate-500' : ''}`} />
-                          </Button>
-                        </div>
-                  <AccordionContent className="px-4 pb-4">
-                    {filteredAlerts.length === 0 ? (
-                      <div className="text-sm text-green-700 bg-green-50 p-3 rounded">
-                        ✅ No hay alertas meteorológicas activas
+                    <div className="flex items-center justify-between w-full">
+                      {/* Título a la izquierda */}
+                      <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                        <AlertTriangle className="h-5 w-5 text-red-600" />
+                        <span>
+                          Alertas AEMET {filteredAlerts.length > 0 && `(${filteredAlerts.length})`}
+                        </span>
                       </div>
-                    ) : (
-                      <>
 
-                                              
+                      {/* Botones a la derecha (stopPropagation evita que se cierre el acordeón) */}
+                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        
+                        {/* DESPLEGABLE DE FILTROS */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-slate-400 hover:bg-white hover:text-slate-900 transition-colors duration-200 cursor-pointer"
+                              title="Filtrar por nivel de riesgo"
+                            >
+                              <Filter className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48 bg-white">
+                            <DropdownMenuLabel>Filtrar por riesgo</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            {[
+                              { id: 'verde', label: 'Nivel Verde', color: 'bg-emerald-500' },
+                              { id: 'amarillo', label: 'Nivel Amarillo', color: 'bg-yellow-400' },
+                              { id: 'naranja', label: 'Nivel Naranja', color: 'bg-orange-500' },
+                              { id: 'rojo', label: 'Nivel Rojo', color: 'bg-red-600' }
+                            ].map((level) => (
+                              <DropdownMenuCheckboxItem
+                                key={level.id}
+                                checked={activeAlertLevels.includes(level.id)}
+                                onCheckedChange={() => toggleAlertLevel(level.id)}
+                                onSelect={(e) => e.preventDefault()}
+                                className="cursor-pointer"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <div className={`h-2 w-2 rounded-full ${level.color}`} />
+                                  {level.label}
+                                </div>
+                              </DropdownMenuCheckboxItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        {/* BOTÓN DE REFRESCAR */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-slate-400 hover:bg-white hover:text-slate-900 transition-colors duration-200 cursor-pointer"
+                          onClick={() => handleRefreshAemet()}
+                          disabled={isRefreshingAlerts}
+                          title="Actualizar alertas"
+                        >
+                          <RefreshCw className={`h-4 w-4 ${isRefreshingAlerts ? 'animate-spin text-slate-500' : ''}`} />
+                        </Button>
+                      </div>
+                    </div>
+                  </AccordionTrigger>
+
+          <AccordionContent className="px-4 pb-4">
+            {/* ... resto de tu contenido ... */}
+            {filteredAlerts.length === 0 ? (
+              <div className="text-sm text-green-700 bg-green-50 p-3 rounded">
+                ✅ No hay alertas meteorológicas activas
+              </div>
+              ) : (
+                      <>                                              
                         <div className="space-y-2 max-h-[350px] overflow-y-auto">
                           {/* Ordenar alertas por severidad: rojo > narnaja > amarillo > verde */}
                           {[
