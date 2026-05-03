@@ -55,6 +55,8 @@ import {
   Trash2,
   Plus,
   Lock,
+  Cloud,
+  Wind,
 } from "lucide-react";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:3000/api';
@@ -225,51 +227,159 @@ export default function ProfilePage() {
     fetchCategories();
   }, []);
 
-  // Cargar zonas favoritas del backend
-  useEffect(() => {
-    const loadFavorites = async () => {
-      try {
-        const token = localStorage.getItem('meteomap_token');
-        if (!token) {
-          console.log('No hay usuario autenticado para cargar favoritas');
-          return;
-        }
-
-        const response = await fetch(`${API_BASE_URL}/user/me/favorites`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          const preferences = data.preferencias || [];
-
-          // Transformar referencias a zonas en objetos con datos completos
-          const mappedFavorites = preferences.map((pref: any, index: number) => {
-            const zone = typeof pref === 'object' ? pref : { _id: pref };
-            return {
-              id: index, // ID local para React key
-              zoneId: zone._id || zone.id, // ObjectId para enviar al backend
-              name: zone.nombre || zone.name || "Zona sin nombre",
-              region: zone.departamento || "Región desconocida",
-              image: "https://images.unsplash.com/photo-1551524164-687a55dd1126?w=800", // Default image
-              riskLevel: zone.nivelAvalanchas || 50,
-              lastVisit: new Date().toISOString().split('T')[0],
-              totalReports: 0,
-            };
-          });
-
-          setFavoriteZones(mappedFavorites);
-          console.log('Favoritas cargadas:', mappedFavorites);
-        }
-      } catch (error) {
-        console.error('Error cargando favoritas:', error);
+  // Cargar categorías del backend
+useEffect(() => {
+  const fetchCategories = async () => {
+    setIsLoadingCategories(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/categories`);
+      if (response.ok) {
+        const data = await response.json();
+        const mapped = data.map((cat: any) => ({
+          value: cat._id,
+          label: cat.nombre,
+          icon: cat.icono_marcador || "⚠️"
+        }));
+        setCategories(mapped);
+      } else {
+        toast.error("Error al cargar categorías");
       }
-    };
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    } finally {
+      setIsLoadingCategories(false);
+    }
+  };
+  fetchCategories();
+}, []);
 
-    loadFavorites();
-  }, []);
+// Cargar zonas favoritas del backend con datos reales
+useEffect(() => {
+  const loadFavorites = async () => {
+    try {
+      const token = localStorage.getItem('meteomap_token');
+      if (!token) {
+        console.log('No hay usuario autenticado para cargar favoritas');
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/user/me/favorites`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const preferences = data.preferencias || [];
+
+        // Obtener datos completos para cada zona
+        const mappedFavorites = await Promise.all(
+          preferences.map(async (pref: any, index: number) => {
+            const zone = typeof pref === 'object' ? pref : { _id: pref };
+            const zoneId = zone._id || zone.id;
+
+            try {
+              // Fetch datos completos de la zona
+              const zoneResponse = await fetch(`${API_BASE_URL}/zones/${zoneId}`);
+              if (zoneResponse.ok) {
+                const zoneData = await zoneResponse.json();
+                const zoneInfo = zoneData.data || zoneData.zone || zoneData;
+                
+                // Extracción de datos meteorológicos reales de la API
+                const meteoData = zoneInfo.cache_meteo?.current?.datos_crudos || {};
+
+                // Contar reportes de las últimas 24h
+                const now = new Date();
+                const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+                const recentReports = (zoneInfo.reportes || []).filter((report: any) => {
+                  const reportDate = new Date(report.createdAt || report.fecha);
+                  return reportDate >= oneDayAgo;
+                });
+
+                // Verificar si hay reportes confirmados
+                const hasConfirmedReports = recentReports.some(
+                  (report: any) => report.validaciones?.usuarios_confirmaron?.length > 0
+                );
+
+                // Calcular índice de riesgo usando los datos meteorológicos extraídos
+                const riskData = calculateRiskIndex({
+                  weather: { code: meteoData.codigo_clima },
+                  temperature: meteoData.temperatura,
+                  recentReports: recentReports.length,
+                  hasConfirmedReports,
+                });
+
+                return {
+                  id: index,
+                  zoneId,
+                  name: zoneInfo.nombre || zone.nombre || "Zona sin nombre",
+                  image: zoneInfo.imagen_url || "https://images.unsplash.com/photo-1551524164-687a55dd1126?w=800",
+                  temperature: meteoData.temperatura || 0,
+                  wind: meteoData.velocidad_viento || 0,
+                  weather: {
+                    code: meteoData.codigo_clima,
+                    description: meteoData.descripcion
+                  },
+                  riskLevel: riskData.riskLevel,
+                  riskType: riskData.riskType,
+                  riskColor: riskData.riskColor,
+                  recentReports: recentReports.length,
+                  reportCategories: recentReports.map((r: any) => r.categoria_id?.nombre || "Desconocido"),
+                  lastVisit: new Date().toISOString().split('T')[0],
+                };
+              } else {
+                // Fallback si no se puede obtener los datos completos
+                return {
+                  id: index,
+                  zoneId,
+                  name: zone.nombre || zone.name || "Zona sin nombre",
+                  region: zone.departamento || "Región desconocida",
+                  image: "https://images.unsplash.com/photo-1551524164-687a55dd1126?w=800",
+                  temperature: 0,
+                  wind: 0,
+                  weather: {},
+                  riskLevel: 50,
+                  riskType: "Moderado",
+                  riskColor: "bg-yellow-100 text-yellow-800",
+                  recentReports: 0,
+                  reportCategories: [],
+                  lastVisit: new Date().toISOString().split('T')[0],
+                };
+              }
+            } catch (error) {
+              console.error(`Error cargando datos de zona ${zoneId}:`, error);
+              // Fallback
+              return {
+                id: index,
+                zoneId,
+                name: zone.nombre || zone.name || "Zona sin nombre",
+                region: zone.departamento || "Región desconocida",
+                image: "https://images.unsplash.com/photo-1551524164-687a55dd1126?w=800",
+                temperature: 0,
+                wind: 0,
+                weather: {},
+                riskLevel: 50,
+                riskType: "Moderado",
+                riskColor: "bg-yellow-100 text-yellow-800",
+                recentReports: 0,
+                reportCategories: [],
+                lastVisit: new Date().toISOString().split('T')[0],
+              };
+            }
+          })
+        );
+
+        setFavoriteZones(mappedFavorites);
+        console.log('Favoritas cargadas:', mappedFavorites);
+      }
+    } catch (error) {
+      console.error('Error cargando favoritas:', error);
+    }
+  };
+
+  loadFavorites();
+}, []);
 
   // Tipos de riesgo - ya no se usa, usamos categories
 
@@ -577,6 +687,84 @@ export default function ProfilePage() {
     return "text-red-600";
   };
 
+  interface RiskIndex {
+    riskLevel: number;
+    riskType: "Bajo" | "Moderado" | "Alto" | "Muy Alto";
+    riskColor: string;
+  }
+
+  const calculateRiskIndex = (zone: any): RiskIndex => {
+    let riskLevel = 20; // Base inicial
+
+    // Mapear código meteorológico a riesgo base
+    if (zone.weather) {
+      const weatherCode = zone.weather.code || 0;
+      if (weatherCode === 0 || weatherCode === 1) {
+        riskLevel = 20; // Cielo despejado/parcialmente nublado
+      } else if (weatherCode === 2) {
+        riskLevel = 30; // Nublado
+      } else if (weatherCode === 45 || weatherCode === 48 || weatherCode === 51 || weatherCode === 53 || weatherCode === 55) {
+        riskLevel = 50; // Lluvia/llovizna
+      } else if (weatherCode === 71 || weatherCode === 73 || weatherCode === 75 || weatherCode === 77 || weatherCode === 80 || weatherCode === 81 || weatherCode === 82) {
+        riskLevel = 70; // Nieve
+      } else if (weatherCode === 80 || weatherCode === 81 || weatherCode === 82 || weatherCode === 85 || weatherCode === 86) {
+        riskLevel = 70;
+      } else if (weatherCode === 95 || weatherCode === 96 || weatherCode === 99) {
+        riskLevel = 100; // Tormenta
+      } else {
+        riskLevel = 40; // Otros
+      }
+    }
+
+    // Ajustar por temperatura
+    if (zone.temperature !== undefined) {
+      if (zone.temperature < -5) {
+        riskLevel += 15; // Muy fría
+      } else if (zone.temperature < 0) {
+        riskLevel += 10; // Fría
+      }
+    }
+
+    // Ajustar por reportes recientes (últimas 24h)
+    const recentReports = zone.recentReports || 0;
+    if (recentReports >= 1 && recentReports <= 2) {
+      riskLevel += 5;
+    } else if (recentReports >= 3 && recentReports <= 5) {
+      riskLevel += 15;
+    } else if (recentReports >= 6) {
+      riskLevel += 25;
+    }
+
+    // Ajustar por confirmaciones
+    if (zone.hasConfirmedReports) {
+      riskLevel += 20;
+    }
+
+    // Limitar entre 0-100
+    riskLevel = Math.min(Math.max(riskLevel, 0), 100);
+
+    // Determinar tipo de riesgo y color
+    let riskType: "Bajo" | "Moderado" | "Alto" | "Muy Alto" = "Bajo";
+    let riskColor = "bg-green-100 text-green-800";
+
+    if (riskLevel >= 75) {
+      riskType = "Muy Alto";
+      riskColor = "bg-red-100 text-red-800";
+    } else if (riskLevel >= 50) {
+      riskType = "Alto";
+      riskColor = "bg-orange-100 text-orange-800";
+    } else if (riskLevel >= 30) {
+      riskType = "Moderado";
+      riskColor = "bg-yellow-100 text-yellow-800";
+    }
+
+    return {
+      riskLevel: Math.round(riskLevel),
+      riskType,
+      riskColor,
+    };
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 via-gray-50 to-purple-50">
       <Header />
@@ -797,78 +985,150 @@ export default function ProfilePage() {
               <h2 className="text-2xl font-bold text-gray-900">Zonas Favoritas</h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {favoriteZones.map((zone) => (
-                <Card key={zone.id} className="overflow-hidden hover:shadow-xl transition-shadow group">
-                  {/* Image */}
-                  <div className="relative h-48 overflow-hidden">
-                    <img
-                      src={zone.image}
-                      alt={zone.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                    />
-                    <div className="absolute top-3 right-3">
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="bg-white/90 hover:bg-red-50 border-none"
-                          >
-                            <Heart className="h-4 w-4 text-red-500 fill-red-500" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>¿Eliminar de favoritos?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              {zone.name} será eliminada de tu lista de zonas favoritas.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleRemoveZone(zone.zoneId)}>
-                              Eliminar
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                    <div className="absolute bottom-3 left-3">
-                      <Badge className={`${getRiskColor(zone.riskLevel)} bg-white/90 font-semibold`}>
-                        Riesgo: {zone.riskLevel}
-                      </Badge>
-                    </div>
-                  </div>
+            {favoriteZones.length === 0 ? (
+              <Card className="p-12 text-center">
+                <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600 text-lg">No tienes zonas favoritas aún</p>
+                <p className="text-gray-500 text-sm mt-2">Añade zonas desde el mapa para seguir sus reportes</p>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {favoriteZones.map((zone) => (
+                  <Card
+                    key={zone.id}
+                    className="overflow-hidden hover:shadow-2xl transition-all duration-300 group flex flex-col h-full"
+                  >
+                    {/* Image with Gradient Overlay */}
+                    <div className="relative h-56 overflow-hidden flex-shrink-0">
+                      <img
+                        src={zone.image}
+                        alt={zone.name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                      />
+                      
+                      {/* Gradient Overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
-                  {/* Content */}
-                  <div className="p-5">
-                    <h3 className="text-xl font-bold text-gray-900 mb-1">{zone.name}</h3>
-                    <p className="text-sm text-gray-600 mb-4">{zone.region}</p>
-
-                    <div className="space-y-2 text-sm text-gray-600 mb-4">
-                      <div className="flex items-center justify-between">
-                        <span>Última visita:</span>
-                        <span className="font-medium">
-                          {new Date(zone.lastVisit).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
-                        </span>
+                      {/* Delete Button */}
+                      <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              size="sm"
+                              className="bg-red-500 hover:bg-red-600 text-white border-none"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>¿Eliminar de favoritos?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                {zone.name} será eliminada de tu lista de zonas favoritas.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleRemoveZone(zone.zoneId)}
+                                className="bg-red-600 hover:bg-red-700"
+                              >
+                                Eliminar
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span>Tus reportes:</span>
-                        <span className="font-medium">{zone.totalReports}</span>
+
+                      {/* Risk Badge */}
+                      <div className="absolute bottom-3 left-3">
+                        <Badge className={`${zone.riskColor} font-bold text-xs px-3 py-1`}>
+                          {zone.riskType}
+                        </Badge>
+                      </div>
+
+                      {/* Risk Level in Top Left */}
+                      <div className="absolute top-3 left-3 bg-white/90 backdrop-blur rounded-lg px-3 py-1">
+                        <div className="text-xs font-semibold text-gray-900">
+                          Riesgo: {zone.riskLevel}/100
+                        </div>
                       </div>
                     </div>
 
-                    <Button
-                      className="w-full bg-blue-600 hover:bg-blue-700"
-                      onClick={() => navigate('/mapa')}
-                    >
-                      Ver Detalles
-                    </Button>
-                  </div>
-                </Card>
-              ))}
-            </div>
+                    {/* Content */}
+                    <div className="p-5 flex-1 flex flex-col">
+                      {/* Name and Region */}
+                      <div className="mb-4">
+                        <h3 className="text-lg font-bold text-gray-900 line-clamp-2">{zone.name}</h3>
+                        <p className="text-xs text-gray-500 mt-1">{zone.region}</p>
+                      </div>
+
+                      {/* Weather Info */}
+                      <div className="grid grid-cols-2 gap-3 mb-4 p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <Cloud className="h-4 w-4 text-blue-500" />
+                          <div>
+                            <div className="text-xs text-gray-600">Temp.</div>
+                            <div className="text-sm font-semibold text-gray-900">
+                              {Math.round(zone.temperature || 0)}°C
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Wind className="h-4 w-4 text-teal-500" />
+                          <div>
+                            <div className="text-xs text-gray-600">Viento</div>
+                            <div className="text-sm font-semibold text-gray-900">
+                              {Math.round(zone.wind || 0)} km/h
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Recent Reports */}
+                      {zone.recentReports > 0 && (
+                        <div className="mb-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                          <div className="flex items-center gap-2 mb-2">
+                            <AlertTriangle className="h-4 w-4 text-amber-600" />
+                            <span className="text-sm font-semibold text-amber-900">
+                              {zone.recentReports} reporte{zone.recentReports > 1 ? "s" : ""} reciente{zone.recentReports > 1 ? "s" : ""}
+                            </span>
+                          </div>
+                          {zone.reportCategories?.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {[...new Set(zone.reportCategories)].slice(0, 3).map((category, idx) => (
+                                <Badge key={idx} variant="secondary" className="text-xs">
+                                  {category}
+                                </Badge>
+                              ))}
+                              {zone.reportCategories.length > 3 && (
+                                <Badge variant="secondary" className="text-xs">
+                                  +{zone.reportCategories.length - 3}
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Last Visit */}
+                      <div className="text-xs text-gray-500 mb-4">
+                        Última visita: {new Date(zone.lastVisit).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}
+                      </div>
+
+                      {/* Action Button */}
+                      <Button
+                        className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white mt-auto"
+                        onClick={() => navigate(`/mapa?zone=${zone.zoneId}`)}
+                      >
+                        <MapPin className="h-4 w-4 mr-2" />
+                        Ver en Mapa
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           {/* Tab: Configuración */}
