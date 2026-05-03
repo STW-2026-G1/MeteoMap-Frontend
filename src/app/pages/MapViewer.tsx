@@ -10,7 +10,6 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "..
 import { AIAssistant } from "../components/AIAssistant";
 import { ZoneSidebar } from "../components/ZoneSidebar";
 import { CreateReportModal } from "../components/CreateReportModal";
-import { useAemetAlerts } from "../components/AemetAlertsLayer";
 import {
   Search,
   Plus,
@@ -36,9 +35,8 @@ interface MapMarker {
   id: string;
   lat: number;
   lng: number;
-  type: 'snow' | 'ice' | 'alert';
   label: string;
-  color?: string;
+  color: string;
 }
 
 export default function MapViewer() {
@@ -142,8 +140,8 @@ export default function MapViewer() {
             id: zone._id, // <--- USA EL ID DE MONGO, NO EL INDEX
             lat: lat,
             lng: lng,
-            type: 'snow' as const,
             label: zone.nombre || "Zona sin nombre",
+            color: '#3b82f6',
           };
         });
 
@@ -207,18 +205,14 @@ export default function MapViewer() {
         // Adaptar según tu modelo: alert.coordenadas.latitud o alert.geolocalizacion...
         const lat = alert.coordenadas?.latitud || alert.geolocalizacion?.coordinates?.[1] || 0;
         const lng = alert.coordenadas?.longitud || alert.geolocalizacion?.coordinates?.[0] || 0;
-        // Determinar el color correcto según la severidad de la AEMET
-        let markerColor = '#f59e0b'; // Amarillo: moderado (por defecto)
-        if (alert.nivelNumerico >= 3) markerColor = '#ef4444'; // Rojo: crítico
-        else if (alert.nivelNumerico === 2) markerColor = '#f97316'; // Naranja:
+       
 
         return {
-          id: alert.id || alert._id,
+          id: alert.id,
           lat: lat,
           lng: lng,
-          type: 'alert' as const, // Forzamos el tipo 'alert' para que use el círculo rojo
           label: alert.tipo || "Alerta",
-          color: markerColor,
+          color: alert.color || '#f59e0b',
         };
       });
 
@@ -389,7 +383,7 @@ export default function MapViewer() {
     }
 
     // Centrar el mapa en la alerta con zoom 12
-    mapInstanceRef.current.setView([latitud, longitud], 12, {
+    mapInstanceRef.current.setView([latitud, longitud], 9, {
       animate: true,
     });
 
@@ -481,44 +475,13 @@ export default function MapViewer() {
   const createCustomIcon = (color: string) => {
     return L.divIcon({
       className: 'custom-marker',
-      html: `<div style="background-color: ${color}; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>`,
-      iconSize: [30, 30],
-      iconAnchor: [15, 15],
-      popupAnchor: [0, -15],
+      html: `<div style="background-color: ${color}; width: 24px; height: 24px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+      popupAnchor: [0, -12],
     });
   };
 
-  /**
-   * Retorna el icono correspondiente según el tipo de marcador
-   * @param type - Tipo de marcador ('snow' | 'ice' | 'alert')
-   * @returns Icono de Leaflet personalizado
-   */
-  const getMarkerIcon = (type: string) => {
-    switch (type) {
-      case 'snow':
-        return createCustomIcon('#3b82f6');
-      case 'ice':
-        return createCustomIcon('#06b6d4');
-      case 'alert':
-        return createCustomIcon('#f59e0b');
-      default:
-        return createCustomIcon('#6b7280');
-    }
-  };
-
-  /**
-   * Retorna el SVG correspondiente para mostrar en los popups
-   * @param type - Tipo de marcador para seleccionar el icono SVG
-   * @returns String con código SVG del icono
-   */
-  const getIconSvg = (type: string) => {
-    const iconMap: { [key: string]: string } = {
-      snow: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="m17 20-5-5 5-5"/><path d="m7 4 5 5-5 5"/></svg>',
-      ice: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 1 0 6 0V5a3 3 0 0 0-3-3z"/></svg>',
-      alert: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>',
-    };
-    return iconMap[type] || '';
-  };
 
   /* ========================================================================== */
   /* EFECTO 2: Map Initialization                                              */
@@ -543,44 +506,42 @@ export default function MapViewer() {
 
     mapInstanceRef.current = map;
 
-    /* Agregar marcadores de zonas al mapa */
+/* Agregar marcadores de zonas al mapa */
     markers.forEach((marker) => {
       const leafletMarker = L.marker([marker.lat, marker.lng], {
-        icon: getMarkerIcon(marker.type),
+        icon: createCustomIcon(marker.color), // <-- Pasamos directamente el color
       }).addTo(map);
+
+      // Popup para zonas
       const popupContent = `
         <div style="display: flex; align-items: center; gap: 8px;">
-          ${getIconSvg(marker.type)}
+          <div style="width: 12px; height: 12px; border-radius: 50%; background-color: ${marker.color};"></div>
           <span style="font-weight: 500;">${marker.label}</span>
         </div>
       `;
 
       leafletMarker.bindPopup(popupContent);
-
-      leafletMarker.on('click', () => {
-        handleZoneSelect(marker.id);
-      });
-
+      leafletMarker.on('click', () => handleZoneSelect(marker.id));
       userMarkersRef.current.push(leafletMarker);
     });
+
     /* Agregar marcadores de alertas al mapa */
     alertMarkers.forEach((marker) => {
       const leafletMarker = L.marker([marker.lat, marker.lng], {
-        icon: getMarkerIcon(marker.type), // Como es tipo 'alert', usará el círculo rojo
+        icon: createCustomIcon(marker.color), // <-- Pasamos directamente el color
       }).addTo(map);
 
+      // Popup limpio sin el getIconSvg
       const popupContent = `
           <div style="display: flex; align-items: center; gap: 8px;">
-            ${getIconSvg(marker.type)}
+            <div style="width: 12px; height: 12px; border-radius: 50%; background-color: ${marker.color};"></div>
             <span style="font-weight: 500;">${marker.label}</span>
           </div>
         `;
 
       leafletMarker.bindPopup(popupContent);
-
-      // Usamos la función de centrado que ya tenías
       leafletMarker.on('click', () => {
-        const fullAlert = aemetAlerts.find(a => (a.id || a._id) === marker.id);
+        const fullAlert = aemetAlerts.find(a => (a.id) === marker.id);
         if (fullAlert) handleAemetAlertClick(fullAlert);
       });
 
@@ -613,12 +574,11 @@ export default function MapViewer() {
 
     // 2. Crear los nuevos marcadores en memoria
     alertMarkers.forEach((marker) => {
-      // Usar el color dinámico si lo tiene, si no, usar el genérico
-      const icon = marker.type === 'alert' && marker.color
-        ? createCustomIcon(marker.color)
-        : getMarkerIcon(marker.type);
+      
 
-      const leafletMarker = L.marker([marker.lat, marker.lng], { icon });
+      const leafletMarker = L.marker([marker.lat, marker.lng], { 
+        icon: createCustomIcon(marker.color) 
+      });
 
       // Buscamos la alerta completa en el estado usando el ID
       const fullAlert = aemetAlerts.find(a => (a.id || a._id) === marker.id);
@@ -640,7 +600,7 @@ export default function MapViewer() {
           <div style="min-width: 240px; max-width: 300px; max-height: 380px; overflow-y: auto; font-family: sans-serif; padding-right: 4px;">
             
             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; border-bottom: 2px solid ${marker.color || '#f59e0b'}; padding-bottom: 4px;">
-              ${getIconSvg(marker.type)}
+              <div style="width: 16px; height: 16px; border-radius: 50%; background-color: ${marker.color};"></div>
               <span style="font-weight: bold; text-transform: uppercase; color: ${marker.color || '#f59e0b'}; letter-spacing: 0.5px;">
                 NIVEL ${fullAlert.nivel || 'DESCONOCIDO'}
               </span>
@@ -991,24 +951,23 @@ export default function MapViewer() {
                             ...aemetAlerts.filter(a => a.nivelNumerico >= 3), // Rojo: crítico
                             ...aemetAlerts.filter(a => a.nivelNumerico === 2), // Naranja: warning
                             ...aemetAlerts.filter(a => a.nivelNumerico === 1), // amarillo: moderado
+                             ...aemetAlerts.filter(a => a.nivelNumerico === 0), // verde: info
                           ].map((alert) => {
-                            // Determinar color del borde y fondo según severidad
-                            let borderColor = '#f87171'; // Rojo por defecto
-                            let bgColor = '#fee2e2';
-                            let hoverColor = '#fecaca';
+                            // Determinar color base según la API
+                            const borderColor = alert.color || '#f59e0b'; 
+                            
+                            // Mantenemos colores de fondo tenues como decoración
+                            let bgColor = '#f3f4f6';
+                            let hoverColor = '#e5e7eb';
 
                             if (alert.nivelNumerico >= 3) {
-                              borderColor = '#ef4444'; // Rojo: crítico
-                              bgColor = '#fca5a5';
-                              hoverColor = '#f87171';
+                              bgColor = '#fca5a5'; hoverColor = '#f87171';
                             } else if (alert.nivelNumerico == 2) {
-                              borderColor = '#f87171'; // Naranja: warning
-                              bgColor = '#fee2e2';
-                              hoverColor = '#fecaca';
+                              bgColor = '#fee2e2'; hoverColor = '#fecaca';
                             } else if (alert.nivelNumerico == 1) {
-                              borderColor = '#f59e0b'; // Amarillo: moderado
-                              bgColor = '#fef3c7';
-                              hoverColor = '#fde68a';
+                              bgColor = '#fef3c7'; hoverColor = '#fde68a';
+                            } else if (alert.nivelNumerico == 0){
+                               bgColor = '#e9fec7'; hoverColor = '#26b94b';
                             }
 
                             return (
