@@ -14,18 +14,24 @@ import {
   Search,
   Plus,
   Minus,
-  Snowflake,
   AlertTriangle,
-  CloudRain,
-  Thermometer,
-  IceCreamCone,
   MessageCircle,
-  Wind,
-  Users,
   X,
   MapPin,
-  Loader
+  Loader,
+  RefreshCw,
+  Filter, 
+  Check
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../components/ui/dropdown-menu";
+
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { ZoneData } from "../types/weather";
@@ -104,6 +110,17 @@ export default function MapViewer() {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /* ========================================================================== */
+  /* ESTADO - Gestion de alertas                                                */
+  /* Gestiona las funcionalidades del panel de alertas (actulizar,filtrar,...)  */
+  /* ========================================================================== */
+  const [isRefreshingAlerts, setIsRefreshingAlerts] = useState(false);
+  const [activeAlertLevels, setActiveAlertLevels] = useState<string[]>(['verde', 'amarillo', 'naranja', 'rojo']);
+  // Variable que recoge las alertas filtradas por color
+  const filteredAlerts = aemetAlerts.filter(alert => 
+    activeAlertLevels.includes(alert.nivel.toLowerCase())
+  );
 
   /* ========================================================================== */
   /* EFECTO 1: API Data Fetching & Transformation                             */
@@ -389,6 +406,39 @@ export default function MapViewer() {
 
     console.log('Navegando a alerta:', alert.tipo, 'en', alert.zona);
   };
+
+  /**
+   * Gestiona la funcionalidad del boton de actulizar de alertas
+   */
+  const handleRefreshAemet = async () => {
+    try {
+      setIsRefreshingAlerts(true);
+      const response = await fetch(`${SERVER_URL}/aemet-alerts?refresh=true`);
+      const result = await response.json();
+      
+      if (result.status === "success") {
+        // Suponiendo que tu estado de alertas se llama 'aemetAlerts'
+        // Si usas otro nombre en el set, cámbialo aquí:
+        setAemetAlerts(result.data); 
+        console.log("Alertas actualizadas forzosamente");
+      }
+    } catch (error) {
+      console.error("Error al refrescar alertas:", error);
+    } finally {
+      setIsRefreshingAlerts(false);
+    }
+  };
+  /**
+   * Alterna el estado de un filtro(color) de las alertas
+   * @param string - Filtro/color a alternar
+   */
+  const toggleAlertLevel = (level: string) => {
+  setActiveAlertLevels(prev => 
+    prev.includes(level) 
+      ? prev.filter(l => l !== level) 
+      : [...prev, level]
+  );
+};
 
   /**
    * Alterna el estado favorito de una zona
@@ -786,6 +836,7 @@ export default function MapViewer() {
     setSearchResults([]);
   };
 
+
   /* ========================================================================== */
   /* RENDER - Main Component Output                                            */
   /* Estructura principal del componente con mapa, controles y paneles laterales*/
@@ -880,18 +931,6 @@ export default function MapViewer() {
           </Card>
         </div>
 
-        {/* Panel de control de capas - Versión Desktop */}
-        <div className="absolute top-20 right-4 z-[1000] w-72 hidden md:block max-h-[calc(100vh-7rem)] overflow-y-auto">
-
-
-        </div>
-
-        {/* Panel de control de capas - Versión Mobile */}
-        <div className="absolute bottom-20 left-4 right-4 z-[1000] md:hidden">
-          <Card className="p-3">
-
-          </Card>
-        </div>
 
         {/* Controles de Zoom */}
         <div className="absolute bottom-4 right-4 z-[1000] flex flex-col gap-2">
@@ -925,33 +964,82 @@ export default function MapViewer() {
                     <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
                       <AlertTriangle className="h-5 w-5 text-red-600" />
                       <span>
-                        Alertas AEMET {aemetAlerts.length > 0 && `(${aemetAlerts.length})`}
+                        Alertas AEMET {filteredAlerts.length > 0 && `(${filteredAlerts.length})`}
                       </span>
-                      {aemetLoading && <span className="ml-auto text-xs animate-spin">⚙️</span>}
+                      {/* BOTÓN DE REFRESCAR */}
+                      
                     </div>
-                  </AccordionTrigger>
+                  </AccordionTrigger>                                 
+                  <div className="pr-4 flex items-center gap-1">
+                          {/* DESPLEGABLE DE FILTROS POR COLOR */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-slate-400 hover:bg-white hover:text-slate-900 transition-colors duration-200 cursor-pointer"
+                                title="Filtrar por nivel de riesgo"
+                              >
+                                <Filter className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48 bg-white">
+                              <DropdownMenuLabel>Filtrar por riesgo</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              
+                              {[
+                                { id: 'verde', label: 'Nivel Verde', color: 'bg-emerald-500' },
+                                { id: 'amarillo', label: 'Nivel Amarillo', color: 'bg-yellow-400' },
+                                { id: 'naranja', label: 'Nivel Naranja', color: 'bg-orange-500' },
+                                { id: 'rojo', label: 'Nivel Rojo', color: 'bg-red-600' }
+                              ].map((level) => (
+                                <DropdownMenuCheckboxItem
+                                  key={level.id}
+                                  checked={activeAlertLevels.includes(level.id)}
+                                  onCheckedChange={() => toggleAlertLevel(level.id)}
+                                  onSelect={(e) => e.preventDefault()} // Evita que se cierre al marcar
+                                  className="cursor-pointer"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div className={`h-2 w-2 rounded-full ${level.color}`} />
+                                    {level.label}
+                                  </div>
+                                </DropdownMenuCheckboxItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+
+                          {/* BOTÓN DE REFRESCAR */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-slate-400 hover:bg-white hover:text-slate-900 transition-colors duration-200 cursor-pointer"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleRefreshAemet();
+                            }}
+                            disabled={isRefreshingAlerts}
+                            title="Actualizar alertas"
+                          >
+                            <RefreshCw className={`h-4 w-4 ${isRefreshingAlerts ? 'animate-spin text-slate-500' : ''}`} />
+                          </Button>
+                        </div>
                   <AccordionContent className="px-4 pb-4">
-                    {aemetAlerts.length === 0 ? (
+                    {filteredAlerts.length === 0 ? (
                       <div className="text-sm text-green-700 bg-green-50 p-3 rounded">
                         ✅ No hay alertas meteorológicas activas
                       </div>
                     ) : (
                       <>
-                        <button
-                          onClick={refreshAemetAlerts}
-                          disabled={aemetLoading}
-                          className="w-full mb-3 text-xs px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                          title="Actualizar alertas"
-                        >
-                          🔄 {aemetLoading ? 'Actualizando...' : 'Actualizar'}
-                        </button>
+
+                                              
                         <div className="space-y-2 max-h-[350px] overflow-y-auto">
-                          {/* Ordenar alertas por severidad: rojo > amarillo > verde */}
+                          {/* Ordenar alertas por severidad: rojo > narnaja > amarillo > verde */}
                           {[
-                            ...aemetAlerts.filter(a => a.nivelNumerico >= 3), // Rojo: crítico
-                            ...aemetAlerts.filter(a => a.nivelNumerico === 2), // Naranja: warning
-                            ...aemetAlerts.filter(a => a.nivelNumerico === 1), // amarillo: moderado
-                             ...aemetAlerts.filter(a => a.nivelNumerico === 0), // verde: info
+                            ...filteredAlerts.filter(a => a.nivelNumerico >= 3), // Rojo: crítico
+                            ...filteredAlerts.filter(a => a.nivelNumerico === 2), // Naranja: warning
+                            ...filteredAlerts.filter(a => a.nivelNumerico === 1), // amarillo: moderado
+                            ...filteredAlerts.filter(a => a.nivelNumerico === 0), // verde: info
                           ].map((alert) => {
                             // Determinar color base según la API
                             const borderColor = alert.color || '#f59e0b'; 
