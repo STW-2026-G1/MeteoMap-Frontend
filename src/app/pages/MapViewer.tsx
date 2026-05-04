@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { Header } from "../components/Header";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -47,6 +47,7 @@ interface MapMarker {
 
 export default function MapViewer() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const userMarkersRef = useRef<L.Marker[]>([]);
@@ -320,6 +321,33 @@ useEffect(() => {
       }
     };
   }, []);
+
+  /* ========================================================================== */
+  /* EFECTO 5: Procesar parámetro 'zone' de URL (ej: ?zone=123abc)           */
+  /* Si viene del perfil o del buscador, hace zoom a esa zona automáticamente */
+  /* ========================================================================== */
+  useEffect(() => {
+    const zoneId = searchParams.get('zone');
+    
+    if (zoneId && zonesDataState[zoneId] && mapInstanceRef.current) {
+      // Obtener coordenadas de la zona
+      const zone = zonesDataState[zoneId];
+      const [lng, lat] = zone.coordinates;
+      
+      // Hacer zoom suave a las coordenadas
+      mapInstanceRef.current.flyTo([lat, lng], 10, {
+        duration: 1.5,
+        animate: true,
+      });
+      
+      // Seleccionar la zona para mostrar en sidebar
+      setTimeout(() => {
+        setSelectedZone(zone);
+      }, 500);
+      
+      console.log(`✓ Auto-zoom a zona: ${zone.name}`);
+    }
+  }, [searchParams, zonesDataState]);
 
   /* ========================================================================== */
   /* HANDLERS - User Interaction Management                                    */

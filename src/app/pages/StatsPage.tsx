@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
+import { ReportDetailModal } from "../components/ReportDetailModal";
 import {
   MapPin,
   ThermometerSun,
@@ -18,6 +19,7 @@ import {
   TrendingUp,
   Clock,
   Users,
+  AlertCircle,
 } from "lucide-react";
 import {
   LineChart,
@@ -44,6 +46,9 @@ export default function StatsPage() {
   const [currentReports, setCurrentReports] = useState<any[]>([]);
   const [weatherEvolutionData, setWeatherEvolutionData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedReportForModal, setSelectedReportForModal] = useState<any>(null);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [categories, setCategories] = useState<any[]>([]);
 
   // Calcular índice de riesgo
   const calculateRiskIndex = (zone: any): RiskIndex => {
@@ -51,20 +56,20 @@ export default function StatsPage() {
 
     if (zone.weather) {
       const weatherCode = zone.weather.code || 0;
+      
       if (weatherCode === 0 || weatherCode === 1) {
-        riskLevel = 20;
+         riskLevel = 20;
       } else if (weatherCode === 2) {
-        riskLevel = 30;
-      } else if (weatherCode === 45 || weatherCode === 48 || weatherCode === 51 || weatherCode === 53 || weatherCode === 55) {
-        riskLevel = 50;
-      } else if (weatherCode === 71 || weatherCode === 73 || weatherCode === 75 || weatherCode === 77 || weatherCode === 80 || weatherCode === 81 || weatherCode === 82) {
-        riskLevel = 70;
-      } else if (weatherCode === 85 || weatherCode === 86) {
-        riskLevel = 70;
-      } else if (weatherCode === 95 || weatherCode === 96 || weatherCode === 99) {
-        riskLevel = 100;
+         riskLevel = 30;
+      } else if (weatherCode >= 45 && weatherCode <= 55) {
+         riskLevel = 50;
+      } else if (weatherCode >= 71 && weatherCode <= 86) {
+         riskLevel = 70;
+      } else if (weatherCode >= 95 && weatherCode <= 99) {
+         riskLevel = 100;
       } else {
-        riskLevel = 40;
+         // Para cualquier otro código no especificado (como lluvia moderada, lloviznas, etc.)
+         riskLevel = 40; 
       }
     }
 
@@ -73,20 +78,35 @@ export default function StatsPage() {
         riskLevel += 15;
       } else if (zone.temperature < 0) {
         riskLevel += 10;
+      } else if (zone.temperature > 30) {
+        riskLevel += 15;
       }
     }
 
-    const recentReports = zone.recentReports || 0;
-    if (recentReports >= 1 && recentReports <= 2) {
-      riskLevel += 5;
-    } else if (recentReports >= 3 && recentReports <= 5) {
-      riskLevel += 15;
-    } else if (recentReports >= 6) {
-      riskLevel += 25;
-    }
+    console.log(`Lista de reportes relevantes para la zona ${zone.name}:`, zone.reportsList);
+    
+    const relevantReportsList = (zone.reportsList || []).filter((report: any) => {
+      let categoryName = report.categoria_id?.nombre || "";
+      
+      // Si el nombre llega vacío y tenemos el arreglo de categorías en el estado, lo buscamos manualmente
+      if (!categoryName && categories.length > 0) {
+        const found = categories.find((cat) => cat._id === report.categoria_id || cat._id === report.categoria_id?._id);
+        if (found) categoryName = found.nombre;
+      }
+      
+      // Ignoramos los reportes de 'Buenas condiciones'
+      return categoryName.toLowerCase() !== "buenas condiciones";
+    });
 
-    if (zone.hasConfirmedReports) {
-      riskLevel += 20;
+    const recentReports = relevantReportsList.length;
+    console.log(`Zona: ${zone.name}, Reportes relevantes en las últimas 24h: ${recentReports}`);
+
+    if (recentReports >= 1 && recentReports <= 2) {
+       riskLevel += 5;
+    } else if (recentReports >= 3 && recentReports <= 5) {
+       riskLevel += 15;
+    } else if (recentReports >= 6) {
+       riskLevel += 25;
     }
 
     riskLevel = Math.min(Math.max(riskLevel, 0), 100);
@@ -122,6 +142,21 @@ export default function StatsPage() {
           console.log('No hay usuario autenticado para cargar favoritas');
           setIsLoading(false);
           return;
+        }
+
+        try {
+          const catResponse = await fetch(`${API_BASE_URL}/categories`, {
+            headers: {
+              'Authorization': `Bearer ${token}` 
+            }
+          });
+          if (catResponse.ok) {
+            const dataCategories = await catResponse.json();
+            setCategories(dataCategories);
+            console.log('Categorías cargadas:', dataCategories);
+          }
+        } catch (catError) {
+          console.error('Error al cargar las categorías:', catError);
         }
 
         const response = await fetch(`${API_BASE_URL}/user/me/favorites`, {
@@ -174,10 +209,12 @@ export default function StatsPage() {
                     (report: any) => report.validaciones?.usuarios_confirmaron?.length > 0
                   );
 
+                  // Corrección: Ahora pasamos "reportsList" al calculateRiskIndex
                   const riskData = calculateRiskIndex({
+                    name: zoneInfo.nombre || zone.nombre || "Zona sin nombre",
                     weather: { code: meteoData.codigo_clima },
                     temperature: meteoData.temperatura,
-                    recentReports: recentReportsList.length,
+                    reportsList: recentReportsList,
                     hasConfirmedReports,
                   });
 
@@ -207,7 +244,7 @@ export default function StatsPage() {
                     region: zone.departamento || "Región desconocida",
                     temperature: 0,
                     wind: 0,
-                    sensationTermica: 0,
+                    sensacionTermica: 0,
                     weather: {},
                     riskLevel: 50,
                     riskType: "Moderado",
@@ -252,17 +289,24 @@ export default function StatsPage() {
     loadFavoritesWithData();
   }, []);
 
-  // **NUEVO useEffect: Sincroniza currentReports al seleccionar una zona**
+  // Sincronizar currentReports al seleccionar una zona
   useEffect(() => {
     if (selectedZone && favoriteZones.length > 0) {
       const zone = favoriteZones.find((z) => z.zoneId === selectedZone);
       if (zone && zone.reportsList) {
-        const mappedList = zone.reportsList.map((report: any) => ({
-          user: report.usuario_id?.perfil?.nombre || "Usuario desconocido",
-          time: new Date(report.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          report: report.contenido?.descripcion || "Sin descripción",
-          type: report.estado === "SOSPECHOSO" ? "warning" : report.estado === "LEGITIMO" ? "danger" : "info",
-        }));
+        // Corrección: Filtrar los reportes para no mostrar los de "Buenas condiciones" en el UI
+        const mappedList = zone.reportsList
+          .map((report: any) => ({
+            id: report._id,
+            user: report.usuario_id?.perfil?.nombre || "Usuario desconocido",
+            avatar: report.usuario_id?.perfil?.avatar_url || "",
+            time: new Date(report.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            report: report.contenido?.descripcion || "Sin descripción",
+            categoryName: report.categoria_id?.nombre || "Sin categoría",
+            categoryIcon: report.categoria_id?.icono_marcador || "",
+            confirmations: report.validaciones?.usuarios_confirmaron?.length ?? 0,
+            denials: report.validaciones?.usuarios_desmintieron?.length ?? 0,
+          }));
         setCurrentReports(mappedList);
       } else {
         setCurrentReports([]);
@@ -270,9 +314,9 @@ export default function StatsPage() {
     } else {
       setCurrentReports([]);
     }
-  }, [selectedZone, favoriteZones]);
+  }, [selectedZone, favoriteZones, categories]);
 
-  // Generar datos meteorológicos de ejemplo (en producción vendría del backend)
+  // Generar datos meteorológicos de ejemplo
   useEffect(() => {
     const mockWeatherData = [
       { day: "Lun", temperatura: 5, sensacionTermica: 2, vientoKmh: 15 },
@@ -445,31 +489,56 @@ export default function StatsPage() {
             </div>
 
             {/* Lista de reportes */}
-            <div className="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar">
+            <div className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar">
               {currentReports.length > 0 ? (
                 currentReports.map((report, index) => (
-                  <div
+                  <button
                     key={index}
-                    className={`p-3 rounded-lg border-l-4 ${
-                      report.type === "danger"
-                        ? "bg-red-50 border-red-500"
-                        : report.type === "warning"
-                        ? "bg-yellow-50 border-yellow-500"
-                        : "bg-blue-50 border-blue-500"
-                    }`}
+                    onClick={() => {
+                      const reportData = {
+                        id: report.id,
+                        userName: report.user,
+                        avatar: report.avatar,
+                        condition: report.report,
+                        timestamp: report.time,
+                        riskType: report.categoryName, 
+                        location: currentZone?.name || "Zona desconocida",
+                        description: report.report,
+                        categoryIcon: report.categoryIcon,
+                        validations: report.validations,
+                        confirmations: report.confirmations || 0,
+                        denials: report.denials || 0,
+                      };
+                      setSelectedReportForModal(reportData);
+                      setReportModalOpen(true);
+                    }}
+                    className="w-full text-left p-4 rounded-lg border-l-4 transition-all duration-200 hover:shadow-md hover:scale-[1.02] cursor-pointer bg-blue-50 border-blue-500 hover:bg-blue-100"
                   >
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                      <span className="font-semibold text-sm text-gray-900">{report.user}</span>
-                      <div className="flex items-center gap-1 text-xs text-gray-500">
-                        <Clock className="h-3 w-3" />
-                        {report.time}
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{report.categoryIcon}</span>
+                        <span className="font-semibold text-sm text-gray-900 truncate max-w-[120px]">
+                          {report.user}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-1 text-xs px-2 py-0.5 bg-white/80 rounded border border-gray-200 text-gray-700 font-medium">
+                        <span>{report.categoryName}</span>
                       </div>
                     </div>
-                    <p className="text-sm text-gray-700">{report.report}</p>
-                  </div>
+
+                    <p className="text-sm text-gray-700 line-clamp-2">{report.report}</p>
+
+                    <div className="flex justify-between items-center mt-3 text-xs text-gray-500">
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        <span>{report.time}</span>
+                      </div>
+                    </div>
+                  </button>
                 ))
               ) : (
-                <p className="text-center text-gray-500 text-sm py-4">No hay reportes para esta zona.</p>
+                <p className="text-center text-gray-500 text-sm py-8">No hay reportes para esta zona.</p>
               )}
             </div>
           </Card>
@@ -547,7 +616,6 @@ export default function StatsPage() {
             </LineChart>
           </ResponsiveContainer>
 
-          {/* Resumen de indicadores usando la zona real seleccionada */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
             <div className="bg-red-50 rounded-lg p-4 flex items-center gap-3">
               <div className="p-3 bg-red-100 rounded-lg">
@@ -587,6 +655,13 @@ export default function StatsPage() {
           </div>
         </Card>
       </div>
+
+      <ReportDetailModal
+        report={selectedReportForModal}
+        zoneName={currentZone?.name || ""}
+        open={reportModalOpen}
+        onOpenChange={setReportModalOpen}
+      />
 
       <Footer />
 

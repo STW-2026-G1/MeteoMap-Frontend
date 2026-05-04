@@ -227,109 +227,136 @@ export default function ProfilePage() {
     fetchCategories();
   }, []);
 
-  // Cargar categorías del backend
-useEffect(() => {
-  const fetchCategories = async () => {
-    setIsLoadingCategories(true);
-    try {
-      const response = await fetch(`${API_BASE_URL}/categories`);
-      if (response.ok) {
-        const data = await response.json();
-        const mapped = data.map((cat: any) => ({
-          value: cat._id,
-          label: cat.nombre,
-          icon: cat.icono_marcador || "⚠️"
-        }));
-        setCategories(mapped);
-      } else {
-        toast.error("Error al cargar categorías");
-      }
-    } catch (error) {
-      console.error("Error fetching categories:", error);
-    } finally {
-      setIsLoadingCategories(false);
-    }
-  };
-  fetchCategories();
-}, []);
 
-// Cargar zonas favoritas del backend con datos reales
-useEffect(() => {
-  const loadFavorites = async () => {
-    try {
-      const token = localStorage.getItem('meteomap_token');
-      if (!token) {
-        console.log('No hay usuario autenticado para cargar favoritas');
-        return;
-      }
-
-      const response = await fetch(`${API_BASE_URL}/user/me/favorites`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
+  // Cargar zonas favoritas del backend con datos reales
+  // Cargar zonas favoritas del backend con datos reales
+  useEffect(() => {
+    const loadFavorites = async () => {
+      try {
+        const token = localStorage.getItem('meteomap_token');
+        if (!token) {
+          console.log('No hay usuario autenticado para cargar favoritas');
+          return;
         }
-      });
 
-      if (response.ok) {
-        const data = await response.json();
-        const preferences = data.preferencias || [];
+        try {
+          const catResponse = await fetch(`${API_BASE_URL}/categories`, {
+            headers: {
+              'Authorization': `Bearer ${token}` 
+            }
+          });
+          if (catResponse.ok) {
+            const dataCategories = await catResponse.json();
+            setCategories(dataCategories);
+            console.log('Categorías cargadas:', dataCategories);
+          }
+        } catch (catError) {
+          console.error('Error al cargar las categorías:', catError);
+        }
 
-        // Obtener datos completos para cada zona
-        const mappedFavorites = await Promise.all(
-          preferences.map(async (pref: any, index: number) => {
-            const zone = typeof pref === 'object' ? pref : { _id: pref };
-            const zoneId = zone._id || zone.id;
+        const response = await fetch(`${API_BASE_URL}/user/me/favorites`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
 
-            try {
-              // Fetch datos completos de la zona
-              const zoneResponse = await fetch(`${API_BASE_URL}/zones/${zoneId}`);
-              if (zoneResponse.ok) {
-                const zoneData = await zoneResponse.json();
-                const zoneInfo = zoneData.data || zoneData.zone || zoneData;
-                
-                // Extracción de datos meteorológicos reales de la API
-                const meteoData = zoneInfo.cache_meteo?.current?.datos_crudos || {};
+        if (response.ok) {
+          const data = await response.json();
+          const preferences = data.preferencias || [];
 
-                // Contar reportes de las últimas 24h
-                const now = new Date();
-                const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-                const recentReports = (zoneInfo.reportes || []).filter((report: any) => {
-                  const reportDate = new Date(report.createdAt || report.fecha);
-                  return reportDate >= oneDayAgo;
-                });
+          // Obtener datos completos para cada zona
+          const mappedFavorites = await Promise.all(
+            preferences.map(async (pref: any, index: number) => {
+              const zone = typeof pref === 'object' ? pref : { _id: pref };
+              const zoneId = zone._id || zone.id;
 
-                // Verificar si hay reportes confirmados
-                const hasConfirmedReports = recentReports.some(
-                  (report: any) => report.validaciones?.usuarios_confirmaron?.length > 0
-                );
+              try {
+                // Fetch datos completos de la zona
+                const zoneResponse = await fetch(`${API_BASE_URL}/zones/${zoneId}`);
+                if (zoneResponse.ok) {
+                  const zoneData = await zoneResponse.json();
+                  const zoneInfo = zoneData.data || zoneData.zone || zoneData;
+                  
+                  // Extracción de datos meteorológicos reales de la API
+                  const meteoData = zoneInfo.cache_meteo?.current?.datos_crudos || {};
 
-                // Calcular índice de riesgo usando los datos meteorológicos extraídos
-                const riskData = calculateRiskIndex({
-                  weather: { code: meteoData.codigo_clima },
-                  temperature: meteoData.temperatura,
-                  recentReports: recentReports.length,
-                  hasConfirmedReports,
-                });
+                  // Obtenemos los reportes de la zona desde su respectivo endpoint
+                  let recentReports: any[] = [];
+                  try {
+                    const reportsResponse = await fetch(`${API_BASE_URL}/reports?zonaId=${zoneId}`);
+                    if (reportsResponse.ok) {
+                      const reportsData = await reportsResponse.json();
+                      const allZoneReports = reportsData.reports || [];
 
-                return {
-                  id: index,
-                  zoneId,
-                  name: zoneInfo.nombre || zone.nombre || "Zona sin nombre",
-                  image: zoneInfo.imagen_url || "https://images.unsplash.com/photo-1551524164-687a55dd1126?w=800",
-                  temperature: meteoData.temperatura || 0,
-                  wind: meteoData.velocidad_viento || 0,
-                  weather: {
-                    code: meteoData.codigo_clima,
-                    description: meteoData.descripcion
-                  },
-                  riskLevel: riskData.riskLevel,
-                  riskType: riskData.riskType,
-                  riskColor: riskData.riskColor,
-                  recentReports: recentReports.length,
-                  reportCategories: recentReports.map((r: any) => r.categoria_id?.nombre || "Desconocido"),
-                  lastVisit: new Date().toISOString().split('T')[0],
-                };
-              } else {
-                // Fallback si no se puede obtener los datos completos
+                      const now = new Date();
+                      const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+                      
+                      recentReports = allZoneReports.filter((report: any) => {
+                        const reportDate = new Date(report.createdAt || report.fecha || report.updatedAt);
+                        return reportDate >= oneDayAgo;
+                      });
+                    }
+                  } catch (err) {
+                    console.error("Error al obtener reportes de la zona:", err);
+                  }
+
+                  // Verificar si hay reportes confirmados
+                  let hasConfirmedReports = false;
+                  if (recentReports && recentReports.length > 0) {
+                    hasConfirmedReports = recentReports.some(
+                      (report: any) => report.validaciones?.usuarios_confirmaron?.length > 0
+                    );
+                  }
+
+                  // Calcular índice de riesgo usando los datos meteorológicos extraídos
+                  const riskData = calculateRiskIndex({
+                    name: zoneInfo.nombre || zone.nombre || "Zona sin nombre",
+                    weather: { code: meteoData.codigo_clima },
+                    temperature: meteoData.temperatura,
+                    reportsList: recentReports,
+                    hasConfirmedReports,
+                  });
+
+                  return {
+                    id: index,
+                    zoneId,
+                    name: zoneInfo.nombre || zone.nombre || "Zona sin nombre",
+                    image: zoneInfo.imagen_url || "https://images.unsplash.com/photo-1551524164-687a55dd1126?w=800",
+                    temperature: meteoData.temperatura || 0,
+                    wind: meteoData.velocidad_viento || 0,
+                    weather: {
+                      code: meteoData.codigo_clima,
+                      description: meteoData.descripcion
+                    },
+                    riskLevel: riskData.riskLevel,
+                    riskType: riskData.riskType,
+                    riskColor: riskData.riskColor,
+                    recentReports: recentReports.length,
+                    reportCategories: recentReports.map((r: any) => r.categoria_id?.nombre || "Desconocido"),
+                    lastVisit: new Date().toISOString().split('T')[0],
+                  };
+                } else {
+                  // Fallback si no se puede obtener los datos completos
+                  return {
+                    id: index,
+                    zoneId,
+                    name: zone.nombre || zone.name || "Zona sin nombre",
+                    region: zone.departamento || "Región desconocida",
+                    image: "https://images.unsplash.com/photo-1551524164-687a55dd1126?w=800",
+                    temperature: 0,
+                    wind: 0,
+                    weather: {},
+                    riskLevel: 50,
+                    riskType: "Moderado",
+                    riskColor: "bg-yellow-100 text-yellow-800",
+                    recentReports: 0,
+                    reportCategories: [],
+                    lastVisit: new Date().toISOString().split('T')[0],
+                  };
+                }
+              } catch (error) {
+                console.error(`Error cargando datos de zona ${zoneId}:`, error);
+                // Fallback
                 return {
                   id: index,
                   zoneId,
@@ -347,41 +374,19 @@ useEffect(() => {
                   lastVisit: new Date().toISOString().split('T')[0],
                 };
               }
-            } catch (error) {
-              console.error(`Error cargando datos de zona ${zoneId}:`, error);
-              // Fallback
-              return {
-                id: index,
-                zoneId,
-                name: zone.nombre || zone.name || "Zona sin nombre",
-                region: zone.departamento || "Región desconocida",
-                image: "https://images.unsplash.com/photo-1551524164-687a55dd1126?w=800",
-                temperature: 0,
-                wind: 0,
-                weather: {},
-                riskLevel: 50,
-                riskType: "Moderado",
-                riskColor: "bg-yellow-100 text-yellow-800",
-                recentReports: 0,
-                reportCategories: [],
-                lastVisit: new Date().toISOString().split('T')[0],
-              };
-            }
-          })
-        );
+            })
+          );
 
-        setFavoriteZones(mappedFavorites);
-        console.log('Favoritas cargadas:', mappedFavorites);
+          setFavoriteZones(mappedFavorites);
+          console.log('Favoritas cargadas:', mappedFavorites);
+        }
+      } catch (error) {
+        console.error('Error cargando favoritas:', error);
       }
-    } catch (error) {
-      console.error('Error cargando favoritas:', error);
-    }
-  };
+    };
 
-  loadFavorites();
-}, []);
-
-  // Tipos de riesgo - ya no se usa, usamos categories
+    loadFavorites();
+  }, []);
 
   // Estado para nuevo reporte editado
   const [editedReport, setEditedReport] = useState({
@@ -396,9 +401,6 @@ useEffect(() => {
   });
 
   const handleSaveProfile = async () => {
-    // Determine if we should clear avatar_url based on style change
-    // If the style being saved is NOT what we had originally or from google, 
-    // we want to effectively "switch" to dicebear
     const result = await updateProfile({
       nombre: profileData.name,
       email: profileData.email,
@@ -408,7 +410,6 @@ useEffect(() => {
     });
     if (result.success) {
       setIsEditingProfile(false);
-      // Re-initialize profile data with updated user values from context
       if (user) {
         setProfileData({
           ...profileData,
@@ -422,7 +423,6 @@ useEffect(() => {
         });
       }
     } else {
-      // Handle error - maybe show an alert
       alert(result.errorMessage || "Error al actualizar perfil");
     }
   };
@@ -430,11 +430,6 @@ useEffect(() => {
   const handleEditReport = (reportId: string) => {
     const report = myReports.find((r) => r.id === reportId);
     if (report) {
-      // Intentar encontrar el ID de la categoría basado en el nombre si 'tipo' no es el ID
-      // Pero idealmente el reporte ya debería tener categoria_id si lo hemos cargado correctamente
-      // En mapped ya pusimos 'title' como nombre. Necesitamos el ID real.
-      // Vamos a ajustar el mapping en fetchMyReports para que incluya el ID.
-
       const originalReport = myReportsRaw.find((r: any) => r._id === reportId);
 
       setEditedReport({
@@ -520,10 +515,8 @@ useEffect(() => {
       return;
     }
 
-    // Actualizar estado local inmediatamente
     setFavoriteZones(favoriteZones.filter((z) => z.zoneId !== zoneId));
 
-    // Sincronizar con el backend
     try {
       const response = await fetch(`${API_BASE_URL}/user/me/favorites`, {
         method: 'PUT',
@@ -535,7 +528,6 @@ useEffect(() => {
       });
 
       if (!response.ok) {
-        // Revertir cambios si falla
         const zone = favoriteZones.find(z => z.zoneId === zoneId);
         if (zone) {
           setFavoriteZones([...favoriteZones, zone]);
@@ -544,7 +536,6 @@ useEffect(() => {
       }
     } catch (error) {
       console.error('Error eliminando favorito:', error);
-      // Revertir cambios si falla
       const zone = favoriteZones.find(z => z.zoneId === zoneId);
       if (zone) {
         setFavoriteZones([...favoriteZones, zone]);
@@ -555,7 +546,6 @@ useEffect(() => {
   const handleChangePassword = async () => {
     setPasswordError("");
 
-    // Frontend validation - ensure password is strong
     if (!currentPassword) {
       setPasswordError("Contraseña actual requerida");
       return;
@@ -576,7 +566,6 @@ useEffect(() => {
       return;
     }
 
-    // Validate password strength requirements
     const hasUpperCase = /[A-Z]/.test(newPassword);
     const hasLowerCase = /[a-z]/.test(newPassword);
     const hasNumber = /[0-9]/.test(newPassword);
@@ -609,19 +598,16 @@ useEffect(() => {
         return;
       }
 
-      // Éxito - cerrar diálogo y limpiar campos
       setChangePasswordDialog(false);
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
 
-      // Mostrar toast de éxito
       toast.success("✓ Contraseña actualizada", {
         description: "Redirigiendo a inicio de sesión...",
         duration: 2000,
       });
 
-      // Logout y redirigir a login después de 1.5 segundos
       setTimeout(async () => {
         await logout();
         navigate("/login");
@@ -653,7 +639,6 @@ useEffect(() => {
         return;
       }
 
-      // Éxito - logout y redirigir a landing
       toast.success("✓ Cuenta eliminada", {
         description: "Si cambias de opinión, contacta con soporte en los próximos 30 días",
         duration: 3000,
@@ -694,63 +679,71 @@ useEffect(() => {
   }
 
   const calculateRiskIndex = (zone: any): RiskIndex => {
-    let riskLevel = 20; // Base inicial
+    let riskLevel = 20;
 
-    // Mapear código meteorológico a riesgo base
     if (zone.weather) {
       const weatherCode = zone.weather.code || 0;
+      
       if (weatherCode === 0 || weatherCode === 1) {
-        riskLevel = 20; // Cielo despejado/parcialmente nublado
+         riskLevel = 20;
       } else if (weatherCode === 2) {
-        riskLevel = 30; // Nublado
-      } else if (weatherCode === 45 || weatherCode === 48 || weatherCode === 51 || weatherCode === 53 || weatherCode === 55) {
-        riskLevel = 50; // Lluvia/llovizna
-      } else if (weatherCode === 71 || weatherCode === 73 || weatherCode === 75 || weatherCode === 77 || weatherCode === 80 || weatherCode === 81 || weatherCode === 82) {
-        riskLevel = 70; // Nieve
-      } else if (weatherCode === 80 || weatherCode === 81 || weatherCode === 82 || weatherCode === 85 || weatherCode === 86) {
-        riskLevel = 70;
-      } else if (weatherCode === 95 || weatherCode === 96 || weatherCode === 99) {
-        riskLevel = 100; // Tormenta
+         riskLevel = 30;
+      } else if (weatherCode >= 45 && weatherCode <= 55) {
+         riskLevel = 50;
+      } else if (weatherCode >= 71 && weatherCode <= 86) {
+         riskLevel = 70;
+      } else if (weatherCode >= 95 && weatherCode <= 99) {
+         riskLevel = 100;
       } else {
-        riskLevel = 40; // Otros
+         // Para cualquier otro código no especificado (como lluvia moderada, lloviznas, etc.)
+         riskLevel = 40; 
       }
     }
 
-    // Ajustar por temperatura
     if (zone.temperature !== undefined) {
       if (zone.temperature < -5) {
-        riskLevel += 15; // Muy fría
+        riskLevel += 15;
       } else if (zone.temperature < 0) {
-        riskLevel += 10; // Fría
+        riskLevel += 10;
+      } else if (zone.temperature > 30) {
+        riskLevel += 15;
       }
     }
 
-    // Ajustar por reportes recientes (últimas 24h)
-    const recentReports = zone.recentReports || 0;
-    if (recentReports >= 1 && recentReports <= 2) {
-      riskLevel += 5;
-    } else if (recentReports >= 3 && recentReports <= 5) {
-      riskLevel += 15;
-    } else if (recentReports >= 6) {
-      riskLevel += 25;
+    console.log(`Lista de reportes relevantes para la zona ${zone.name}:`, zone.reportsList);
+    
+    // Filtrado para eliminar 'Buenas condiciones'
+    const relevantReportsList = (zone.reportsList || []).filter((report: any) => {
+      let categoryName = report.categoria_id?.nombre || "";
+      
+      if (!categoryName && categories.length > 0) {
+        const found = categories.find((cat) => cat.value === report.categoria_id || cat.value === report.categoria_id?._id);
+        if (found) categoryName = found.label;
+      }
+      
+      return categoryName.toLowerCase() !== "buenas condiciones";
+    });
+
+    const recentReportCount = relevantReportsList.length;
+    console.log(`Zona: ${zone.name}, Reportes relevantes en las últimas 24h: ${recentReportCount}`);
+
+    if (recentReportCount >= 1 && recentReportCount <= 2) {
+       riskLevel += 5;
+    } else if (recentReportCount >= 3 && recentReportCount <= 5) {
+       riskLevel += 15;
+    } else if (recentReportCount >= 6) {
+       riskLevel += 25;
     }
 
-    // Ajustar por confirmaciones
-    if (zone.hasConfirmedReports) {
-      riskLevel += 20;
-    }
-
-    // Limitar entre 0-100
     riskLevel = Math.min(Math.max(riskLevel, 0), 100);
 
-    // Determinar tipo de riesgo y color
     let riskType: "Bajo" | "Moderado" | "Alto" | "Muy Alto" = "Bajo";
     let riskColor = "bg-green-100 text-green-800";
 
     if (riskLevel >= 75) {
       riskType = "Muy Alto";
       riskColor = "bg-red-100 text-red-800";
-    } else if (riskLevel >= 50) {
+    } else if (riskLevel >= 60) {
       riskType = "Alto";
       riskColor = "bg-orange-100 text-orange-800";
     } else if (riskLevel >= 30) {
@@ -764,6 +757,7 @@ useEffect(() => {
       riskColor,
     };
   };
+
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 via-gray-50 to-purple-50">
