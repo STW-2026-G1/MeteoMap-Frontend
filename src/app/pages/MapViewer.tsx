@@ -98,6 +98,7 @@ export default function MapViewer() {
   const [zonesDataState, setZonesDataState] = useState<{ [key: string]: ZoneData }>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mapReady, setMapReady] = useState(false);
 
   // Referencia a los datos de zonas transformadas
   const zonesData = zonesDataState;
@@ -328,11 +329,18 @@ useEffect(() => {
   /* ========================================================================== */
   useEffect(() => {
     const zoneId = searchParams.get('zone');
+
+    if (!zoneId) {
+      return;
+    }
     
-    if (zoneId && zonesDataState[zoneId] && mapInstanceRef.current) {
-      // Obtener coordenadas de la zona
-      const zone = zonesDataState[zoneId];
-      const [lng, lat] = zone.coordinates;
+    // Intentar hacer zoom si todo está listo
+    if (mapReady && mapInstanceRef.current && zonesDataState[zoneId]) {
+      const baseZone = zonesDataState[zoneId];
+      console.log(`✓ Zona encontrada: ${baseZone.name}`);
+      
+      const [lng, lat] = baseZone.coordinates;
+      console.log(`📍 Coordenadas: lat=${lat}, lng=${lng}`);
       
       // Hacer zoom suave a las coordenadas
       mapInstanceRef.current.flyTo([lat, lng], 10, {
@@ -341,13 +349,53 @@ useEffect(() => {
       });
       
       // Seleccionar la zona para mostrar en sidebar
-      setTimeout(() => {
-        setSelectedZone(zone);
+      setTimeout(async () => {
+        // Obtener datos meteorológicos actualizados (igual que handleZoneSelect)
+        try {
+          const weatherApiUrl = `${SERVER_URL}/zones/${zoneId}/weather`;
+          
+          const weatherResponse = await fetch(weatherApiUrl);
+          
+          if (weatherResponse.ok) {
+            const weatherData = await weatherResponse.json();
+            const meteorologicalData = weatherData.data?.datos_meteorologicos ||
+              weatherData.data?.cache_meteo?.datos_crudos || {};
+            
+            const temperature = meteorologicalData.temperatura ?? 0;
+            const wind = meteorologicalData.velocidad_viento ?? 0;
+            const weatherCode = meteorologicalData.descripcion ?? 0;
+            
+            const updatedZone: ZoneData = {
+              ...baseZone,
+              temperature,
+              wind,
+              weather: weatherCode,
+              isFavorite: favoriteZones.has(zoneId),
+            };
+            
+            setSelectedZone(updatedZone);
+          } else {
+            // Si falla el fetch, usar datos del state
+            setSelectedZone({ ...baseZone, isFavorite: favoriteZones.has(zoneId) });
+          }
+        } catch (err) {
+          console.error('❌ Error obteniendo datos meteorológicos:', err);
+          // Fallback: usar datos del state
+          setSelectedZone({ ...baseZone, isFavorite: favoriteZones.has(zoneId) });
+        }
+        
+        // Limpiar el parámetro de la URL para evitar repetir el zoom
+        window.history.replaceState({}, '', window.location.pathname);
       }, 500);
       
-      console.log(`✓ Auto-zoom a zona: ${zone.name}`);
+      return;
     }
-  }, [searchParams, zonesDataState]);
+    
+    // Si no está listo, mostrar qué falta
+    if (!mapReady) console.log('   - Mapa no inicializado');
+    if (!zonesDataState[zoneId]) console.log('   - Zona no encontrada en state');
+    
+  }, [searchParams, zonesDataState, mapReady, favoriteZones]);
 
   /* ========================================================================== */
   /* HANDLERS - User Interaction Management                                    */
@@ -611,6 +659,7 @@ useEffect(() => {
     }).addTo(map);
 
     mapInstanceRef.current = map;
+    setMapReady(true);
 
 /* Agregar marcadores de zonas al mapa */
     markers.forEach((marker) => {
