@@ -656,7 +656,15 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
           {/* User Info */}
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold text-lg">
-              {report.userName.charAt(0).toUpperCase()}
+              <img
+                  src={report.avatar}
+                  alt={report.userName}
+                  className="w-12 h-12 rounded-full object-cover shadow-sm"
+                  onError={(e) => {
+                     // Opcional: Oculta la imagen si falla al cargar y muestra el respaldo
+                     e.currentTarget.style.display = 'none';
+                  }}
+               />
             </div>
             <div className="flex-1">
               <p className="font-semibold text-gray-900">{report.userName}</p>
