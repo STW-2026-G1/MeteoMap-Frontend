@@ -746,7 +746,7 @@ export default function StatsPage() {
                 Evolución Meteorológica
               </h2>
               <p className="text-gray-600">
-                Temperatura, sensación térmica y velocidad del viento (últimos 7 días)
+                Temperatura, sensación térmica y velocidad del viento (próximas 12 horas)
               </p>
             </div>
             <div className="flex items-center gap-2">
