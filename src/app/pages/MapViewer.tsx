@@ -92,6 +92,9 @@ export default function MapViewer() {
   const [aemetAlerts, setAemetAlerts] = useState<any[]>([]);
   const [alertMarkers, setAlertMarkers] = useState<MapMarker[]>([]);
   const [aemetLoading, setAemetLoading] = useState(false);
+  // Mostrar polígonos en el mapa en lugar de sólo marcadores
+  const [showPolygons, setShowPolygons] = useState(false);
+  const polygonsLayerRef = useRef<L.GeoJSON | null>(null);
 
   // Añade también una referencia para los marcadores de alertas en el mapa (junto a userMarkersRef en la línea 45)
   const alertMarkersRef = useRef<L.Marker[]>([]);
@@ -206,14 +209,14 @@ export default function MapViewer() {
     fetchAndTransformZones();
   }, []);
 
-
   /* ========================================================================== */
   /* EFECTO 2: Obtener Alertas de la API                                          */
   /* ========================================================================== */
-  const refreshAemetAlerts = async () => {
+  const refreshAemetAlerts = async (includePolygons?: boolean) => {
     try {
       setAemetLoading(true);
-      const apiUrl = `${SERVER_URL}/aemet-alerts`; // Asegúrate de que esta sea la ruta correcta de tu backend
+      const usePolygons = typeof includePolygons === 'boolean' ? includePolygons : showPolygons;
+      const apiUrl = `${SERVER_URL}/aemet-alerts${usePolygons ? '?withPolygons=true' : ''}`; // incluir polígonos si está activado
       console.log('Fetching alerts from:', apiUrl);
 
       const response = await fetch(apiUrl);
@@ -518,7 +521,7 @@ useEffect(() => {
   const handleRefreshAemet = async () => {
     try {
       setIsRefreshingAlerts(true);
-      const response = await fetch(`${SERVER_URL}/aemet-alerts?refresh=true`);
+      const response = await fetch(`${SERVER_URL}/aemet-alerts?refresh=true${showPolygons ? '&withPolygons=true' : ''}`);
       const result = await response.json();
       
       if (result.status === "success") {
@@ -637,6 +640,90 @@ useEffect(() => {
     });
   };
 
+  // Mapear nivel -> color y opacidades para polígonos
+  const mapLevelToColor = (nivel: string | undefined) => {
+    const n = (nivel || '').toLowerCase();
+    switch (n) {
+      case 'verde':
+        return { color: '#86efac', fillOpacity: 0.2, weight: 2 };
+      case 'amarillo':
+        return { color: '#fbbf24', fillOpacity: 0.34, weight: 2 };
+      case 'naranja':
+        return { color: '#f97316', fillOpacity: 0.36, weight: 2 };
+      case 'rojo':
+        return { color: '#ef4444', fillOpacity: 0.42, weight: 2 };
+      default:
+        return { color: '#f59e0b', fillOpacity: 0.3, weight: 2 };
+    }
+  };
+
+  const buildAemetAlertPopupHtml = (alert: any, colorOverride?: string) => {
+    const color = colorOverride || mapLevelToColor(alert?.nivel).color;
+    const alertTimeOptions: Intl.DateTimeFormatOptions = {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Europe/Madrid',
+      timeZoneName: 'short',
+    };
+
+    const inicioStr = alert?.validez_inicio
+      ? new Date(alert.validez_inicio).toLocaleString('es-ES', alertTimeOptions)
+      : 'Desconocida';
+    const finStr = alert?.validez_fin
+      ? new Date(alert.validez_fin).toLocaleString('es-ES', alertTimeOptions)
+      : 'Desconocida';
+
+    return `
+      <div style="min-width: 240px; max-width: 300px; max-height: 380px; overflow-y: auto; font-family: sans-serif; padding-right: 4px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; border-bottom: 2px solid ${color}; padding-bottom: 4px;">
+          <div style="width: 16px; height: 16px; border-radius: 50%; background-color: ${color};"></div>
+          <span style="font-weight: bold; text-transform: uppercase; color: ${color}; letter-spacing: 0.5px;">
+            NIVEL ${alert?.nivel || 'DESCONOCIDO'}
+          </span>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+          <div style="font-weight: 800; font-size: 1.1em; margin-bottom: 4px; color: #1f2937; line-height: 1.2;">
+            ${alert?.tipo || 'Alerta Meteorológica'}
+          </div>
+          <div style="color: #4b5563; font-size: 0.9em; margin-bottom: 8px;">
+            📍 <strong>${alert?.zona || 'Zona no especificada'}</strong>
+          </div>
+
+          <div style="font-size: 0.9em; line-height: 1.4; background: #f3f4f6; padding: 8px; border-radius: 6px; border-left: 4px solid ${color}; color: #374151;">
+            ${alert?.descripcion || 'Sin descripción disponible.'}
+          </div>
+        </div>
+
+        ${alert?.instrucciones && alert.instrucciones !== 'No hay instrucciones adicionales.' ? `
+          <div style="margin-bottom: 10px; background: #fffbeb; border: 1px solid #fef3c7; padding: 8px; border-radius: 6px;">
+            <span style="color: #92400e; font-size: 0.85em; font-weight: bold; display: block; margin-bottom: 3px;">⚠️ Instrucciones oficiales:</span>
+            <span style="color: #92400e; font-size: 0.85em; line-height: 1.3; display: block;">${alert.instrucciones}</span>
+          </div>
+        ` : ''}
+
+        <div style="font-size: 0.85em; background: #f8fafc; padding: 8px; border-radius: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; color: #475569; margin-bottom: 10px; border: 1px solid #e2e8f0;">
+          <div style="grid-column: span 2;"><strong>Probabilidad:</strong> <span style="float: right;">${alert?.probabilidad || 'N/A'}</span></div>
+          <div style="grid-column: span 2;"><strong>Certidumbre:</strong> <span style="float: right;">${alert?.certidumbre || 'N/A'}</span></div>
+          <div style="grid-column: span 2;"><strong>Urgencia:</strong> <span style="float: right;">${alert?.urgencia || 'N/A'}</span></div>
+        </div>
+
+        <div style="font-size: 0.8em; border-top: 1px solid #e2e8f0; padding-top: 8px; color: #64748b; display: grid; gap: 4px;">
+          <div style="display: flex; justify-content: space-between;"><strong>Inicio:</strong> <span>${inicioStr}</span></div>
+          <div style="display: flex; justify-content: space-between;"><strong>Fin:</strong> <span>${finStr}</span></div>
+
+          ${alert?.enlace ? `
+            <a href="${alert.enlace}" target="_blank" rel="noopener noreferrer" style="color: #2563eb; text-decoration: none; font-weight: bold; margin-top: 8px; display: block; text-align: center; background: #eff6ff; padding: 6px; border-radius: 4px;">
+              Ver aviso en AEMET ↗
+            </a>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  };
+
 
   /* ========================================================================== */
   /* EFECTO 2: Map Initialization                                              */
@@ -723,10 +810,112 @@ useEffect(() => {
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
-
     // 1. Limpiar los marcadores antiguos por completo
     alertMarkersRef.current.forEach(marker => marker.remove());
     alertMarkersRef.current = [];
+
+    // Si estamos mostrando polígonos, no añadimos marcadores de alerta
+    if (showPolygons) {
+      // Limpieza de capa de polígonos existente
+      if (polygonsLayerRef.current) {
+        polygonsLayerRef.current.remove();
+        polygonsLayerRef.current = null;
+      }
+
+      const features: any[] = [];
+      aemetAlerts.forEach((alert) => {
+        if (!alert.poligono_geojson) return;
+        const nivel = (alert.nivel || '').toLowerCase();
+        // Respetar filtros de color: si el nivel no está activo, saltar
+        if (!activeAlertLevels.includes(nivel)) return;
+
+        const mapped = mapLevelToColor(nivel);
+        features.push({
+          type: 'Feature',
+          properties: {
+            id: alert.id || alert._id,
+            color: mapped.color,
+            nivel: nivel,
+            nivelNumerico: alert.nivelNumerico || 0,
+            tipo: alert.tipo,
+            zona: alert.zona,
+            descripcion: alert.descripcion,
+            validez_inicio: alert.validez_inicio,
+            validez_fin: alert.validez_fin,
+            instrucciones: alert.instrucciones,
+            enlace: alert.enlace,
+          },
+          geometry: alert.poligono_geojson,
+        });
+      });
+
+      if (features.length > 0) {
+        const gj = L.geoJSON({ type: 'FeatureCollection', features }, {
+          style: (feature: any) => {
+            const p = feature.properties || {};
+            const lvlStyle = mapLevelToColor(p.nivel);
+            return {
+              color: lvlStyle.color,
+              weight: lvlStyle.weight,
+              opacity: 0.95,
+              fillColor: lvlStyle.color,
+              fillOpacity: lvlStyle.fillOpacity,
+              lineJoin: 'round',
+              lineCap: 'round',
+            };
+          },
+          onEachFeature: (feature: any, layer: any) => {
+            layer.on({
+              mouseover: (e: any) => {
+                const target = e.target;
+                const p = feature.properties || {};
+                const base = mapLevelToColor(p.nivel);
+                target.setStyle({
+                  weight: Math.max(base.weight),
+                  color: '#898989',
+                  opacity: 1,
+                  fillOpacity: Math.min(base.fillOpacity + 0.28, 0.75),
+                });
+                if (target.bringToFront) target.bringToFront();
+              },
+              mouseout: (e: any) => {
+                const target = e.target;
+                const p = feature.properties || {};
+                const base = mapLevelToColor(p.nivel);
+                target.setStyle({
+                  color: base.color,
+                  weight: base.weight,
+                  opacity: 0.95,
+                  fillOpacity: base.fillOpacity,
+                });
+              },
+              click: (e: any) => {
+                const props = feature.properties;
+                const fullAlert = aemetAlerts.find((a) => (a.id || a._id) === props.id);
+                const popupHtml = buildAemetAlertPopupHtml(fullAlert || props, props.color);
+
+                // Centrar mapa y abrir popup
+                if (mapInstanceRef.current) {
+                  const bounds = e.target.getBounds ? e.target.getBounds() : null;
+                  if (bounds) mapInstanceRef.current.fitBounds(bounds.pad(0.2));
+                }
+                layer.bindPopup(popupHtml, { maxWidth: 320 }).openPopup();
+              }
+            });
+          }
+        }).addTo(map);
+
+        polygonsLayerRef.current = gj as L.GeoJSON;
+      }
+
+      return; // no crear marcadores
+    }
+
+    // Si venimos de modo polígonos, asegurarnos de limpiar la capa de polígonos
+    if (!showPolygons && polygonsLayerRef.current) {
+      polygonsLayerRef.current.remove();
+      polygonsLayerRef.current = null;
+    }
 
     // 2. Crear los nuevos marcadores en memoria
     alertMarkers.forEach((marker) => {
@@ -747,71 +936,7 @@ useEffect(() => {
       let popupContent = '<div style="padding: 10px;">Cargando información...</div>';
 
       if (fullAlert) {
-        // Mostrar fechas de alertas siempre en hora de Madrid y con zona visible (CET/CEST)
-        const alertTimeOptions: Intl.DateTimeFormatOptions = {
-          day: '2-digit',
-          month: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          timeZone: 'Europe/Madrid',
-          timeZoneName: 'short',
-        };
-        const inicioStr = fullAlert.validez_inicio
-          ? new Date(fullAlert.validez_inicio).toLocaleString('es-ES', alertTimeOptions)
-          : 'Desconocida';
-        const finStr = fullAlert.validez_fin
-          ? new Date(fullAlert.validez_fin).toLocaleString('es-ES', alertTimeOptions)
-          : 'Desconocida';
-
-        // HTML del popup usando las variables formateadas
-        popupContent = `
-          <div style="min-width: 240px; max-width: 300px; max-height: 380px; overflow-y: auto; font-family: sans-serif; padding-right: 4px;">
-            
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; border-bottom: 2px solid ${marker.color || '#f59e0b'}; padding-bottom: 4px;">
-              <div style="width: 16px; height: 16px; border-radius: 50%; background-color: ${marker.color};"></div>
-              <span style="font-weight: bold; text-transform: uppercase; color: ${marker.color || '#f59e0b'}; letter-spacing: 0.5px;">
-                NIVEL ${fullAlert.nivel || 'DESCONOCIDO'}
-              </span>
-            </div>
-            
-            <div style="margin-bottom: 10px;">
-              <div style="font-weight: 800; font-size: 1.1em; margin-bottom: 4px; color: #1f2937; line-height: 1.2;">
-                ${fullAlert.tipo || 'Alerta Meteorológica'}
-              </div>
-              <div style="color: #4b5563; font-size: 0.9em; margin-bottom: 8px;">
-                📍 <strong>${fullAlert.zona || 'Zona no especificada'}</strong>
-              </div>
-              
-              <div style="font-size: 0.9em; line-height: 1.4; background: #f3f4f6; padding: 8px; border-radius: 6px; border-left: 4px solid ${marker.color || '#d1d5db'}; color: #374151;">
-                ${fullAlert.descripcion || 'Sin descripción disponible.'}
-              </div>
-            </div>
-
-            ${fullAlert.instrucciones && fullAlert.instrucciones !== 'No hay instrucciones adicionales.' ? `
-              <div style="margin-bottom: 10px; background: #fffbeb; border: 1px solid #fef3c7; padding: 8px; border-radius: 6px;">
-                <span style="color: #92400e; font-size: 0.85em; font-weight: bold; display: block; margin-bottom: 3px;">⚠️ Instrucciones oficiales:</span>
-                <span style="color: #92400e; font-size: 0.85em; line-height: 1.3; display: block;">${fullAlert.instrucciones}</span>
-              </div>
-            ` : ''}
-
-            <div style="font-size: 0.85em; background: #f8fafc; padding: 8px; border-radius: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; color: #475569; margin-bottom: 10px; border: 1px solid #e2e8f0;">
-              <div style="grid-column: span 2;"><strong>Probabilidad:</strong> <span style="float: right;">${fullAlert.probabilidad || 'N/A'}</span></div>
-              <div style="grid-column: span 2;"><strong>Certidumbre:</strong> <span style="float: right;">${fullAlert.certidumbre || 'N/A'}</span></div>
-              <div style="grid-column: span 2;"><strong>Urgencia:</strong> <span style="float: right;">${fullAlert.urgencia || 'N/A'}</span></div>
-            </div>
-
-            <div style="font-size: 0.8em; border-top: 1px solid #e2e8f0; padding-top: 8px; color: #64748b; display: grid; gap: 4px;">
-              <div style="display: flex; justify-content: space-between;"><strong>Inicio:</strong> <span>${inicioStr}</span></div>
-              <div style="display: flex; justify-content: space-between;"><strong>Fin:</strong> <span>${finStr}</span></div>
-              
-              ${fullAlert.enlace ? `
-                <a href="${fullAlert.enlace}" target="_blank" rel="noopener noreferrer" style="color: #2563eb; text-decoration: none; font-weight: bold; margin-top: 8px; display: block; text-align: center; background: #eff6ff; padding: 6px; border-radius: 4px;">
-                  Ver aviso en AEMET ↗
-                </a>
-              ` : ''}
-            </div>
-          </div>
-        `;
+        popupContent = buildAemetAlertPopupHtml(fullAlert, marker.color);
       }
 
       // Añadimos el popup al marcador
@@ -970,8 +1095,53 @@ useEffect(() => {
             <Card className="p-6">
               <p className="text-center text-gray-700">Cargando zonas...</p>
             </Card>
+
+            
           </div>
         )}
+
+        {/* Leyenda y toggle de polígonos */}
+        <div className="absolute bottom-6 right-6 z-[900] w-64 hidden md:block">
+          <Card className="bg-white shadow-md p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-red-600" />
+                <span className="font-semibold text-sm">Leyenda</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500 mr-2">Areas</span>
+                <Switch checked={showPolygons} onCheckedChange={async (val) => {
+                  const next = Boolean(val);
+                  setShowPolygons(next);
+                  try { await refreshAemetAlerts(next); } catch (e) { console.error(e); }
+                }} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2 text-sm">
+              <div className="flex items-center gap-3">
+                <span className="h-3 w-3 rounded-full" style={{ backgroundColor: '#3b82f6' }} />
+                <span>Azul: zona</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="h-3 w-3 rounded-full" style={{ backgroundColor: '#86efac', border: '1px solid rgba(0,0,0,0.06)' }} />
+                <span>Verde: información</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="h-3 w-3 rounded-full" style={{ backgroundColor: '#fbbf24' }} />
+                <span>Amarillo: Aviso de peligro bajo</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="h-3 w-3 rounded-full" style={{ backgroundColor: '#f97316' }} />
+                <span>Naranja: Aviso de peligro moderado</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="h-3 w-3 rounded-full" style={{ backgroundColor: '#ef4444' }} />
+                <span>Rojo: Aviso de peligro crítico</span>
+              </div>
+            </div>
+          </Card>
+        </div>
 
         {/* Estado de error: Mensaje de error personalizado */}
         {error && (
@@ -1051,7 +1221,7 @@ useEffect(() => {
 
 
         {/* Controles de Zoom */}
-        <div className="absolute bottom-4 right-4 z-[1000] flex flex-col gap-2">
+        <div className="absolute bottom-6 left-4 z-[1000] flex flex-col gap-2">
           {/* Botón para aumentar zoom */}
           <Button
             size="icon"
@@ -1139,6 +1309,7 @@ useEffect(() => {
                         >
                           <RefreshCw className={`h-4 w-4 ${isRefreshingAlerts ? 'animate-spin text-slate-500' : ''}`} />
                         </Button>
+                        {/* (Toggle moved to legend card below) */}
                       </div>
                     </div>
                   </AccordionTrigger>
