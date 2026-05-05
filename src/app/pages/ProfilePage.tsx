@@ -39,6 +39,7 @@ import {
 } from "../components/ui/select";
 import { useAuth } from "../contexts/AuthContext";
 import { ImageWithFallback } from "../components/common/ImageWithFallback";
+import { getZoneImage, getDefaultImage } from "../lib/imageUtils";
 import {
   MapPin,
   FileText,
@@ -317,11 +318,22 @@ export default function ProfilePage() {
                     hasConfirmedReports,
                   });
 
+                  // Obtener imagen dinámicamente
+                  let imageUrl = zoneInfo.imagen_url;
+                  if (!imageUrl) {
+                    try {
+                      imageUrl = await getZoneImage(zoneInfo.nombre || zone.nombre || "Zona sin nombre");
+                    } catch (imgError) {
+                      console.error('Error obteniendo imagen:', imgError);
+                      imageUrl = getDefaultImage();
+                    }
+                  }
+
                   return {
                     id: index,
                     zoneId,
                     name: zoneInfo.nombre || zone.nombre || "Zona sin nombre",
-                    image: zoneInfo.imagen_url || "https://images.unsplash.com/photo-1551524164-687a55dd1126?w=800",
+                    image: imageUrl,
                     temperature: meteoData.temperatura || 0,
                     wind: meteoData.velocidad_viento || 0,
                     weather: {
@@ -342,27 +354,7 @@ export default function ProfilePage() {
                     zoneId,
                     name: zone.nombre || zone.name || "Zona sin nombre",
                     region: zone.departamento || "Región desconocida",
-                    image: "https://images.unsplash.com/photo-1551524164-687a55dd1126?w=800",
-                    temperature: 0,
-                    wind: 0,
-                    weather: {},
-                    riskLevel: 50,
-                    riskType: "Moderado",
-                    riskColor: "bg-yellow-100 text-yellow-800",
-                    recentReports: 0,
-                    reportCategories: [],
-                    lastVisit: new Date().toISOString().split('T')[0],
-                  };
-                }
-              } catch (error) {
-                console.error(`Error cargando datos de zona ${zoneId}:`, error);
-                // Fallback
-                return {
-                  id: index,
-                  zoneId,
-                  name: zone.nombre || zone.name || "Zona sin nombre",
-                  region: zone.departamento || "Región desconocida",
-                  image: "https://images.unsplash.com/photo-1551524164-687a55dd1126?w=800",
+                    image: getDefaultImage(),
                   temperature: 0,
                   wind: 0,
                   weather: {},
@@ -374,8 +366,27 @@ export default function ProfilePage() {
                   lastVisit: new Date().toISOString().split('T')[0],
                 };
               }
-            })
-          );
+            } catch (error) {
+               console.error(`Error cargando datos de zona ${zoneId}:`, error);
+               return {
+               id: index,
+               zoneId,
+               name: zone.nombre || zone.name || "Zona sin nombre",
+               region: zone.departamento || "Región desconocida",
+               image: getDefaultImage(),
+               temperature: 0,
+               wind: 0,
+               weather: {},
+               riskLevel: 50,
+               riskType: "Moderado",
+               riskColor: "bg-yellow-100 text-yellow-800",
+               recentReports: 0,
+               reportCategories: [],
+               lastVisit: new Date().toISOString().split('T')[0],
+               };
+            }
+         })
+         );
 
           setFavoriteZones(mappedFavorites);
           console.log('Favoritas cargadas:', mappedFavorites);
@@ -958,11 +969,6 @@ export default function ProfilePage() {
                             <ThumbsUp className="h-4 w-4" />
                             <span className="font-medium">{report.confirmations}</span>
                             <span className="text-gray-600">confirmaciones</span>
-                          </div>
-                          <div className="flex items-center gap-1 text-blue-600">
-                            <MessageSquare className="h-4 w-4" />
-                            <span className="font-medium">{report.comments}</span>
-                            <span className="text-gray-600">comentarios</span>
                           </div>
                         </div>
                       </div>
