@@ -52,7 +52,7 @@ export const getZoneImageFromUnsplash = async (zoneName: string): Promise<string
 
     // Secuencia de términos ordenados de mayor precisión a menor precisión
     const termsToTry = [
-       zoneName,                          // 1. Nombre completo ("Parque Nacional de Ordesa y Monte Perdido") 
+       zoneName,                           // 1. Nombre completo ("Parque Nacional de Ordesa y Monte Perdido") 
        `${coreName} landscape nature`,     // 2. Nombre simplificado + descriptores
     ];
 
@@ -124,7 +124,7 @@ export const getZoneImagesFromUnsplash = async (
  * Obtiene la imagen por defecto (fallback)
  */
 export const getDefaultImage = (): string => {
-  return 'https://images.unsplash.com/photo-1551524164-687a55dd1126?w=800&h=600&fit=crop&q=80';
+  return 'https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?q=80&w=1176&auto=format&fit=crop';
 };
 
 /**
@@ -132,6 +132,26 @@ export const getDefaultImage = (): string => {
  */
 const zoneImageMappings: { [key: string]: string } = {
   "Parque Natural de Redes": "https://images.unsplash.com/photo-1616849068479-376693e487d2?q=80&w=1471&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "Parque Natural de Somiedo": "https://images.unsplash.com/photo-1721816209668-610abc4a0715?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "Parque Natural de la Serranía de Cuenca": "https://images.unsplash.com/photo-1676489399370-314a381ee597?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "Parque Natural del Delta del Ebro": "https://images.unsplash.com/photo-1573943563284-965efa90ba1c?q=80&w=1074&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "Parque Natural del Alto Tajo": "https://images.unsplash.com/photo-1593745551959-2a709e163a4e?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "Parque Natural de la Font Roja": "https://images.unsplash.com/photo-1536778542960-85e8f3de61dd?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "Parque Natural de la Albufera": "https://plus.unsplash.com/premium_photo-1697730423415-589a05ffac5e?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "Parque Natural de la Sierra de Espadán": "https://images.unsplash.com/photo-1742544690244-8dd32b456086?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "Parque Nacional de Garajonay": "https://images.unsplash.com/photo-1678735827199-7952f38899c2?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "Parque Nacional de Tablas de Daimiel": "https://images.unsplash.com/photo-1669403908923-9279e2e2f2b5?q=80&w=736&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "Parque Natural de Despeñaperros": "https://images.unsplash.com/photo-1546882588-d9bd63f85a7e?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fGNhdGFyYXRhfGVufDB8fDB8fHww",
+  "Parque Natural de la Sierra de Andújar": "https://plus.unsplash.com/premium_photo-1664304345250-7a2e06a7382d?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "Parque Natural de la Sierra Norte de Sevilla": "https://images.unsplash.com/photo-1644176778083-7f4f0693841f?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "Parque Natural Sierra de Hornachuelos": "https://images.unsplash.com/photo-1575104867603-ef1d95cfc70f?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "Parque Natural Sierra María-Los Vélez": "https://plus.unsplash.com/premium_photo-1697729475505-3b951ffbfa15?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "Parque Natural de las Sierras Subbéticas": "https://images.unsplash.com/photo-1634978158966-ef87e229adaa?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "Parque Natural de la Sierra de Baza": "https://plus.unsplash.com/premium_photo-1733317210949-71d7fccc7cf5?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "Parque Natural de la Sierra de Huétor": "https://plus.unsplash.com/premium_photo-1697729780758-e6421bf51175?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "Parque Natural de Oyambre": "https://images.unsplash.com/photo-1734913724690-2dad10d86c70?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "Parque Natural del Peñón de Ifach": "https://images.unsplash.com/photo-1605489095062-ad488743ddfa?q=80&w=1171&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "Parque Natural del Lago de Sanabria": "https://images.unsplash.com/photo-1774973726093-3d377dfd0ed4?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
 };
 
 /**
@@ -139,7 +159,7 @@ const zoneImageMappings: { [key: string]: string } = {
  */
 export const getZoneImage = async (zoneName: string): Promise<string> => {
   if (zoneImageMappings[zoneName]) {
-    console.log(`📍 Imagen de mapeo local para ${zoneName}`);
+    console.log(` Imagen de mapeo local para ${zoneName}`);
     return zoneImageMappings[zoneName];
   }
 
