@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { ReportDetailModal } from "./ReportDetailModal";
 import { useState, useEffect, SetStateAction } from "react";
 import { ZoneData, UserReport, Comment } from "../types/weather";
+import { getZoneImage } from "../lib/imageUtils";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 
@@ -50,6 +51,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+  const [zoneImageUrl, setZoneImageUrl] = useState<string | null>(null);
 
   const handleReportClick = (report: UserReport) => {
     setSelectedReport(report);
@@ -113,6 +115,19 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
 
     fetchForecast();
   }, [zone.id]);
+
+  useEffect(() => {
+    const loadZoneImage = async () => {
+      try {
+        const imageUrl = await getZoneImage(zone.name);
+        setZoneImageUrl(imageUrl);
+      } catch (error) {
+        console.error("Error loading zone image:", error);
+      }
+    };
+
+    loadZoneImage();
+  }, [zone.name]);
 
   useEffect(() => {
     if (!zone.id) return;
@@ -637,35 +652,88 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
           transition={{ type: "spring", damping: 25, stiffness: 200 }}
           className="fixed left-0 top-16 bottom-0 w-full sm:w-[420px] bg-white shadow-2xl z-[2000] flex flex-col overflow-hidden"
         >
-          {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 flex-shrink-0">
-            <div className="flex items-start justify-between mb-2">
-              <div className="flex-1">
-                <h2 className="text-xl font-bold">{zone.name}</h2>
-                <p className="text-sm text-blue-100">{zone.elevation}</p>
-              </div>
-              <div className="flex gap-2">
-                <Button
+          {/* Header with Image Integration */}
+{/* Header with Image Integration */}
+{zoneImageUrl && (
+  <div className="relative -mx-4 -mt-4 mb-4 group">
+    {/* Image Container */}
+    <div className="h-40 relative overflow-hidden bg-gradient-to-b from-gray-300 to-gray-400">
+      <img
+        src={zoneImageUrl}
+        alt={zone.name}
+        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+        style={{ width: 'calc(100vw - 1rem)' }}
+      />
+
+            {/* Subtle overlay gradient to ensure button contrast against bright images */}
+            <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/30 to-transparent" />
+
+               {/* Header Content Overlay (Buttons) */}
+               <div className="absolute top-4 right-4 p-4 flex items-center gap-2">
+               <Button
                   size="icon"
                   variant="ghost"
-                  className="text-white hover:bg-white/20"
+                  className="text-white bg-black/30 hover:bg-white/20 backdrop-blur-sm border border-white/10 shadow-md"
                   onClick={() => onToggleFavorite(zone.id)}
-                >
+                  aria-label="Añadir a favoritos"
+               >
                   <Star
-                    className={`h-5 w-5 ${zone.isFavorite ? 'fill-yellow-400 text-yellow-400' : ''}`}
+                     className={`h-5 w-5 ${
+                     zone.isFavorite ? 'fill-yellow-400 text-yellow-400' : ''
+                     }`}
                   />
-                </Button>
-                <Button
+               </Button>
+               <Button
                   size="icon"
                   variant="ghost"
-                  className="text-white hover:bg-white/20"
+                  className="text-white bg-black/30 hover:bg-white/20 backdrop-blur-sm border border-white/10 shadow-md"
                   onClick={onClose}
-                >
+                  aria-label="Cerrar"
+               >
                   <X className="h-5 w-5" />
-                </Button>
+               </Button>
+               </div>
+            </div>
+
+            {/* Zone Name positioned BELOW the image and shifted to the right */}
+            <div className="px-4 pl-6 mt-4">
+               <h2 className="text-xl font-bold text-gray-900 leading-tight line-clamp-2">
+               {zone.name}
+               </h2>
+            </div>
+         </div>
+         )}
+
+          {/* Legacy Header (shown when no image) */}
+          {!zoneImageUrl && (
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 flex-shrink-0">
+              <div className="flex items-start justify-between mb-2">
+                <div className="flex-1">
+                  <h2 className="text-xl font-bold">{zone.name}</h2>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="text-white hover:bg-white/20"
+                    onClick={() => onToggleFavorite(zone.id)}
+                  >
+                    <Star
+                      className={`h-5 w-5 ${zone.isFavorite ? 'fill-yellow-400 text-yellow-400' : ''}`}
+                    />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="text-white hover:bg-white/20"
+                    onClick={onClose}
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-4">
@@ -737,9 +805,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
                     <div className="h-px flex-1 bg-gray-200" />
                   </button>
                 </div>
-
               </div>
-
               {/* Temperature Forecast */}
               {forecastData && (
               <div className="mb-6">
