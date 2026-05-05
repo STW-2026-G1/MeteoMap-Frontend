@@ -19,8 +19,16 @@ import {
   TrendingUp,
   Clock,
   Users,
-  AlertCircle,
+  Sun,
+  Cloud,
+  CloudRain,
+  CloudSnow,
+  CloudLightning,
+  Edit2,
+  Check,
+  X,
 } from "lucide-react";
+
 import {
   LineChart,
   Line,
@@ -49,6 +57,84 @@ export default function StatsPage() {
   const [selectedReportForModal, setSelectedReportForModal] = useState<any>(null);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
+  
+  // Estados para selección de métricas (IDs basados en Open-Meteo)
+  const [isEditingMetrics, setIsEditingMetrics] = useState(false);
+  const [selectedMetrics, setSelectedMetrics] = useState<Set<string>>(new Set(["temperature_2m", "apparent_temperature", "wind_speed_10m"]));
+  const [tempSelectedMetrics, setTempSelectedMetrics] = useState<Set<string>>(new Set(["temperature_2m", "apparent_temperature", "wind_speed_10m"]));
+
+  // Lista completa de métricas que se extraen de Open-Meteo (current)
+  const metricsAvailable = [
+    { id: "temperature_2m", label: "Temperatura", unit: "°C", color: "#ef4444" },
+    { id: "relative_humidity_2m", label: "Humedad", unit: "%", color: "#60a5fa" },
+    { id: "apparent_temperature", label: "Sensación Térmica", unit: "°C", color: "#3b82f6" },
+    // 'Clima' eliminado como métrica seleccionable en la gráfica
+    { id: "wind_speed_10m", label: "Viento (vel)", unit: "km/h", color: "#10b981" },
+    { id: "wind_direction_10m", label: "Dirección Viento", unit: "°", color: "#7c3aed" },
+    { id: "precipitation", label: "Precipitación", unit: "mm", color: "#0ea5e9" },
+    { id: "rain", label: "Lluvia", unit: "mm", color: "#0369a1" },
+    { id: "snowfall", label: "Nieve", unit: "cm", color: "#93c5fd" },
+    { id: "visibility", label: "Visibilidad", unit: "m", color: "#64748b" },
+  ];
+
+  // Mapeos auxiliares: clave de gráfico (forecast) para métricas con datos horarios
+  const chartKeyForMetric = (metricId: string) => {
+    if (metricId === "temperature_2m") return "temperatura";
+    if (metricId === "relative_humidity_2m") return "humedad";
+    if (metricId === "apparent_temperature") return "sensacionTermica";
+    if (metricId === "wind_speed_10m") return "vientoKmh";
+    if (metricId === "wind_direction_10m") return "direccionViento";
+    if (metricId === "precipitation") return "precipitacion";
+    if (metricId === "rain") return "lluvia";
+    if (metricId === "snowfall") return "nieve";
+    if (metricId === "visibility") return "visibilidad";
+    return null;
+  };
+
+  // Obtener valor actual para un metricId desde currentZone con múltiples alias
+  const getCurrentMetricValue = (metricId: string, zone: any) => {
+    if (!zone) return "—";
+
+    const check = (keys: string[]) => {
+      for (const k of keys) {
+        const parts = k.split(".");
+        let val: any = zone;
+        for (const p of parts) {
+          if (val == null) break;
+          val = val[p];
+        }
+        if (val !== undefined && val !== null) return val;
+      }
+      return null;
+    };
+
+    switch (metricId) {
+      case "temperature_2m":
+        return check(["temperature", "temperatura", "cache_meteo.current.datos_crudos.temperatura"]) ?? "—";
+      case "apparent_temperature":
+        return check(["sensacionTermica", "temperatura_aparente", "apparent_temperature"]) ?? "—";
+      case "relative_humidity_2m":
+        return check(["humedad", "relative_humidity_2m"]) ?? "—";
+      case "weather_code":
+        return zone.weather?.description ?? zone.codigo_clima ?? zone.weather?.code ?? "—";
+      case "wind_speed_10m":
+        return check(["wind", "velocidad_viento", "wind_speed_10m"]) ?? "—";
+      case "wind_direction_10m":
+        return check(["direccion_viento", "wind_direction_10m"]) ?? "—";
+      case "precipitation":
+        return check(["precipitacion", "precipitation"]) ?? "—";
+      case "rain":
+        return check(["lluvia", "rain"]) ?? "—";
+      case "showers":
+        return check(["showers"]) ?? "—";
+      case "snowfall":
+        return check(["nieve", "snowfall"]) ?? "—";
+      case "visibility":
+        return check(["visibilidad", "visibility"]) ?? "—";
+      default:
+        return "—";
+    }
+  };
 
   // Calcular índice de riesgo
   const calculateRiskIndex = (zone: any): RiskIndex => {
@@ -132,6 +218,33 @@ export default function StatsPage() {
     };
   };
 
+  // Funciones para manejar métricas
+  const handleMetricToggle = (metricId: string) => {
+    const newSet = new Set(tempSelectedMetrics);
+    if (newSet.has(metricId)) {
+      newSet.delete(metricId);
+    } else {
+      if (newSet.size < 3) {
+        newSet.add(metricId);
+      } else {
+        alert("Máximo 3 métricas permitidas");
+        return;
+      }
+    }
+    setTempSelectedMetrics(newSet);
+  };
+
+  const handleSaveMetrics = () => {
+    setSelectedMetrics(new Set(tempSelectedMetrics));
+    setIsEditingMetrics(false);
+    // TODO: Guardar en BD cuando se implemente la API de preferencias de usuario
+  };
+
+  const handleCancelMetrics = () => {
+    setTempSelectedMetrics(new Set(selectedMetrics));
+    setIsEditingMetrics(false);
+  };
+
   // Cargar zonas favoritas con datos reales
   useEffect(() => {
     const loadFavoritesWithData = async () => {
@@ -204,6 +317,7 @@ export default function StatsPage() {
                   const zoneData = await zoneResponse.json();
                   const zoneInfo = zoneData.data || zoneData.zone || zoneData;
                   const meteoData = zoneInfo.cache_meteo?.current?.datos_crudos || {};
+                  const forecastData = zoneInfo.cache_meteo?.forecast?.datos_crudos || [];
 
                   const hasConfirmedReports = recentReportsList.some(
                     (report: any) => report.validaciones?.usuarios_confirmaron?.length > 0
@@ -226,15 +340,26 @@ export default function StatsPage() {
                     temperature: meteoData.temperatura || 0,
                     wind: meteoData.velocidad_viento || 0,
                     sensacionTermica: meteoData.temperatura_aparente || 0,
+                    humedad: meteoData.humedad ?? null,
+                    codigo_clima: meteoData.codigo_clima ?? null,
+                    descripcion: meteoData.descripcion ?? null,
+                    direccionViento: meteoData.direccion_viento ?? null,
+                    precipitacion: meteoData.precipitacion ?? null,
+                    lluvia: meteoData.lluvia ?? null,
+                    chubascos: meteoData.chubascos ?? null,
+                    nieve: meteoData.nieve ?? null,
+                    visibilidad: meteoData.visibilidad ?? null,
                     weather: {
                       code: meteoData.codigo_clima,
                       description: meteoData.descripcion
                     },
+                    currentRaw: meteoData,
                     riskLevel: riskData.riskLevel,
                     riskType: riskData.riskType,
                     riskColor: riskData.riskColor,
                     recentReports: recentReportsList.length,
                     reportsList: recentReportsList,
+                    forecast: forecastData,
                   };
                 } else {
                   return {
@@ -251,6 +376,7 @@ export default function StatsPage() {
                     riskColor: "bg-yellow-100 text-yellow-800",
                     recentReports: 0,
                     reportsList: [],
+                    forecast: [],
                   };
                 }
               } catch (error) {
@@ -269,6 +395,7 @@ export default function StatsPage() {
                   riskColor: "bg-yellow-100 text-yellow-800",
                   recentReports: 0,
                   reportsList: [],
+                  forecast: [],
                 };
               }
             })
@@ -316,23 +443,56 @@ export default function StatsPage() {
     }
   }, [selectedZone, favoriteZones, categories]);
 
-  // Generar datos meteorológicos de ejemplo
+  // Cargar datos meteorológicos reales de la BD (últimas 12+ horas)
   useEffect(() => {
-    const mockWeatherData = [
-      { day: "Lun", temperatura: 5, sensacionTermica: 2, vientoKmh: 15 },
-      { day: "Mar", temperatura: 7, sensacionTermica: 4, vientoKmh: 20 },
-      { day: "Mié", temperatura: 6, sensacionTermica: 3, vientoKmh: 25 },
-      { day: "Jue", temperatura: 4, sensacionTermica: 0, vientoKmh: 30 },
-      { day: "Vie", temperatura: 3, sensacionTermica: -2, vientoKmh: 35 },
-      { day: "Sáb", temperatura: 2, sensacionTermica: -3, vientoKmh: 28 },
-      { day: "Dom", temperatura: 4, sensacionTermica: 1, vientoKmh: 22 },
-    ];
-    setWeatherEvolutionData(mockWeatherData);
-  }, []);
+    if (selectedZone && favoriteZones.length > 0) {
+      const currentZoneData = favoriteZones.find((z) => z.zoneId === selectedZone);
+      const forecastSource = currentZoneData?.forecast?.datos_crudos || currentZoneData?.forecast || [];
+
+      if (Array.isArray(forecastSource) && forecastSource.length > 0) {
+        const processedData = forecastSource.map((item: any, index: number) => {
+          const hour = item.hora || item.time || `${String(index).padStart(2, "0")}:00`;
+          const temperatura = Number(item.temperatura ?? item.temp ?? 0);
+          const temperaturaAparente = Number(item.temperatura_aparente ?? item.sensacionTermica ?? temperatura);
+          const humedad = item.humedad ?? item.relative_humidity_2m ?? null;
+          const velocidadViento = Number(item.velocidad_viento ?? item.vientoKmh ?? 0);
+          const direccionViento = item.direccion_viento ?? item.direccionViento ?? null;
+          const precipitacion = item.precipitacion ?? item.precipitation ?? null;
+          const lluvia = item.lluvia ?? item.rain ?? null;
+          const chubascos = item.chubascos ?? item.showers ?? null;
+          const nieve = item.nieve ?? item.snowfall ?? null;
+          const visibilidad = item.visibilidad ?? item.visibility ?? null;
+
+          return {
+            day: hour,
+            temperatura,
+            sensacionTermica: temperaturaAparente,
+            humedad: humedad !== null ? Number(humedad) : null,
+            vientoKmh: velocidadViento,
+            direccionViento: direccionViento !== null ? Number(direccionViento) : null,
+            precipitacion: precipitacion !== null ? Number(precipitacion) : null,
+            lluvia: lluvia !== null ? Number(lluvia) : null,
+            chubascos: chubascos !== null ? Number(chubascos) : null,
+            nieve: nieve !== null ? Number(nieve) : null,
+            visibilidad: visibilidad !== null ? Number(visibilidad) : null,
+          };
+        });
+        
+        console.log('Datos meteorológicos cargados de la BD:', processedData);
+        setWeatherEvolutionData(processedData);
+      } else {
+        // Fallback si no hay datos
+        console.log('No hay datos de forecast disponibles para la zona');
+        setWeatherEvolutionData([]);
+      }
+    } else {
+      setWeatherEvolutionData([]);
+    }
+  }, [selectedZone, favoriteZones]);
 
   const currentZone = favoriteZones.find((z) => z.zoneId === selectedZone);
   const riskLevel = currentZone?.riskLevel || 0;
-
+  
   // Determinar color y estado del riesgo (4 niveles)
   const getRiskColor = (risk: number) => {
     if (risk < 30) return { color: "text-green-600", bg: "bg-green-500", label: "Bajo", bgLight: "bg-green-50" };
@@ -342,6 +502,28 @@ export default function StatsPage() {
   };
 
   const riskInfo = getRiskColor(riskLevel);
+
+  const getWeatherVisual = (description?: string) => {
+    const text = (description || "").toLowerCase();
+
+    if (text.includes("tormenta")) {
+      return { icon: CloudLightning, iconClass: "text-violet-600" };
+    }
+    if (text.includes("nieve")) {
+      return { icon: CloudSnow, iconClass: "text-cyan-600" };
+    }
+    if (text.includes("lluvia") || text.includes("llovizna") || text.includes("chubasc")) {
+      return { icon: CloudRain, iconClass: "text-blue-600" };
+    }
+    if (text.includes("despejado")) {
+      return { icon: Sun, iconClass: "text-amber-500" };
+    }
+
+    return { icon: Cloud, iconClass: "text-slate-500" };
+  };
+
+  const weatherVisual = getWeatherVisual(currentZone?.weather?.description);
+  const WeatherIcon = weatherVisual.icon;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-gray-50 to-purple-50">
@@ -401,10 +583,22 @@ export default function StatsPage() {
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
                 Índice de Riesgo - {currentZone?.name}
               </h2>
+ 
+              
               <p className="text-gray-600 mb-8 text-center">
                 Evaluación en tiempo real basada en reportes y condiciones meteorológicas
               </p>
-
+               <div className="mb-5 inline-flex items-center gap-3 rounded-xl bg-slate-100/80 border border-slate-200 px-4 py-2.5 shadow-sm">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/80 border border-slate-200">
+                  <WeatherIcon className={`h-4 w-4 ${weatherVisual.iconClass}`} />
+                </div>
+                <div className="text-left leading-tight">
+                  <p className="text-[11px] uppercase tracking-wide text-slate-500">Clima actual</p>
+                  <p className="text-sm font-semibold text-slate-700">
+                    {currentZone?.weather?.description || "Sin datos disponibles"}
+                  </p>
+                </div>
+              </div>
               {/* Velocímetro Circular */}
               <div className="relative w-64 h-64 mb-6">
                 <svg className="w-full h-full transform -rotate-90">
@@ -555,8 +749,69 @@ export default function StatsPage() {
                 Temperatura, sensación térmica y velocidad del viento (últimos 7 días)
               </p>
             </div>
-            <TrendingUp className="h-6 w-6 text-blue-600" />
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-6 w-6 text-blue-600" />
+              {!isEditingMetrics ? (
+                <button
+                  onClick={() => {
+                    setTempSelectedMetrics(new Set(selectedMetrics));
+                    setIsEditingMetrics(true);
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  title="Editar métricas"
+                >
+                  <Edit2 className="h-5 w-5 text-gray-600" />
+                </button>
+              ) : null}
+            </div>
           </div>
+
+          {/* Panel de selección de métricas - Solo visible en modo edición */}
+          {isEditingMetrics && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-gray-900">Seleccionar Métricas (máx. 3)</h3>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSaveMetrics}
+                    className="flex items-center gap-2 px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium"
+                  >
+                    <Check className="h-4 w-4" />
+                    Guardar
+                  </button>
+                  <button
+                    onClick={handleCancelMetrics}
+                    className="flex items-center gap-2 px-3 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors text-sm font-medium"
+                  >
+                    <X className="h-4 w-4" />
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {metricsAvailable.map((metric) => (
+                  <label key={metric.id} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 cursor-pointer hover:border-blue-300 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={tempSelectedMetrics.has(metric.id)}
+                      onChange={() => handleMetricToggle(metric.id)}
+                      className="w-4 h-4 accent-blue-600"
+                    />
+                    <div className="flex items-center gap-2 flex-1">
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: metric.color }}
+                      />
+                      <div>
+                        <div className="font-medium text-gray-900">{metric.label}</div>
+                        <div className="text-xs text-gray-600">{metric.unit}</div>
+                      </div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
 
           <ResponsiveContainer width="100%" height={400}>
             <LineChart data={weatherEvolutionData}>
@@ -583,75 +838,61 @@ export default function StatsPage() {
                 wrapperStyle={{ paddingTop: "20px" }}
                 iconType="line"
               />
-              <Line
-                key="temperatura-line"
-                type="monotone"
-                dataKey="temperatura"
-                stroke="#ef4444"
-                strokeWidth={3}
-                dot={{ fill: "#ef4444", r: 5 }}
-                name="Temperatura (°C)"
-                activeDot={{ r: 7 }}
-              />
-              <Line
-                key="sensacionTermica-line"
-                type="monotone"
-                dataKey="sensacionTermica"
-                stroke="#3b82f6"
-                strokeWidth={3}
-                dot={{ fill: "#3b82f6", r: 5 }}
-                name="Sensación Térmica (°C)"
-                activeDot={{ r: 7 }}
-              />
-              <Line
-                key="vientoKmh-line"
-                type="monotone"
-                dataKey="vientoKmh"
-                stroke="#10b981"
-                strokeWidth={3}
-                dot={{ fill: "#10b981", r: 5 }}
-                name="Viento (km/h)"
-                activeDot={{ r: 7 }}
-              />
+              {metricsAvailable
+                .filter((metric) => selectedMetrics.has(metric.id))
+                .map((metric) => {
+                  const dataKey = chartKeyForMetric(metric.id);
+                  if (!dataKey) return null;
+
+                  return (
+                    <Line
+                      key={`${metric.id}-line`}
+                      type="monotone"
+                      dataKey={dataKey}
+                      stroke={metric.color}
+                      strokeWidth={3}
+                      dot={{ fill: metric.color, r: 5 }}
+                      name={`${metric.label}${metric.unit ? ` (${metric.unit})` : ""}`}
+                      activeDot={{ r: 7 }}
+                    />
+                  );
+                })}
             </LineChart>
           </ResponsiveContainer>
 
+          <div className="mt-8 mb-4 text-center">
+            <h3 className="text-lg font-semibold text-gray-900">Datos actuales</h3>
+            <p className="text-sm text-gray-600">
+              Valores en este momento para la zona seleccionada.
+            </p>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
-            <div className="bg-red-50 rounded-lg p-4 flex items-center gap-3">
-              <div className="p-3 bg-red-100 rounded-lg">
-                <ThermometerSun className="h-6 w-6 text-red-600" />
-              </div>
-              <div>
-                <div className="text-sm text-gray-600">Temp. Actual</div>
-                <div className="text-2xl font-bold text-gray-900">
-                  {currentZone?.temperature || 0}°C
+            {metricsAvailable
+              .filter((m) => selectedMetrics.has(m.id))
+              .slice(0, 3)
+              .map((m) => (
+                <div key={m.id} className="bg-white/50 rounded-lg p-4 flex items-center gap-3 border">
+                  <div className="p-3 rounded-lg" style={{ backgroundColor: `${m.color}22` }}>
+                    {/* icon */}
+                    {m.id.includes("temp") ? (
+                      <ThermometerSun className={`h-6 w-6`} style={{ color: m.color }} />
+                    ) : m.id.includes("wind") ? (
+                      <Wind className={`h-6 w-6`} style={{ color: m.color }} />
+                    ) : (
+                      <Cloud className={`h-6 w-6`} style={{ color: m.color }} />
+                    )}
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-600">{m.label}</div>
+                    <div className="text-2xl font-bold text-gray-900">
+                      {typeof getCurrentMetricValue(m.id, currentZone) === 'number'
+                        ? `${getCurrentMetricValue(m.id, currentZone)}${m.unit}`
+                        : `${getCurrentMetricValue(m.id, currentZone)} ${m.unit}`}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-
-            <div className="bg-blue-50 rounded-lg p-4 flex items-center gap-3">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <ThermometerSun className="h-6 w-6 text-blue-600" />
-              </div>
-              <div>
-                <div className="text-sm text-gray-600">Sensación Térmica</div>
-                <div className="text-2xl font-bold text-gray-900">
-                  {currentZone?.sensacionTermica || 0}°C
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-green-50 rounded-lg p-4 flex items-center gap-3">
-              <div className="p-3 bg-green-100 rounded-lg">
-                <Wind className="h-6 w-6 text-green-600" />
-              </div>
-              <div>
-                <div className="text-sm text-gray-600">Viento</div>
-                <div className="text-2xl font-bold text-gray-900">
-                  {currentZone?.wind || 0} km/h
-                </div>
-              </div>
-            </div>
+              ))}
           </div>
         </Card>
       </div>

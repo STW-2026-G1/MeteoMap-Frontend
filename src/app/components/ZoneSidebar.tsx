@@ -1,4 +1,4 @@
-import { X, Star, Cloud, Thermometer, Wind, TrendingUp, Clock, User, MessageCircle, ThumbsUp, Send, Trash2, Edit2 } from "lucide-react";
+import { X, Star, Cloud, Thermometer, Wind, TrendingUp, Clock, User, MessageCircle, ThumbsUp, Send, Trash2, Edit2, ChevronDown } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -44,6 +44,9 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
   const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
   const [forecastData, setForecastData] = useState<Array<{time: string; temp: number}> | null>(null);
   const [forecastLoading, setForecastLoading] = useState(false);
+  const [isMetricsExpanded, setIsMetricsExpanded] = useState(false);
+  const [advancedMetrics, setAdvancedMetrics] = useState<Record<string, any> | null>(null);
+  const [advancedMetricsLoading, setAdvancedMetricsLoading] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
@@ -110,6 +113,65 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
 
     fetchForecast();
   }, [zone.id]);
+
+  useEffect(() => {
+    if (!zone.id) return;
+
+    const fetchAdvancedMetrics = async () => {
+      setAdvancedMetricsLoading(true);
+      try {
+        const response = await fetch(`${API_BASE_URL}/zones/${zone.id}/weather`);
+        const data = await response.json();
+
+        const currentMetrics = data?.data?.datos_meteorologicos || data?.data?.cache_meteo?.current?.datos_crudos || null;
+        setAdvancedMetrics(currentMetrics);
+      } catch (error) {
+        console.error("Error cargando métricas avanzadas:", error);
+        setAdvancedMetrics(null);
+      } finally {
+        setAdvancedMetricsLoading(false);
+      }
+    };
+
+    fetchAdvancedMetrics();
+  }, [zone.id]);
+
+  const metricLabels: Record<string, string> = {
+    temperatura_aparente: "Sensación térmica",
+    humedad: "Humedad",
+    direccion_viento: "Dirección viento",
+    precipitacion: "Precipitación",
+    lluvia: "Lluvia",
+    nieve: "Nieve",
+    visibilidad: "Visibilidad",
+    codigo_clima: "Código clima",
+  };
+
+  const metricUnits: Record<string, string> = {
+    temperatura_aparente: "°C",
+    humedad: "%",
+    direccion_viento: "°",
+    precipitacion: "mm",
+    lluvia: "mm",
+    nieve: "cm",
+    visibilidad: "m",
+  };
+
+  const hiddenAdvancedMetrics = new Set(["temperatura", "velocidad_viento", "descripcion"]);
+
+  const formatMetricValue = (key: string, value: any) => {
+    if (value === null || value === undefined || value === "") return "N/D";
+
+    if (typeof value === "number") {
+      const unit = metricUnits[key] ? ` ${metricUnits[key]}` : "";
+      return `${Number.isInteger(value) ? value : value.toFixed(1)}${unit}`;
+    }
+
+    return String(value);
+  };
+
+  const advancedMetricEntries = Object.entries(advancedMetrics || {})
+    .filter(([key]) => !hiddenAdvancedMetrics.has(key));
 
   useEffect(() => {
       if (!zone.id) return;
@@ -634,7 +696,48 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
                   </Card>
                 </div>
 
-               
+                <div className="mt-3">
+                  {isMetricsExpanded && (
+                    <Card className="mb-3 p-2 bg-gray-50/80 border-gray-200">
+                      {advancedMetricsLoading ? (
+                        <div className="h-24 flex items-center justify-center text-gray-500 text-sm">
+                          Cargando métricas...
+                        </div>
+                      ) : advancedMetricEntries.length > 0 ? (
+                        <ScrollArea className="max-h-52 pr-2 overflow-y-auto">
+                          <div className="grid grid-cols-1 gap-2">
+                            {advancedMetricEntries.map(([key, value]) => (
+                              <div key={key} className="flex items-center justify-between rounded-md bg-white border border-gray-100 px-3 py-2">
+                                <span className="text-xs font-medium text-gray-600">
+                                  {metricLabels[key] || key.replace(/_/g, " ")}
+                                </span>
+                                <span className="text-sm font-semibold text-gray-900">
+                                  {formatMetricValue(key, value)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      ) : (
+                        <div className="h-24 flex items-center justify-center text-gray-500 text-sm text-center px-2">
+                          No hay métricas adicionales disponibles para esta zona.
+                        </div>
+                      )}
+                    </Card>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setIsMetricsExpanded((prev) => !prev)}
+                    className="w-full flex items-center gap-3 text-gray-500 hover:text-gray-700 transition-colors"
+                    aria-label={isMetricsExpanded ? "Ocultar métricas nuevas" : "Mostrar métricas nuevas"}
+                  >
+                    <div className="h-px flex-1 bg-gray-200" />
+                    <ChevronDown className={`h-5 w-5 transition-transform duration-200 ${isMetricsExpanded ? "rotate-180" : "rotate-0"}`} />
+                    <div className="h-px flex-1 bg-gray-200" />
+                  </button>
+                </div>
+
               </div>
 
               {/* Temperature Forecast */}
