@@ -747,9 +747,21 @@ useEffect(() => {
       let popupContent = '<div style="padding: 10px;">Cargando información...</div>';
 
       if (fullAlert) {
-        // Formateo de fechas guardadas en variables seguras
-        const inicioStr = fullAlert.validez_inicio ? new Date(fullAlert.validez_inicio).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Desconocida';
-        const finStr = fullAlert.validez_fin ? new Date(fullAlert.validez_fin).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Desconocida';
+        // Mostrar fechas de alertas siempre en hora de Madrid y con zona visible (CET/CEST)
+        const alertTimeOptions: Intl.DateTimeFormatOptions = {
+          day: '2-digit',
+          month: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'Europe/Madrid',
+          timeZoneName: 'short',
+        };
+        const inicioStr = fullAlert.validez_inicio
+          ? new Date(fullAlert.validez_inicio).toLocaleString('es-ES', alertTimeOptions)
+          : 'Desconocida';
+        const finStr = fullAlert.validez_fin
+          ? new Date(fullAlert.validez_fin).toLocaleString('es-ES', alertTimeOptions)
+          : 'Desconocida';
 
         // HTML del popup usando las variables formateadas
         popupContent = `
