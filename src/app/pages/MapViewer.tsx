@@ -118,7 +118,8 @@ export default function MapViewer() {
   /* Gestiona las funcionalidades del panel de alertas (actulizar,filtrar,...)  */
   /* ========================================================================== */
   const [isRefreshingAlerts, setIsRefreshingAlerts] = useState(false);
-  const [activeAlertLevels, setActiveAlertLevels] = useState<string[]>(['verde', 'amarillo', 'naranja', 'rojo']);
+  // Por defecto ocultamos las alertas 'verde'
+  const [activeAlertLevels, setActiveAlertLevels] = useState<string[]>(['amarillo', 'naranja', 'rojo']);
   
   // Variable que recoge las alertas filtradas por color
   const filteredAlerts = aemetAlerts.filter(alert => 
