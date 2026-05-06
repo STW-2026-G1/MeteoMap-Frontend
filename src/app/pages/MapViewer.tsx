@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { Header } from "../components/Header";
 import { Button } from "../components/ui/button";
@@ -43,6 +43,7 @@ interface MapMarker {
   lng: number;
   label: string;
   color: string;
+  nivel?: string;
 }
 
 export default function MapViewer() {
@@ -94,7 +95,7 @@ export default function MapViewer() {
   const [aemetLoading, setAemetLoading] = useState(false);
   // Mostrar polígonos en el mapa en lugar de sólo marcadores
   const [showPolygons, setShowPolygons] = useState(false);
-  const polygonsLayerRef = useRef<L.GeoJSON | null>(null);
+  const polygonsLayerRef = useRef<L.GeoJSON[]>([]);
 
   // Añade también una referencia para los marcadores de alertas en el mapa (junto a userMarkersRef en la línea 45)
   const alertMarkersRef = useRef<L.Marker[]>([]);
@@ -124,10 +125,74 @@ export default function MapViewer() {
   // Por defecto ocultamos las alertas 'verde'
   const [activeAlertLevels, setActiveAlertLevels] = useState<string[]>(['amarillo', 'naranja', 'rojo']);
   
-  // Variable que recoge las alertas filtradas por color
-  const filteredAlerts = aemetAlerts.filter(alert => 
-    activeAlertLevels.includes(alert.nivel.toLowerCase())
-  );
+  const getAlertSeverityRank = (nivel: string | undefined) => {
+    const n = (nivel || '').toLowerCase();
+    if (n === 'rojo') return 4;
+    if (n === 'naranja') return 3;
+    if (n === 'amarillo') return 2;
+    if (n === 'verde') return 1;
+    return 0;
+  };
+
+  const getAlertZoneKey = (alert: any) => {
+    const zone = String(alert?.zona || '').trim().toLowerCase();
+    if (zone) return `zone:${zone}`;
+
+    const lat = alert?.coordenadas?.latitud || alert?.geolocalizacion?.coordinates?.[1];
+    const lng = alert?.coordenadas?.longitud || alert?.geolocalizacion?.coordinates?.[0];
+    if (typeof lat === 'number' && typeof lng === 'number') {
+      return `coord:${lat.toFixed(3)}:${lng.toFixed(3)}`;
+    }
+
+    return String(alert?.id || alert?._id || 'unknown-zone');
+  };
+
+  const getAlertTypeKey = (alert: any) => {
+    const type = String(alert?.tipo || '').trim().toLowerCase();
+    return type || 'sin-tipo';
+  };
+
+  const seededUnit = (seed: string) => {
+    let h = 2166136261;
+    for (let i = 0; i < seed.length; i += 1) {
+      h ^= seed.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    const normalized = (h >>> 0) / 4294967295;
+    return normalized;
+  };
+
+  // Alertas filtradas por color y deduplicadas por zona+tipo+color, priorizando severidad.
+  // Regla: mismo tipo y mismo color en misma zona => prevalece la más severa;
+  // mismo tipo con distinto color => se conservan; distinto tipo => se conservan.
+  const filteredAlerts = useMemo(() => {
+    const filtered = aemetAlerts.filter((alert) => {
+      const level = (alert?.nivel || '').toLowerCase();
+      return activeAlertLevels.includes(level);
+    });
+
+    const bestByZoneAndTypeAndColor = new Map<string, any>();
+    filtered.forEach((alert) => {
+      const color = alert?.color || mapLevelToColor(alert?.nivel).color;
+      const key = `${getAlertZoneKey(alert)}|type:${getAlertTypeKey(alert)}|color:${color}`;
+      const current = bestByZoneAndTypeAndColor.get(key);
+
+      if (!current) {
+        bestByZoneAndTypeAndColor.set(key, alert);
+        return;
+      }
+
+      const currentRank = getAlertSeverityRank(current?.nivel);
+      const nextRank = getAlertSeverityRank(alert?.nivel);
+      if (nextRank > currentRank) {
+        bestByZoneAndTypeAndColor.set(key, alert);
+      }
+    });
+
+    return Array.from(bestByZoneAndTypeAndColor.values()).sort(
+      (a, b) => getAlertSeverityRank(b?.nivel) - getAlertSeverityRank(a?.nivel)
+    );
+  }, [aemetAlerts, activeAlertLevels]);
 
   /* ========================================================================== */
   /* EFECTO 1: API Data Fetching & Transformation                             */
@@ -253,32 +318,60 @@ export default function MapViewer() {
     refreshAemetAlerts();
   }, []);
 
-  // Este efecto "vigila" las alertas y los niveles activos
+  // Este efecto transforma las alertas priorizadas al formato de marcadores
 useEffect(() => {
-  // 1. Filtramos las alertas según los colores seleccionados por el usuario
-  const filtered = aemetAlerts.filter(alert => 
-    activeAlertLevels.includes(alert.nivel.toLowerCase())
-  );
+    const groupedByZone = new Map<string, any[]>();
+    filteredAlerts.forEach((alert: any) => {
+      const zoneKey = getAlertZoneKey(alert);
+      const bucket = groupedByZone.get(zoneKey) || [];
+      bucket.push(alert);
+      groupedByZone.set(zoneKey, bucket);
+    });
 
-  // 2. Las transformamos al formato que entiende el mapa (MapMarker)
-  const transformed: MapMarker[] = filtered.map((alert: any) => {
-    const lat = alert.coordenadas?.latitud || alert.geolocalizacion?.coordinates?.[1] || 0;
-    const lng = alert.coordenadas?.longitud || alert.geolocalizacion?.coordinates?.[0] || 0;
+    const transformed: MapMarker[] = [];
 
-    return {
-      id: alert.id || alert._id,
-      lat: lat,
-      lng: lng,
-      label: alert.tipo || "Alerta",
-      color: alert.color || '#f59e0b',
-    };
-  });
+    groupedByZone.forEach((zoneAlerts) => {
+      const typeCounts = zoneAlerts.reduce((acc: Record<string, number>, alert: any) => {
+        const typeKey = getAlertTypeKey(alert);
+        acc[typeKey] = (acc[typeKey] || 0) + 1;
+        return acc;
+      }, {});
 
-  // 3. Actualizamos el estado de los marcadores. 
-  // Al cambiar 'alertMarkers', se disparará automáticamente el efecto que pinta el mapa.
+      zoneAlerts.forEach((alert: any, index: number) => {
+        const baseLat = alert.coordenadas?.latitud || alert.geolocalizacion?.coordinates?.[1] || 0;
+        const baseLng = alert.coordenadas?.longitud || alert.geolocalizacion?.coordinates?.[0] || 0;
+
+        let lat = baseLat;
+        let lng = baseLng;
+
+        // Si hay varios tipos en la misma zona, desplazamos sólo los tipos que no se repiten.
+        // Si el mismo tipo aparece varias veces (aunque cambie el color), se deja sin jitter.
+        const typeKey = getAlertTypeKey(alert);
+        const shouldJitter = Object.keys(typeCounts).length > 1 && typeCounts[typeKey] === 1;
+
+        if (shouldJitter) {
+          const seedBase = `${alert.id || alert._id || ''}|${getAlertZoneKey(alert)}|${getAlertTypeKey(alert)}|${index}`;
+          const angleBase = (index / zoneAlerts.length) * Math.PI * 2;
+          const angleNoise = (seededUnit(`${seedBase}:angle`) - 0.5) * 0.35;
+          const angle = angleBase + angleNoise;
+          const radius = 0.006 + seededUnit(`${seedBase}:radius`) * 0.0025;
+          lat = baseLat + Math.sin(angle) * radius;
+          lng = baseLng + Math.cos(angle) * radius;
+        }
+
+        transformed.push({
+          id: alert.id || alert._id,
+          lat,
+          lng,
+          label: alert.tipo || "Alerta",
+          color: mapLevelToColor(alert.nivel).color,
+          nivel: alert.nivel,
+        });
+      });
+    });
+
   setAlertMarkers(transformed);
-
-}, [aemetAlerts, activeAlertLevels]);
+}, [filteredAlerts]);
 
   /* ========================================================================== */
   /* EFECTO 3: Cargar zonas favoritas del usuario autenticado                */
@@ -499,18 +592,25 @@ useEffect(() => {
   const handleAemetAlertClick = (alert: any) => {
     if (!mapInstanceRef.current) return;
 
-    const { latitud, longitud } = alert.coordenadas;
+    const latitud = alert?.coordenadas?.latitud ?? alert?.geolocalizacion?.coordinates?.[1];
+    const longitud = alert?.coordenadas?.longitud ?? alert?.geolocalizacion?.coordinates?.[0];
 
     // Validar coordenadas
-    if (!latitud || !longitud || isNaN(latitud) || isNaN(longitud)) {
+    if (typeof latitud !== 'number' || typeof longitud !== 'number' || isNaN(latitud) || isNaN(longitud)) {
       console.warn('Coordenadas inválidas para la alerta:', alert.id);
       return;
     }
 
     // Centrar el mapa en la alerta con zoom 9
-    mapInstanceRef.current.setView([latitud + 0.3, longitud], 9, {
+    mapInstanceRef.current.setView([latitud+0.2, longitud], 9, {
       animate: true,
     });
+
+    const popupHtml = buildAemetAlertPopupHtml(alert, mapLevelToColor(alert?.nivel).color);
+    L.popup({ maxWidth: 320, closeButton: true, autoPan: true })
+      .setLatLng([latitud, longitud])
+      .setContent(popupHtml)
+      .openOn(mapInstanceRef.current);
 
     console.log('Navegando a alerta:', alert.tipo, 'en', alert.zona);
   };
@@ -645,16 +745,86 @@ useEffect(() => {
     const n = (nivel || '').toLowerCase();
     switch (n) {
       case 'verde':
-        return { color: '#86efac', fillOpacity: 0.2, weight: 2 };
+        return { color: '#86efac', fillOpacity: 0.12, weight: 1.5, opacity: 0.55 };
       case 'amarillo':
-        return { color: '#fbbf24', fillOpacity: 0.34, weight: 2 };
+        return { color: '#fbbf24', fillOpacity: 0.24, weight: 2, opacity: 0.75 };
       case 'naranja':
-        return { color: '#f97316', fillOpacity: 0.36, weight: 2 };
+        return { color: '#f97316', fillOpacity: 0.42, weight: 3, opacity: 0.95 };
       case 'rojo':
-        return { color: '#ef4444', fillOpacity: 0.42, weight: 2 };
+        return { color: '#ef4444', fillOpacity: 0.55, weight: 4, opacity: 1 };
       default:
-        return { color: '#f59e0b', fillOpacity: 0.3, weight: 2 };
+        return { color: '#f59e0b', fillOpacity: 0.3, weight: 2, opacity: 0.85 };
     }
+  };
+
+  const getAlertPaneName = (nivel: string | undefined) => {
+    const n = (nivel || '').toLowerCase();
+    switch (n) {
+      case 'verde':
+        return 'alert-pane-verde';
+      case 'amarillo':
+        return 'alert-pane-amarillo';
+      case 'naranja':
+        return 'alert-pane-naranja';
+      case 'rojo':
+        return 'alert-pane-rojo';
+      default:
+        return 'alert-pane-default';
+    }
+  };
+
+  const getAlertPointPaneName = (nivel: string | undefined) => {
+    const n = (nivel || '').toLowerCase();
+    switch (n) {
+      case 'verde':
+        return 'alert-point-pane-verde';
+      case 'amarillo':
+        return 'alert-point-pane-amarillo';
+      case 'naranja':
+        return 'alert-point-pane-naranja';
+      case 'rojo':
+        return 'alert-point-pane-rojo';
+      default:
+        return 'alert-point-pane-default';
+    }
+  };
+
+  const ensureAlertPanes = (map: L.Map) => {
+    const panes = [
+      { name: 'alert-pane-verde', zIndex: 410 },
+      { name: 'alert-pane-amarillo', zIndex: 420 },
+      { name: 'alert-pane-naranja', zIndex: 430 },
+      { name: 'alert-pane-rojo', zIndex: 440 },
+      { name: 'alert-pane-default', zIndex: 425 },
+    ];
+
+    panes.forEach(({ name, zIndex }) => {
+      let pane = map.getPane(name);
+      if (!pane) {
+        pane = map.createPane(name);
+      }
+      pane.style.zIndex = String(zIndex);
+      pane.style.pointerEvents = 'auto';
+    });
+  };
+
+  const ensureAlertPointPanes = (map: L.Map) => {
+    const panes = [
+      { name: 'alert-point-pane-verde', zIndex: 510 },
+      { name: 'alert-point-pane-amarillo', zIndex: 520 },
+      { name: 'alert-point-pane-naranja', zIndex: 530 },
+      { name: 'alert-point-pane-rojo', zIndex: 540 },
+      { name: 'alert-point-pane-default', zIndex: 525 },
+    ];
+
+    panes.forEach(({ name, zIndex }) => {
+      let pane = map.getPane(name);
+      if (!pane) {
+        pane = map.createPane(name);
+      }
+      pane.style.zIndex = String(zIndex);
+      pane.style.pointerEvents = 'auto';
+    });
   };
 
   const buildAemetAlertPopupHtml = (alert: any, colorOverride?: string) => {
@@ -746,6 +916,9 @@ useEffect(() => {
       maxZoom: 18,
     }).addTo(map);
 
+    ensureAlertPanes(map);
+    ensureAlertPointPanes(map);
+
     mapInstanceRef.current = map;
     setMapReady(true);
 
@@ -772,6 +945,7 @@ useEffect(() => {
     alertMarkers.forEach((marker) => {
       const leafletMarker = L.marker([marker.lat, marker.lng], {
         icon: createCustomIcon(marker.color), // <-- Pasamos directamente el color
+        pane: getAlertPointPaneName(marker.nivel),
       }).addTo(map);
 
       // Popup limpio sin el getIconSvg
@@ -817,18 +991,13 @@ useEffect(() => {
     // Si estamos mostrando polígonos, no añadimos marcadores de alerta
     if (showPolygons) {
       // Limpieza de capa de polígonos existente
-      if (polygonsLayerRef.current) {
-        polygonsLayerRef.current.remove();
-        polygonsLayerRef.current = null;
-      }
+      polygonsLayerRef.current.forEach(layer => layer.remove());
+      polygonsLayerRef.current = [];
 
       const features: any[] = [];
-      aemetAlerts.forEach((alert) => {
+      filteredAlerts.forEach((alert) => {
         if (!alert.poligono_geojson) return;
         const nivel = (alert.nivel || '').toLowerCase();
-        // Respetar filtros de color: si el nivel no está activo, saltar
-        if (!activeAlertLevels.includes(nivel)) return;
-
         const mapped = mapLevelToColor(nivel);
         features.push({
           type: 'Feature',
@@ -849,72 +1018,106 @@ useEffect(() => {
         });
       });
 
+      // Orden de pintado: menor severidad primero, mayor severidad arriba
+      features.sort((a: any, b: any) => {
+        const sa = getAlertSeverityRank(a?.properties?.nivel);
+        const sb = getAlertSeverityRank(b?.properties?.nivel);
+        return sa - sb;
+      });
+
       if (features.length > 0) {
-        const gj = L.geoJSON({ type: 'FeatureCollection', features }, {
-          style: (feature: any) => {
-            const p = feature.properties || {};
-            const lvlStyle = mapLevelToColor(p.nivel);
-            return {
-              color: lvlStyle.color,
-              weight: lvlStyle.weight,
-              opacity: 0.95,
-              fillColor: lvlStyle.color,
-              fillOpacity: lvlStyle.fillOpacity,
-              lineJoin: 'round',
-              lineCap: 'round',
-            };
-          },
-          onEachFeature: (feature: any, layer: any) => {
-            layer.on({
-              mouseover: (e: any) => {
-                const target = e.target;
-                const p = feature.properties || {};
-                const base = mapLevelToColor(p.nivel);
-                target.setStyle({
-                  weight: Math.max(base.weight),
-                  color: '#898989',
-                  opacity: 1,
-                  fillOpacity: Math.min(base.fillOpacity + 0.28, 0.75),
-                });
-                if (target.bringToFront) target.bringToFront();
-              },
-              mouseout: (e: any) => {
-                const target = e.target;
-                const p = feature.properties || {};
-                const base = mapLevelToColor(p.nivel);
-                target.setStyle({
-                  color: base.color,
-                  weight: base.weight,
-                  opacity: 0.95,
-                  fillOpacity: base.fillOpacity,
-                });
-              },
-              click: (e: any) => {
-                const props = feature.properties;
-                const fullAlert = aemetAlerts.find((a) => (a.id || a._id) === props.id);
-                const popupHtml = buildAemetAlertPopupHtml(fullAlert || props, props.color);
+        const featuresByPane = features.reduce((acc: Record<string, any[]>, feature) => {
+          const paneName = getAlertPaneName(feature?.properties?.nivel);
+          if (!acc[paneName]) acc[paneName] = [];
+          acc[paneName].push(feature);
+          return acc;
+        }, {});
 
-                // Centrar mapa y abrir popup
-                if (mapInstanceRef.current) {
-                  const bounds = e.target.getBounds ? e.target.getBounds() : null;
-                  if (bounds) mapInstanceRef.current.fitBounds(bounds.pad(0.2));
+        const severityOrder = ['verde', 'amarillo', 'naranja', 'rojo', 'default'];
+        const renderedLayers: L.GeoJSON[] = [];
+
+        severityOrder.forEach((nivel) => {
+          const paneName = getAlertPaneName(nivel);
+          const paneFeatures = featuresByPane[paneName];
+          if (!paneFeatures || paneFeatures.length === 0) return;
+
+          const gj = L.geoJSON({ type: 'FeatureCollection', features: paneFeatures }, {
+            pane: paneName,
+            style: (feature: any) => {
+              const p = feature.properties || {};
+              const lvlStyle = mapLevelToColor(p.nivel);
+              return {
+                color: lvlStyle.color,
+                weight: lvlStyle.weight,
+                opacity: lvlStyle.opacity,
+                fillColor: lvlStyle.color,
+                fillOpacity: lvlStyle.fillOpacity,
+                lineJoin: 'round',
+                lineCap: 'round',
+              };
+            },
+            onEachFeature: (feature: any, layer: any) => {
+              layer.on({
+                mouseover: (e: any) => {
+                  const target = e.target;
+                  const p = feature.properties || {};
+                  const base = mapLevelToColor(p.nivel);
+                  target.setStyle({
+                    weight: Math.max(base.weight),
+                    color: '#424345',
+                    opacity: 1,
+                    fillOpacity: Math.min(base.fillOpacity + 0.28, 0.75),
+                  });
+                  if (target.bringToFront) target.bringToFront();
+                },
+                mouseout: (e: any) => {
+                  const target = e.target;
+                  const p = feature.properties || {};
+                  const base = mapLevelToColor(p.nivel);
+                  target.setStyle({
+                    color: base.color,
+                    weight: base.weight,
+                    opacity: base.opacity,
+                    fillOpacity: base.fillOpacity,
+                  });
+                },
+                click: (e: any) => {
+                  const props = feature.properties;
+                  const fullAlert = aemetAlerts.find((a) => (a.id || a._id) === props.id);
+                  const popupHtml = buildAemetAlertPopupHtml(fullAlert || props, props.color);
+
+                  if (mapInstanceRef.current) {
+                    const bounds = e.target.getBounds ? e.target.getBounds() : null;
+                    if (bounds) {
+                      mapInstanceRef.current.fitBounds(bounds.pad(0.2), {
+                        paddingTopLeft: [0, 160],
+                        paddingBottomRight: [0, 40],
+                      });
+                    }
+                  }
+                  layer.bindPopup(popupHtml, {
+                      maxWidth: 320,
+                  }).openPopup();
                 }
-                layer.bindPopup(popupHtml, { maxWidth: 320 }).openPopup();
-              }
-            });
-          }
-        }).addTo(map);
+              });
+            }
+          }).addTo(map);
 
-        polygonsLayerRef.current = gj as L.GeoJSON;
+          renderedLayers.push(gj as L.GeoJSON);
+        });
+
+        polygonsLayerRef.current = renderedLayers;
+
+        return; // no crear marcadores
       }
 
       return; // no crear marcadores
     }
 
     // Si venimos de modo polígonos, asegurarnos de limpiar la capa de polígonos
-    if (!showPolygons && polygonsLayerRef.current) {
-      polygonsLayerRef.current.remove();
-      polygonsLayerRef.current = null;
+    if (!showPolygons && polygonsLayerRef.current.length > 0) {
+      polygonsLayerRef.current.forEach(layer => layer.remove());
+      polygonsLayerRef.current = [];
     }
 
     // 2. Crear los nuevos marcadores en memoria
@@ -922,7 +1125,8 @@ useEffect(() => {
       
 
       const leafletMarker = L.marker([marker.lat, marker.lng], { 
-        icon: createCustomIcon(marker.color) 
+        icon: createCustomIcon(marker.color),
+        pane: getAlertPointPaneName(marker.nivel),
       });
 
       // Buscamos la alerta completa en el estado usando el ID
@@ -955,7 +1159,7 @@ useEffect(() => {
       alertMarkersRef.current.push(leafletMarker);
     });
 
-  }, [alertMarkers, aemetAlerts, layers.aemetAlerts, activeAlertLevels]);
+  }, [alertMarkers, aemetAlerts, filteredAlerts, layers.aemetAlerts, activeAlertLevels]);
 
   /**
    * Aumenta el nivel de zoom del mapa
