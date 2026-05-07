@@ -1,5 +1,7 @@
 import { useEffect } from "react";
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || "http://localhost:3000/api";
+
 /**
  * Hook para sincronizar datos meteorológicos cada 3 horas
  * - Se ejecuta al montar el componente
@@ -25,7 +27,7 @@ export const useWeatherSync = () => {
    */
   const syncWeather = async () => {
     try {
-      const response = await fetch("/api/zones/weather", {
+      const response = await fetch(`${API_BASE_URL}/zones/weather`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -40,6 +42,7 @@ export const useWeatherSync = () => {
         return;
       }
 
+      // Intentar parsear respuesta JSON
       const result = await response.json();
 
       // Log de éxito en consola

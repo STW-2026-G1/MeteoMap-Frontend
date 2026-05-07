@@ -127,7 +127,10 @@ export function CreateReportModal({ open, onOpenChange, zoneId, zoneName }: Crea
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent 
+        className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto" 
+        aria-describedby={undefined}
+      >
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-gray-900">
             Crear Nuevo Reporte

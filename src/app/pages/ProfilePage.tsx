@@ -1096,7 +1096,7 @@ export default function ProfilePage() {
                           </div>
                           {zone.reportCategories?.length > 0 && (
                             <div className="flex flex-wrap gap-1">
-                              {[...new Set(zone.reportCategories)].slice(0, 3).map((category, idx) => (
+                              {Array.from(new Set(zone.reportCategories as string[])).slice(0, 3).map((category: string, idx) => (
                                 <Badge key={idx} variant="secondary" className="text-xs">
                                   {category}
                                 </Badge>

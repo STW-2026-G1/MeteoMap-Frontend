@@ -25,7 +25,9 @@ interface ZoneSidebarProps {
 
 
 export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, onViewAllReports }: ZoneSidebarProps) {
-  if (!zone) return null;
+
+  const zoneId = zone?.id;
+  const zoneName = zone?.name;
 
   const [dynamicComments, setDynamicComments] = useState<Comment[]>([]);
   const [dynamicReports, setDynamicReports] = useState<UserReport[]>([]);
@@ -77,7 +79,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
   }, []);
 
   useEffect(() => {
-    if (!zone.id) return;
+    if (!zone?.id) return;
 
     const fetchForecast = async () => {
       setForecastLoading(true);
@@ -114,12 +116,14 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
     };
 
     fetchForecast();
-  }, [zone.id]);
+  }, [zone?.id]);
 
   useEffect(() => {
     const loadZoneImage = async () => {
+      if (!zoneName) return;
+
       try {
-        const imageUrl = await getZoneImage(zone.name);
+        const imageUrl = await getZoneImage(zoneName);
         setZoneImageUrl(imageUrl);
       } catch (error) {
         console.error("Error loading zone image:", error);
@@ -127,10 +131,10 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
     };
 
     loadZoneImage();
-  }, [zone.name]);
+  }, [zoneName]);
 
   useEffect(() => {
-    if (!zone.id) return;
+    if (!zone?.id) return;
 
     const fetchAdvancedMetrics = async () => {
       setAdvancedMetricsLoading(true);
@@ -149,7 +153,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
     };
 
     fetchAdvancedMetrics();
-  }, [zone.id]);
+  }, [zone?.id]);
 
   const metricLabels: Record<string, string> = {
     temperatura_aparente: "Sensación térmica",
@@ -189,7 +193,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
     .filter(([key]) => !hiddenAdvancedMetrics.has(key));
 
   useEffect(() => {
-      if (!zone.id) return;
+      if (!zone?.id) return;
 
       const fetchReports = async () => {
          try {
@@ -294,7 +298,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
 
       fetchComments();
       fetchReports();
-   }, [zone.id, currentUserId]);
+   }, [zone?.id, currentUserId]);
 
    const fetchReplies = async (commentId: string) => {
     // Si ya están expandidas, las cerramos
@@ -395,7 +399,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
 
       setIsSubmittingComment(true);
       try {
-         const response = await fetch(`${API_BASE_URL}/comments/zone/${zone.id}`, {
+         const response = await fetch(`${API_BASE_URL}/comments/zone/${zone?.id}`, {
             method: 'POST',
             headers: {
             'Content-Type': 'application/json',
@@ -641,7 +645,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
       setIsSubmittingReply(false);
     }
   };
-
+  if (!zone) return null;
   return (
     <>
       <AnimatePresence>

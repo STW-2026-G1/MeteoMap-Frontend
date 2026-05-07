@@ -435,7 +435,10 @@ useEffect(() => {
     if (mapReady && mapInstanceRef.current && zonesDataState[zoneId]) {
       const baseZone = zonesDataState[zoneId];
       console.log(`✓ Zona encontrada: ${baseZone.name}`);
-      
+      if (!baseZone.coordinates) {
+        return;
+      }
+
       const [lng, lat] = baseZone.coordinates;
       console.log(`📍 Coordenadas: lat=${lat}, lng=${lng}`);
       
@@ -1041,7 +1044,7 @@ useEffect(() => {
           const paneFeatures = featuresByPane[paneName];
           if (!paneFeatures || paneFeatures.length === 0) return;
 
-          const gj = L.geoJSON({ type: 'FeatureCollection', features: paneFeatures }, {
+          const gj = L.geoJSON({ type: 'FeatureCollection', features: paneFeatures } as any, {
             pane: paneName,
             style: (feature: any) => {
               const p = feature.properties || {};
