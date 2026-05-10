@@ -51,7 +51,7 @@ export default function LoginPage() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 px-4 pt-16">
         <div className="w-full max-w-md">
           {/* Card Container */}
-          <div className="bg-white rounded-2xl shadow-xl p-8 space-y-8">
+          <div className="bg-white rounded-2xl shadow-xl p-8 space-y-8" data-cy="login-card">
             {/* Logo */}
             <div className="text-center space-y-2">
               <Link to="/" className="inline-block">
@@ -82,9 +82,9 @@ export default function LoginPage() {
             </div>
 
             {/* Login Form */}
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-5" data-cy="login-form">
               {error && (
-                <Alert variant="destructive">
+                <Alert variant="destructive" data-cy="login-error">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
                     {error}
@@ -103,6 +103,7 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   className="h-11"
+                  data-cy="email-input"
                 />
               </div>
 
@@ -125,6 +126,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   className="h-11"
+                  data-cy="password-input"
                 />
               </div>
 
@@ -133,6 +135,7 @@ export default function LoginPage() {
                 type="submit"
                 className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-base"
                 disabled={loading}
+                data-cy="login-submit"
               >
                 {loading ? "Cargando..." : "Entrar"}
               </Button>

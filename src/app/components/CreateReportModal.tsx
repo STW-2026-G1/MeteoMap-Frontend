@@ -130,6 +130,7 @@ export function CreateReportModal({ open, onOpenChange, zoneId, zoneName }: Crea
       <DialogContent 
         className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto" 
         aria-describedby={undefined}
+        data-cy="create-report-modal"
       >
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-gray-900">
@@ -154,12 +155,12 @@ export function CreateReportModal({ open, onOpenChange, zoneId, zoneName }: Crea
               Tipo de Riesgo *
             </Label>
             <Select value={riskType} onValueChange={setRiskType} required disabled={isLoadingCategories}>
-              <SelectTrigger id="risk-type">
+              <SelectTrigger id="risk-type" data-cy="risk-type-trigger">
                 <SelectValue placeholder={isLoadingCategories ? "Cargando categorías..." : "Selecciona el tipo de condición..."} />
               </SelectTrigger>
               <SelectContent>
                 {categories.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
+                  <SelectItem key={type.value} value={type.value} data-cy="risk-type-option">
                     <span className="flex items-center gap-2">
                       <span>{type.icon}</span>
                       {type.label}
@@ -203,6 +204,7 @@ export function CreateReportModal({ open, onOpenChange, zoneId, zoneName }: Crea
               type="submit"
               className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               disabled={!riskType || description.length < 20 || isSubmitting}
+              data-cy="publish-report-button"
             >
               {isSubmitting ? "Publicando..." : "Publicar Reporte"}
             </Button>

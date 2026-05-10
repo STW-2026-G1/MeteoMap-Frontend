@@ -1376,6 +1376,7 @@ useEffect(() => {
                 onChange={(e) => handleSearchZones(e.target.value)}
                 onFocus={() => searchResults.length > 0 && setShowSearchResults(true)}
                 className="pl-10 pr-10 border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                data-cy="zone-search-input"
               />
               {isSearching ? (
                 <Loader className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 animate-spin" />
@@ -1401,6 +1402,7 @@ useEffect(() => {
                       <button
                         onClick={() => handleSelectZone(zone)}
                         className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors flex items-start gap-3 border-0"
+                        data-cy="zone-search-result"
                       >
                         <MapPin className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
                         <div className="flex-1 min-w-0">
