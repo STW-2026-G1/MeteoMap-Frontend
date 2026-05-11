@@ -158,7 +158,7 @@ export default function ProfilePage() {
 
   // Pagination states
   const ITEMS_PER_PAGE_REPORTS = 5;
-  const ITEMS_PER_PAGE_ZONES = 15;
+  const ITEMS_PER_PAGE_ZONES = 9;
   const [currentReportPage, setCurrentReportPage] = useState(1);
   const [currentZonePage, setCurrentZonePage] = useState(1);
 

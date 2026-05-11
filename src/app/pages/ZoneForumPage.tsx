@@ -393,6 +393,7 @@ interface Report {
       setDeleteDialogData(null);
     }
   };
+  
   const updateEditedComment = (commentId: string, newText: string): boolean => {
     let found = false;
     const updateInTree = (comments: Comment[]): Comment[] => {

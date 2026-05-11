@@ -143,7 +143,7 @@ export default function AdminZones() {
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
   const [currentZonePage, setCurrentZonePage] = useState(1);
   const [currentCategoryPage, setCurrentCategoryPage] = useState(1);
-  const ITEMS_PER_PAGE = 15;
+  const ITEMS_PER_PAGE = 10;
 
   const filteredZones = useMemo(() => {
     const normalized = searchTerm.trim().toLowerCase();
