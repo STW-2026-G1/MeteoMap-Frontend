@@ -9,6 +9,16 @@ import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { Badge } from "../components/ui/badge";
 import { Card } from "../components/ui/card";
 import { ScrollArea } from "../components/ui/scroll-area";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../components/ui/alert-dialog";
 import { ReportDetailModal } from "../components/ReportDetailModal";
 import {
   MapPin,
@@ -72,7 +82,7 @@ interface Report {
     const zoneAvalanche = searchParams.get("avalanche") || "2";
     const commentsParam = searchParams.get("comments");
 
-   const [newComment, setNewComment] = useState("");
+    const [newComment, setNewComment] = useState("");
     const [replyingTo, setReplyingTo] = useState<string | null>(null);
     const [replyText, setReplyText] = useState("");
     const [selectedReport, setSelectedReport] = useState<Report | null>(null);
@@ -86,6 +96,10 @@ interface Report {
     const [reports, setReports] = useState<Report[]>([]);
     const [apparentTemp, setApparentTemp] = useState<string>("N/D");
     const [weatherDescription, setWeatherDescription] = useState<string>("N/D");
+
+    // AlertDialog states
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [deleteDialogData, setDeleteDialogData] = useState<{ type: 'comment' | 'reply', commentId: string, replyId?: string } | null>(null);
 
     // Obtener el ID del usuario actual del localStorage
     useEffect(() => {
@@ -245,7 +259,7 @@ interface Report {
   const handleLike = async (commentId: string, isReply: boolean = false, parentId?: string) => {
       const rawToken = localStorage.getItem('meteomap_token');
       if (!rawToken) {
-         alert("No se encontró el token. Por favor, inicia sesión de nuevo.");
+         toast.error("No se encontró el token. Por favor, inicia sesión de nuevo.");
          return;
       }
 
@@ -315,24 +329,35 @@ interface Report {
       } catch (error) {
          console.error("Error en la API de Like/Unlike:", error);
          // Opcional: Revertir la actualización optimista aquí si la petición falla
-         alert("No se pudo guardar tu interacción. Por favor, intenta de nuevo.");
+         toast.error("No se pudo guardar tu interacción. Por favor, intenta de nuevo.");
       }
    };
 
-  const handleDeleteComment = async (commentId: string) => {
-    const confirmDelete = window.confirm("¿Estás seguro de que quieres eliminar este comentario?");
-    if (!confirmDelete) return;
+  const handleDeleteComment = (commentId: string) => {
+    setDeleteDialogData({ type: 'comment', commentId });
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteReply = (replyId: string, commentId: string) => {
+    setDeleteDialogData({ type: 'reply', commentId, replyId });
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteDialogData) return;
 
     const rawToken = localStorage.getItem('meteomap_token');
     if (!rawToken) {
-      alert("Sesión expirada. Por favor, inicia sesión de nuevo.");
+      toast.error("Sesión expirada. Por favor, inicia sesión de nuevo.");
+      setDeleteDialogOpen(false);
       return;
     }
 
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 
     try {
-      const response = await fetch(`${API_BASE_URL}/comments/${commentId}`, {
+      const deleteId = deleteDialogData.type === 'comment' ? deleteDialogData.commentId : deleteDialogData.replyId;
+      const response = await fetch(`${API_BASE_URL}/comments/${deleteId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${rawToken}`,
@@ -341,56 +366,33 @@ interface Report {
       });
 
       if (response.ok) {
-        setComments(comments.filter((comment) => comment.id !== commentId));
+        if (deleteDialogData.type === 'comment') {
+          setComments(comments.filter((comment) => comment.id !== deleteDialogData.commentId));
+          toast.success("Comentario eliminado");
+        } else {
+          setComments(comments.map(comment => {
+            if (comment.id === deleteDialogData.commentId && comment.replies) {
+              return {
+                ...comment,
+                replies: comment.replies.filter(reply => reply.id !== deleteDialogData.replyId)
+              };
+            }
+            return comment;
+          }));
+          toast.success("Respuesta eliminada");
+        }
       } else {
         const data = await response.json();
-        alert(data.message || "Error al borrar");
+        toast.error(data.message || "Error al borrar");
       }
     } catch (error) {
       console.error("Error en la petición DELETE:", error);
+      toast.error("Error al eliminar");
+    } finally {
+      setDeleteDialogOpen(false);
+      setDeleteDialogData(null);
     }
   };
-
-  const handleDeleteReply = async (replyId: string, commentId: string) => {
-    const confirmDelete = window.confirm("¿Estás seguro de que quieres eliminar esta respuesta?");
-    if (!confirmDelete) return;
-
-    const rawToken = localStorage.getItem('meteomap_token');
-    if (!rawToken) {
-      alert("Sesión expirada. Por favor, inicia sesión de nuevo.");
-      return;
-    }
-
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/comments/${replyId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${rawToken}`,
-          'Content-Type': 'application/json'
-        },
-      });
-
-      if (response.ok) {
-        setComments(comments.map(comment => {
-          if (comment.id === commentId && comment.replies) {
-            return {
-              ...comment,
-              replies: comment.replies.filter(reply => reply.id !== replyId)
-            };
-          }
-          return comment;
-        }));
-      } else {
-        const data = await response.json();
-        alert(data.message || "Error al borrar la respuesta");
-      }
-    } catch (error) {
-      console.error("Error en la petición DELETE:", error);
-    }
-  };
-
   const updateEditedComment = (commentId: string, newText: string): boolean => {
     let found = false;
     const updateInTree = (comments: Comment[]): Comment[] => {
@@ -423,13 +425,13 @@ interface Report {
 
   const handleEditComment = async (commentId: string, newText: string) => {
     if (!newText.trim()) {
-      alert("El comentario no puede estar vacío");
+      toast.error("El comentario no puede estar vacío");
       return;
     }
 
     const rawToken = localStorage.getItem('meteomap_token');
     if (!rawToken) {
-      alert("Sesión expirada. Por favor, inicia sesión de nuevo.");
+      toast.error("Sesión expirada. Por favor, inicia sesión de nuevo.");
       return;
     }
 
@@ -450,13 +452,14 @@ interface Report {
         updateEditedComment(commentId, newText);
         setEditingCommentId(null);
         setEditingText("");
+        toast.success("Comentario actualizado con éxito");
       } else {
         const data = await response.json();
-        alert(data.message || "Error al actualizar el comentario");
+        toast.error(data.message || "Error al actualizar el comentario");
       }
     } catch (error) {
       console.error("Error en la petición PUT:", error);
-      alert("Error al actualizar el comentario");
+      toast.error("Error al actualizar el comentario");
     } finally {
       setIsSubmittingEdit(false);
     }
@@ -467,7 +470,7 @@ interface Report {
 
     const rawToken = localStorage.getItem('meteomap_token');
     if (!rawToken) {
-      alert("No se encontró el token. Por favor, inicia sesión de nuevo.");
+      toast.error("No se encontró el token. Por favor, inicia sesión de nuevo.");
       return;
     }
 
@@ -486,6 +489,7 @@ interface Report {
 
       if (response.status === 201) {
         setNewComment("");
+        toast.success("Comentario publicado con éxito");
         
         // Recargar comentarios desde el backend
         const commentsResponse = await fetch(`${API_BASE_URL}/comments/zone/${zoneId}`);
@@ -534,11 +538,11 @@ interface Report {
           }
         }
       } else {
-        alert(data.message || "Error al publicar comentario");
+        toast.error(data.message || "Error al publicar comentario");
       }
     } catch (error) {
       console.error("Error de red:", error);
-      alert("Error de red al enviar comentario");
+      toast.error("Error de red al enviar comentario");
     }
   };
 
@@ -547,7 +551,7 @@ interface Report {
 
     const rawToken = localStorage.getItem('meteomap_token');
     if (!rawToken) {
-      alert("No se encontró el token. Por favor, inicia sesión de nuevo.");
+      toast.error("No se encontró el token. Por favor, inicia sesión de nuevo.");
       return;
     }
 
@@ -568,6 +572,7 @@ interface Report {
         // Limpiamos los campos
         setReplyText("");
         setReplyingTo(null);
+        toast.success("Respuesta publicada con éxito");
         
         // Cargamos las respuestas actualizadas desde el backend
         try {
@@ -598,11 +603,11 @@ interface Report {
           console.error("Error cargando respuestas actualizadas:", error);
         }
       } else {
-        alert(data.message || "Error al agregar respuesta");
+        toast.error(data.message || "Error al agregar respuesta");
       }
     } catch (error) {
       console.error("Error al agregar respuesta:", error);
-      alert("Error de red al enviar la respuesta");
+      toast.error("Error de red al enviar la respuesta");
     }
   };
 
@@ -1158,6 +1163,26 @@ interface Report {
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar eliminación</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteDialogData?.type === 'comment' 
+                ? "¿Estás seguro de que quieres eliminar este comentario? Esta acción no se puede deshacer."
+                : "¿Estás seguro de que quieres eliminar esta respuesta? Esta acción no se puede deshacer."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

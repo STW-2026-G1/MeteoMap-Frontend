@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "./ui/dialog";
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 
 interface ReportData {
   id: string | number;
@@ -163,7 +164,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
   const handleVote = async (accion: 'confirmar' | 'desmentir') => {
     const token = localStorage.getItem("meteomap_token");
     if (!token) {
-      alert("Debes iniciar sesión para validar un reporte.");
+      toast.error("Debes iniciar sesión para validar un reporte.");
       return;
     }
 
@@ -208,7 +209,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
       }
     } catch (error: any) {
       console.error(error);
-      alert(error.message);
+      toast.error(error.message);
     }
   };
 
@@ -219,7 +220,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
   const handleLike = async (commentId: string, isReply: boolean = false, parentId?: string) => {
     const rawToken = localStorage.getItem('meteomap_token');
     if (!rawToken) {
-      alert("Por favor inicia sesión para dar like a un comentario.");
+      toast.error("Por favor inicia sesión para dar like a un comentario.");
       return;
     }
 
@@ -285,7 +286,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
    } catch (error) {
       console.error("Error en la API de Like/Unlike:", error);
       // Opcional: Revertir la actualización optimista aquí si la petición falla
-      alert("No se pudo guardar tu interacción. Por favor, intenta de nuevo.");
+      toast.error("No se pudo guardar tu interacción. Por favor, intenta de nuevo.");
    }
   };
 
@@ -296,7 +297,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
 
     const rawToken = localStorage.getItem('meteomap_token');
     if (!rawToken) {
-      alert("Sesión expirada. Por favor, inicia sesión de nuevo.");
+      toast.error("Sesión expirada. Por favor, inicia sesión de nuevo.");
       return;
     }
 
@@ -315,7 +316,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
         setComments(comments.filter((comment) => comment.id !== commentId));
       } else {
         const data = await response.json();
-        alert(data.message || "Error deleting comment");
+        toast.error(data.message || "Error deleting comment");
       }
     } catch (error) {
       console.error("Error on DELETE request:", error);
@@ -329,7 +330,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
 
     const rawToken = localStorage.getItem('meteomap_token');
     if (!rawToken) {
-      alert("Sesión expirada. Por favor, inicia sesión de nuevo.");
+      toast.error("Sesión expirada. Por favor, inicia sesión de nuevo.");
       return;
     }
 
@@ -356,7 +357,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
         }));
       } else {
         const data = await response.json();
-        alert(data.message || "Error deleting reply");
+        toast.error(data.message || "Error deleting reply");
       }
     } catch (error) {
       console.error("Error on DELETE request:", error);
@@ -396,13 +397,13 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
 
   const handleEditComment = async (commentId: string, newText: string) => {
     if (!newText.trim()) {
-      alert("El comentario no puede estar vacío");
+      toast.error("El comentario no puede estar vacío");
       return;
     }
 
     const rawToken = localStorage.getItem('meteomap_token');
     if (!rawToken) {
-      alert("Sesión expirada. Por favor, inicia sesión de nuevo.");
+      toast.error("Sesión expirada. Por favor, inicia sesión de nuevo.");
       return;
     }
 
@@ -425,11 +426,11 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
         setEditingText("");
       } else {
         const data = await response.json();
-        alert(data.message || "Error updating comment");
+        toast.error(data.message || "Error updating comment");
       }
     } catch (error) {
       console.error("Error on PUT request:", error);
-      alert("Error updating comment");
+      toast.error("Error updating comment");
     } finally {
       setIsSubmittingEdit(false);
     }
@@ -441,7 +442,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
 
     const rawToken = localStorage.getItem('meteomap_token');
     if (!rawToken) {
-      alert("No se encontró el token. Por favor, inicia sesión de nuevo.");
+      toast.error("No se encontró el token. Por favor, inicia sesión de nuevo.");
       return;
     }
 
@@ -512,11 +513,11 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
           }
         }
       } else {
-        alert(data.message || "Error publishing comment");
+        toast.error(data.message || "Error publishing comment");
       }
     } catch (error) {
       console.error("Network error:", error);
-      alert("Network error sending comment");
+      toast.error("Network error sending comment");
     }
   };
 
@@ -526,7 +527,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
 
     const rawToken = localStorage.getItem('meteomap_token');
     if (!rawToken) {
-      alert("No se encontró el token. Por favor, inicia sesión de nuevo.");
+      toast.error("No se encontró el token. Por favor, inicia sesión de nuevo.");
       return;
     }
 
@@ -579,11 +580,11 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
           console.error("Error loading updated replies:", error);
         }
       } else {
-        alert(data.message || "Error adding reply");
+        toast.error(data.message || "Error adding reply");
       }
     } catch (error) {
       console.error("Error adding reply:", error);
-      alert("Network error sending reply");
+      toast.error("Network error sending reply");
     }
   };
 

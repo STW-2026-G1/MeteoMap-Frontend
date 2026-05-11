@@ -440,7 +440,7 @@ export default function ProfilePage() {
         });
       }
     } else {
-      alert(result.errorMessage || "Error al actualizar perfil");
+      toast.error(result.errorMessage || "Error al actualizar perfil");
     }
   };
 
@@ -528,7 +528,7 @@ export default function ProfilePage() {
   const handleRemoveZone = async (zoneId: number | string) => {
     const token = localStorage.getItem('meteomap_token');
     if (!token) {
-      alert('Debes estar autenticado para eliminar favoritos');
+      toast.error('Debes estar autenticado para eliminar favoritos');
       return;
     }
 
@@ -549,7 +549,7 @@ export default function ProfilePage() {
         if (zone) {
           setFavoriteZones([...favoriteZones, zone]);
         }
-        alert('Error al eliminar de favoritos');
+        toast.error('Error al eliminar de favoritos');
       }
     } catch (error) {
       console.error('Error eliminando favorito:', error);

@@ -3,6 +3,7 @@ import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
+import { toast } from "sonner";
 import {
   Select,
   SelectContent,
@@ -227,7 +228,7 @@ export default function StatsPage() {
       if (newSet.size < 3) {
         newSet.add(metricId);
       } else {
-        alert("Máximo 3 métricas permitidas");
+        toast.error("Máximo 3 métricas permitidas");
         return;
       }
     }

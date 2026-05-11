@@ -5,12 +5,23 @@ import { Badge } from "./ui/badge";
 import { ScrollArea } from "./ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Textarea } from "./ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "./ui/alert-dialog";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { motion, AnimatePresence } from "motion/react";
 import { ReportDetailModal } from "./ReportDetailModal";
 import { useState, useEffect, SetStateAction } from "react";
 import { ZoneData, UserReport, Comment } from "../types/weather";
 import { getZoneImage } from "../lib/imageUtils";
+import { toast } from "sonner";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 
@@ -55,6 +66,10 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
   const [editingText, setEditingText] = useState("");
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
   const [zoneImageUrl, setZoneImageUrl] = useState<string | null>(null);
+
+  // AlertDialog states
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteDialogData, setDeleteDialogData] = useState<{ type: 'comment' | 'reply', commentId: string, replyId?: string } | null>(null);
 
   const handleReportClick = (report: UserReport) => {
     setSelectedReport(report);
@@ -344,7 +359,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
   const handleLikeComment = async (commentId: string) => {
       const rawToken = localStorage.getItem('meteomap_token');
       if (!rawToken || !currentUserId) {
-         alert("Debes iniciar sesión para dar like");
+        toast.error("Debes iniciar sesión para dar like");
          return;
       }
 
@@ -394,7 +409,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
       const rawToken = localStorage.getItem('meteomap_token'); 
       
       if (!rawToken) {
-         alert("No se encontró el token. Por favor, inicia sesión de nuevo.");
+        toast.error("No se encontró el token. Por favor, inicia sesión de nuevo.");
          return;
       }
 
@@ -430,7 +445,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
             setNewCommentText("");
             setIsAddingComment(false);
          } else {
-            alert(data.message || "Error al publicar (Status: " + response.status + ")");
+            toast.error(data.message || "Error al publicar (Status: " + response.status + ")");
          }
       } catch (error) {
          console.error("Error de red:", error);
@@ -439,51 +454,31 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
       }
    };
 
-  const handleDeleteComment = async (commentId: string) => {
-      const confirmed = window.confirm("¿Estás seguro de que deseas eliminar este comentario?");
-      if (!confirmed) {
-         return;
-      }
+  const handleDeleteComment = (commentId: string) => {
+    setDeleteDialogData({ type: 'comment', commentId });
+    setDeleteDialogOpen(true);
+  };
 
-      try {
-         const rawToken = localStorage.getItem('meteomap_token'); 
+  const handleDeleteReply = (replyId: string, commentId: string) => {
+    setDeleteDialogData({ type: 'reply', commentId, replyId });
+    setDeleteDialogOpen(true);
+  };
 
-         if (!rawToken) {
-            alert("Sesión expirada. Por favor, inicia sesión de nuevo.");
-            return;
-         }
-
-         const response = await fetch(`${API_BASE_URL}/comments/${commentId}`, {
-            method: 'DELETE',
-            headers: {
-            'Authorization': `Bearer ${rawToken}`,
-            'Content-Type': 'application/json'
-            },
-         });
-
-         if (response.ok) {
-            setDynamicComments(prev => prev.filter(c => c.id !== commentId));
-         } else {
-            const data = await response.json();
-            alert(data.message || "Error al borrar");
-         }
-      } catch (error) {
-         console.error("Error en la petición DELETE:", error);
-      }
-   };
-
-  const handleDeleteReply = async (replyId: string, commentId: string) => {
-    const confirmDelete = window.confirm("¿Estás seguro de que quieres eliminar esta respuesta?");
-    if (!confirmDelete) return;
+  const confirmDelete = async () => {
+    if (!deleteDialogData) return;
 
     const rawToken = localStorage.getItem('meteomap_token');
     if (!rawToken) {
-      alert("Sesión expirada. Por favor, inicia sesión de nuevo.");
+      toast.error("Sesión expirada. Por favor, inicia sesión de nuevo.");
+      setDeleteDialogOpen(false);
       return;
     }
 
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+
     try {
-      const response = await fetch(`${API_BASE_URL}/comments/${replyId}`, {
+      const deleteId = deleteDialogData.type === 'comment' ? deleteDialogData.commentId : deleteDialogData.replyId;
+      const response = await fetch(`${API_BASE_URL}/comments/${deleteId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${rawToken}`,
@@ -492,21 +487,31 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
       });
 
       if (response.ok) {
-        setDynamicComments(prev => prev.map(comment => {
-          if (comment.id === commentId && comment.replies) {
-            return {
-              ...comment,
-              replies: comment.replies.filter(reply => reply.id !== replyId)
-            };
-          }
-          return comment;
-        }));
+        if (deleteDialogData.type === 'comment') {
+          setDynamicComments(comments.filter((comment) => comment.id !== deleteDialogData.commentId));
+          toast.success("Comentario eliminado");
+        } else {
+          setDynamicComments(comments.map(comment => {
+            if (comment.id === deleteDialogData.commentId && comment.replies) {
+              return {
+                ...comment,
+                replies: comment.replies.filter(reply => reply.id !== deleteDialogData.replyId)
+              };
+            }
+            return comment;
+          }));
+          toast.success("Respuesta eliminada");
+        }
       } else {
         const data = await response.json();
-        alert(data.message || "Error al borrar la respuesta");
+        toast.error(data.message || "Error al borrar");
       }
     } catch (error) {
       console.error("Error en la petición DELETE:", error);
+      toast.error("Error al eliminar");
+    } finally {
+      setDeleteDialogOpen(false);
+      setDeleteDialogData(null);
     }
   };
 
@@ -542,13 +547,13 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
 
   const handleEditComment = async (commentId: string, newText: string) => {
     if (!newText.trim()) {
-      alert("El comentario no puede estar vacío");
+      toast.error("El comentario no puede estar vacío");
       return;
     }
 
     const rawToken = localStorage.getItem('meteomap_token');
     if (!rawToken) {
-      alert("Sesión expirada. Por favor, inicia sesión de nuevo.");
+      toast.error("Sesión expirada. Por favor, inicia sesión de nuevo.");
       return;
     }
 
@@ -569,11 +574,11 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
         setEditingText("");
       } else {
         const data = await response.json();
-        alert(data.message || "Error al actualizar el comentario");
+        toast.error(data.message || "Error al actualizar el comentario");
       }
     } catch (error) {
       console.error("Error en la petición PUT:", error);
-      alert("Error al actualizar el comentario");
+      toast.error("Error al actualizar el comentario");
     } finally {
       setIsSubmittingEdit(false);
     }
@@ -586,7 +591,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
 
     const rawToken = localStorage.getItem('meteomap_token');
     if (!rawToken) {
-      alert("No se encontró el token. Por favor, inicia sesión de nuevo.");
+      toast.error("No se encontró el token. Por favor, inicia sesión de nuevo.");
       return;
     }
 
@@ -637,11 +642,11 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
           console.error("Error cargando respuestas actualizadas:", error);
         }
       } else {
-        alert(data.message || "Error al agregar respuesta");
+        toast.error(data.message || "Error al agregar respuesta");
       }
     } catch (error) {
       console.error("Error al agregar respuesta:", error);
-      alert("Error de red al enviar la respuesta");
+      toast.error("Error de red al enviar la respuesta");
     } finally {
       setIsSubmittingReply(false);
     }
@@ -1286,6 +1291,25 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
       />
+      {/* Delete Confirmation Dialog */}
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirmar eliminación</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {deleteDialogData?.type === 'comment' 
+                      ? "¿Estás seguro de que quieres eliminar este comentario? Esta acción no se puede deshacer."
+                      : "¿Estás seguro de que quieres eliminar esta respuesta? Esta acción no se puede deshacer."}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+                    Eliminar
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
     </>
   );
 }

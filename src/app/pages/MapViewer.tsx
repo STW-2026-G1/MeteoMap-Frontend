@@ -31,6 +31,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
+import { toast } from "sonner";
 
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -660,7 +661,7 @@ useEffect(() => {
   const handleToggleFavorite = async (zoneId: string) => {
     const token = localStorage.getItem('meteomap_token');
     if (!token) {
-      alert('Debes iniciar sesión para agregar a favoritos');
+      toast.error('Debes iniciar sesión para agregar a favoritos');
       return;
     }
 
@@ -707,7 +708,7 @@ useEffect(() => {
           }
           return newFavorites;
         });
-        alert('Error al actualizar favoritos');
+        toast.error('Error al actualizar favoritos');
       }
     } catch (error) {
       console.error('Error sincronizando favoritos:', error);
