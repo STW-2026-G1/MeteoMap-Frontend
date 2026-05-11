@@ -141,6 +141,9 @@ export default function AdminZones() {
   const [categoryForm, setCategoryForm] = useState<CategoryFormState>(emptyCategoryForm);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
+  const [currentZonePage, setCurrentZonePage] = useState(1);
+  const [currentCategoryPage, setCurrentCategoryPage] = useState(1);
+  const ITEMS_PER_PAGE = 15;
 
   const filteredZones = useMemo(() => {
     const normalized = searchTerm.trim().toLowerCase();
@@ -169,9 +172,23 @@ export default function AdminZones() {
     });
   }, [searchTerm, categories]);
 
+  const totalZonePages = Math.ceil(filteredZones.length / ITEMS_PER_PAGE);
+  const paginatedZones = useMemo(() => {
+    const startIndex = (currentZonePage - 1) * ITEMS_PER_PAGE;
+    return filteredZones.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredZones, currentZonePage]);
+
+  const totalCategoryPages = Math.ceil(filteredCategories.length / ITEMS_PER_PAGE);
+  const paginatedCategories = useMemo(() => {
+    const startIndex = (currentCategoryPage - 1) * ITEMS_PER_PAGE;
+    return filteredCategories.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredCategories, currentCategoryPage]);
+
   const loadData = async () => {
     setLoading(true);
     setError("");
+    setCurrentZonePage(1);
+    setCurrentCategoryPage(1);
 
     try {
       const [zonesResponse, categoriesResponse] = await Promise.all([
@@ -525,14 +542,14 @@ export default function AdminZones() {
                       Cargando zonas...
                     </TableCell>
                   </TableRow>
-                ) : filteredZones.length === 0 ? (
+                ) : paginatedZones.length === 0 && filteredZones.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="py-10 text-center text-gray-500">
                       No hay zonas para mostrar
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredZones.map((zone) => (
+                  paginatedZones.map((zone) => (
                     <TableRow key={zone._id} className="hover:bg-blue-50/50 transition-colors border-b border-gray-100">
                       <TableCell className="py-5 font-medium text-gray-900">
                         <div className="flex flex-col">
@@ -583,10 +600,10 @@ export default function AdminZones() {
           <div className="md:hidden space-y-3">
             {loading ? (
               <Card className="p-4 border-0 shadow-md text-center text-gray-500">Cargando zonas...</Card>
-            ) : filteredZones.length === 0 ? (
+            ) : paginatedZones.length === 0 && filteredZones.length === 0 ? (
               <Card className="p-4 border-0 shadow-md text-center text-gray-500">No hay zonas para mostrar</Card>
             ) : (
-              filteredZones.map((zone) => (
+              paginatedZones.map((zone) => (
                 <Card key={zone._id} className="p-4 border-0 shadow-md">
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-3">
@@ -631,6 +648,36 @@ export default function AdminZones() {
               ))
             )}
           </div>
+
+          {/* Zones Pagination */}
+          {totalZonePages > 1 && (
+            <div className="flex items-center justify-between gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="text-sm text-gray-600">
+                Página <span className="font-semibold">{currentZonePage}</span> de <span className="font-semibold">{totalZonePages}</span>
+                {filteredZones.length > 0 && (
+                  <span className="ml-2">({Math.min((currentZonePage - 1) * ITEMS_PER_PAGE + 1, filteredZones.length)}-{Math.min(currentZonePage * ITEMS_PER_PAGE, filteredZones.length)} de {filteredZones.length})</span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => setCurrentZonePage((prev) => Math.max(1, prev - 1))}
+                  disabled={currentZonePage === 1}
+                  variant="outline"
+                  size="sm"
+                >
+                  ← Anterior
+                </Button>
+                <Button
+                  onClick={() => setCurrentZonePage((prev) => Math.min(totalZonePages, prev + 1))}
+                  disabled={currentZonePage === totalZonePages}
+                  variant="outline"
+                  size="sm"
+                >
+                  Siguiente →
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="space-y-4">
@@ -649,10 +696,10 @@ export default function AdminZones() {
             <div className="space-y-3">
               {loading ? (
                 <div className="p-4 text-center text-gray-500">Cargando categorías...</div>
-              ) : filteredCategories.length === 0 ? (
+              ) : paginatedCategories.length === 0 && filteredCategories.length === 0 ? (
                 <div className="p-4 text-center text-gray-500">No hay categorías para mostrar</div>
               ) : (
-                filteredCategories.map((category) => (
+                paginatedCategories.map((category) => (
                   <div
                     key={category._id}
                     className="flex items-center justify-between p-3 md:p-4 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all"
@@ -698,6 +745,36 @@ export default function AdminZones() {
               )}
             </div>
           </Card>
+
+          {/* Categories Pagination */}
+          {totalCategoryPages > 1 && (
+            <div className="flex items-center justify-between gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="text-sm text-gray-600">
+                Página <span className="font-semibold">{currentCategoryPage}</span> de <span className="font-semibold">{totalCategoryPages}</span>
+                {filteredCategories.length > 0 && (
+                  <span className="ml-2">({Math.min((currentCategoryPage - 1) * ITEMS_PER_PAGE + 1, filteredCategories.length)}-{Math.min(currentCategoryPage * ITEMS_PER_PAGE, filteredCategories.length)} de {filteredCategories.length})</span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => setCurrentCategoryPage((prev) => Math.max(1, prev - 1))}
+                  disabled={currentCategoryPage === 1}
+                  variant="outline"
+                  size="sm"
+                >
+                  ← Anterior
+                </Button>
+                <Button
+                  onClick={() => setCurrentCategoryPage((prev) => Math.min(totalCategoryPages, prev + 1))}
+                  disabled={currentCategoryPage === totalCategoryPages}
+                  variant="outline"
+                  size="sm"
+                >
+                  Siguiente →
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

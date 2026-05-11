@@ -19,6 +19,8 @@ export default function AdminModeration() {
   const [searchTerm, setSearchTerm] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 15;
 
   const filteredReports = useMemo(() => {
     const normalized = searchTerm.trim().toLowerCase();
@@ -40,8 +42,15 @@ export default function AdminModeration() {
     });
   }, [reports, searchTerm]);
 
+  const totalPages = Math.ceil(filteredReports.length / ITEMS_PER_PAGE);
+  const paginatedReports = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredReports.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredReports, currentPage]);
+
   const loadReports = async () => {
     setLoading(true);
+    setCurrentPage(1);
     try {
       const resp = await fetch(`${API_BASE_URL}/reports`);
       const data = await resp.json();
@@ -137,14 +146,14 @@ export default function AdminModeration() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredReports.length === 0 ? (
+              {paginatedReports.length === 0 && filteredReports.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="py-10 text-center text-gray-500">
                     No hay reportes para mostrar
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredReports.map((report) => (
+                paginatedReports.map((report) => (
                   <TableRow key={report._id} className="hover:bg-red-50/30 transition-colors border-b border-gray-100">
                     <TableCell className="py-5 font-medium text-gray-900">{new Date(report.createdAt).toLocaleString()}</TableCell>
                     <TableCell className="py-5 text-gray-700">{report.usuario_id?.perfil?.nombre || report.usuario_id?.nombre || report.usuario_id?.email}</TableCell>
@@ -164,6 +173,36 @@ export default function AdminModeration() {
             </TableBody>
           </Table>
         </Card>
+      )}
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <div className="text-sm text-gray-600">
+            Página <span className="font-semibold">{currentPage}</span> de <span className="font-semibold">{totalPages}</span>
+            {filteredReports.length > 0 && (
+              <span className="ml-2">({Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, filteredReports.length)}-{Math.min(currentPage * ITEMS_PER_PAGE, filteredReports.length)} de {filteredReports.length})</span>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              variant="outline"
+              size="sm"
+            >
+              ← Anterior
+            </Button>
+            <Button
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              variant="outline"
+              size="sm"
+            >
+              Siguiente →
+            </Button>
+          </div>
+        </div>
       )}
 
       {/* Delete confirmation dialog */}

@@ -81,6 +81,8 @@ export default function AdminUsers() {
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [userToDelete, setUserToDelete] = useState<AdminUser | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 15;
 
   const filteredUsers = useMemo(() => {
     const normalized = searchTerm.trim().toLowerCase();
@@ -96,6 +98,12 @@ export default function AdminUsers() {
     });
   }, [searchTerm, users]);
 
+  const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
+  const paginatedUsers = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredUsers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredUsers, currentPage]);
+
   const loadUsers = async () => {
     const token = localStorage.getItem("meteomap_token");
 
@@ -107,6 +115,7 @@ export default function AdminUsers() {
 
     setLoading(true);
     setError("");
+    setCurrentPage(1);
 
     try {
       const response = await fetch(`${API_BASE_URL}/admin/users`, {
@@ -347,14 +356,14 @@ export default function AdminUsers() {
                   Cargando usuarios...
                 </TableCell>
               </TableRow>
-            ) : filteredUsers.length === 0 ? (
+            ) : paginatedUsers.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="py-10 text-center text-gray-500">
                   No hay usuarios para mostrar
                 </TableCell>
               </TableRow>
             ) : (
-              filteredUsers.map((user) => (
+              paginatedUsers.map((user) => (
                 <TableRow key={user.id} className="hover:bg-blue-50/50 transition-colors border-b border-gray-100">
                   <TableCell className="py-5 font-medium text-gray-900">
                     <div className="flex flex-col">
@@ -415,10 +424,10 @@ export default function AdminUsers() {
       <div className="md:hidden space-y-4">
         {loading ? (
           <Card className="p-4 border-0 shadow-md text-center text-gray-500">Cargando usuarios...</Card>
-        ) : filteredUsers.length === 0 ? (
+        ) : paginatedUsers.length === 0 && filteredUsers.length === 0 ? (
           <Card className="p-4 border-0 shadow-md text-center text-gray-500">No hay usuarios para mostrar</Card>
         ) : (
-          filteredUsers.map((user) => (
+          paginatedUsers.map((user) => (
             <Card key={user.id} className="p-4 border-0 shadow-md">
               <div className="space-y-3">
                 <div className="flex items-start justify-between gap-3">
@@ -472,6 +481,36 @@ export default function AdminUsers() {
           ))
         )}
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <div className="text-sm text-gray-600">
+            Página <span className="font-semibold">{currentPage}</span> de <span className="font-semibold">{totalPages}</span>
+            {filteredUsers.length > 0 && (
+              <span className="ml-2">({Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, filteredUsers.length)}-{Math.min(currentPage * ITEMS_PER_PAGE, filteredUsers.length)} de {filteredUsers.length})</span>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              variant="outline"
+              size="sm"
+            >
+              ← Anterior
+            </Button>
+            <Button
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              variant="outline"
+              size="sm"
+            >
+              Siguiente →
+            </Button>
+          </div>
+        </div>
+      )}
 
       <Dialog open={!!editingUser} onOpenChange={(open) => (!open ? closeEditDialog() : null)}>
         <DialogContent className="max-w-xl">

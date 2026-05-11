@@ -156,6 +156,11 @@ export default function ProfilePage() {
   const [categories, setCategories] = useState<{ value: string; label: string; icon: string }[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
 
+  // Pagination states
+  const ITEMS_PER_PAGE = 15;
+  const [currentReportPage, setCurrentReportPage] = useState(1);
+  const [currentZonePage, setCurrentZonePage] = useState(1);
+
 
   // Mock data - Estadísticas del usuario
   const userStats = {
@@ -769,6 +774,16 @@ export default function ProfilePage() {
     };
   };
 
+  // Pagination calculations for reports
+  const reportsTotalPages = Math.ceil(myReports.length / ITEMS_PER_PAGE);
+  const reportsStartIndex = (currentReportPage - 1) * ITEMS_PER_PAGE;
+  const paginatedReports = myReports.slice(reportsStartIndex, reportsStartIndex + ITEMS_PER_PAGE);
+
+  // Pagination calculations for zones
+  const zonesTotalPages = Math.ceil(favoriteZones.length / ITEMS_PER_PAGE);
+  const zonesStartIndex = (currentZonePage - 1) * ITEMS_PER_PAGE;
+  const paginatedZones = favoriteZones.slice(zonesStartIndex, zonesStartIndex + ITEMS_PER_PAGE);
+
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 via-gray-50 to-purple-50">
@@ -851,7 +866,7 @@ export default function ProfilePage() {
             </div>
 
             <div className="grid gap-4">
-              {myReports.map((report) => {
+              {paginatedReports.map((report) => {
                 const typeInfo = getReportTypeInfo(report.type);
                 const TypeIcon = typeInfo.icon;
 
@@ -977,6 +992,38 @@ export default function ProfilePage() {
                 );
               })}
             </div>
+
+            {/* Pagination Controls for Reports */}
+            {reportsTotalPages > 1 && (
+              <div className="flex items-center justify-between mt-6 pt-4 border-t">
+                <div className="text-sm text-gray-600">
+                  Mostrando {reportsStartIndex + 1} a {Math.min(reportsStartIndex + ITEMS_PER_PAGE, myReports.length)} de {myReports.length} reportes
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentReportPage(Math.max(1, currentReportPage - 1))}
+                    disabled={currentReportPage === 1}
+                  >
+                    Anterior
+                  </Button>
+                  <div className="flex items-center gap-2 px-3">
+                    <span className="text-sm text-gray-600">
+                      Página {currentReportPage} de {reportsTotalPages}
+                    </span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentReportPage(Math.min(reportsTotalPages, currentReportPage + 1))}
+                    disabled={currentReportPage === reportsTotalPages}
+                  >
+                    Siguiente
+                  </Button>
+                </div>
+              </div>
+            )}
           </TabsContent>
 
           {/* Tab: Zonas Favoritas */}
@@ -993,7 +1040,7 @@ export default function ProfilePage() {
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {favoriteZones.map((zone) => (
+                {paginatedZones.map((zone) => (
                   <Card
                     key={zone.id}
                     className="overflow-hidden hover:shadow-2xl transition-all duration-300 group flex flex-col h-full"
@@ -1127,6 +1174,38 @@ export default function ProfilePage() {
                     </div>
                   </Card>
                 ))}
+              </div>
+            )}
+
+            {/* Pagination Controls for Zones */}
+            {zonesTotalPages > 1 && (
+              <div className="flex items-center justify-between mt-6 pt-4 border-t">
+                <div className="text-sm text-gray-600">
+                  Mostrando {zonesStartIndex + 1} a {Math.min(zonesStartIndex + ITEMS_PER_PAGE, favoriteZones.length)} de {favoriteZones.length} zonas
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentZonePage(Math.max(1, currentZonePage - 1))}
+                    disabled={currentZonePage === 1}
+                  >
+                    Anterior
+                  </Button>
+                  <div className="flex items-center gap-2 px-3">
+                    <span className="text-sm text-gray-600">
+                      Página {currentZonePage} de {zonesTotalPages}
+                    </span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentZonePage(Math.min(zonesTotalPages, currentZonePage + 1))}
+                    disabled={currentZonePage === zonesTotalPages}
+                  >
+                    Siguiente
+                  </Button>
+                </div>
               </div>
             )}
           </TabsContent>
