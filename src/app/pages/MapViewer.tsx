@@ -82,6 +82,7 @@ export default function MapViewer() {
   const [selectedZone, setSelectedZone] = useState<ZoneData | null>(null);
   const [favoriteZones, setFavoriteZones] = useState<Set<string>>(new Set<string>([]));
   const [createReportModalOpen, setCreateReportModalOpen] = useState(false);
+  const [reportRefreshTrigger, setReportRefreshTrigger] = useState(0);
 
   /* ========================================================================== */
   /* ESTADO - Dynamic Data Management                                          */
@@ -1621,6 +1622,7 @@ useEffect(() => {
               navigate(`/foro?zone=${encodeURIComponent(selectedZone.name)}&id=${selectedZone.id}&elevation=${encodeURIComponent(selectedZone.elevation)}&temp=${selectedZone.temperature}&wind=${selectedZone.wind}&avalanche=${selectedZone.weather}&comments=${commentsParam}`);
             }
           }}
+          reportRefreshTrigger={reportRefreshTrigger}
         />
 
         {/* Modal para crear nuevo reporte */}
@@ -1629,7 +1631,7 @@ useEffect(() => {
           onOpenChange={setCreateReportModalOpen}
           zoneId={selectedZone?.id || ''}
           zoneName={selectedZone?.name || ''}
-
+          onReportCreated={() => setReportRefreshTrigger(prev => prev + 1)}
         />
       </div>
     </div>

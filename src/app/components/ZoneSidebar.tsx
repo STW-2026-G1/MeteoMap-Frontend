@@ -21,10 +21,11 @@ interface ZoneSidebarProps {
   onToggleFavorite: (zoneId: string) => void;
   onCreateReport: () => void;
   onViewAllReports: (currentComments: Comment[]) => void;
+  reportRefreshTrigger?: number;
 }
 
 
-export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, onViewAllReports }: ZoneSidebarProps) {
+export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, onViewAllReports, reportRefreshTrigger }: ZoneSidebarProps) {
 
   const zoneId = zone?.id;
   const zoneName = zone?.name;
@@ -298,7 +299,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
 
       fetchComments();
       fetchReports();
-   }, [zone?.id, currentUserId]);
+   }, [zone?.id, currentUserId, reportRefreshTrigger]);
 
    const fetchReplies = async (commentId: string) => {
     // Si ya están expandidas, las cerramos

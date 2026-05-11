@@ -23,9 +23,10 @@ interface CreateReportModalProps {
   onOpenChange: (open: boolean) => void;
   zoneId?: string;
   zoneName: string;
+  onReportCreated?: () => void;
 }
 
-export function CreateReportModal({ open, onOpenChange, zoneId, zoneName }: CreateReportModalProps) {
+export function CreateReportModal({ open, onOpenChange, zoneId, zoneName, onReportCreated }: CreateReportModalProps) {
   const [riskType, setRiskType] = useState("");
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -113,6 +114,11 @@ export function CreateReportModal({ open, onOpenChange, zoneId, zoneName }: Crea
 
       // Cerrar modal
       onOpenChange(false);
+
+      // Ejecutar callback para refrescar los reportes
+      if (onReportCreated) {
+        onReportCreated();
+      }
 
       // Mostrar mensaje de éxito
       toast.success("¡Reporte publicado con éxito! Gracias por contribuir a la seguridad en la montaña.");

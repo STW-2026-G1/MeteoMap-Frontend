@@ -22,6 +22,7 @@ import {
   Wind,
   Trash2,
   Edit2,
+  Cloud,
 } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -83,6 +84,8 @@ interface Report {
     const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
     
     const [reports, setReports] = useState<Report[]>([]);
+    const [apparentTemp, setApparentTemp] = useState<string>("N/D");
+    const [weatherDescription, setWeatherDescription] = useState<string>("N/D");
 
     // Obtener el ID del usuario actual del localStorage
     useEffect(() => {
@@ -96,6 +99,30 @@ interface Report {
         }
       }
     }, []);
+
+    // Fetch weather data from Backend
+    useEffect(() => {
+      const fetchWeatherData = async () => {
+        try {
+          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'}/zones/${zoneId}/weather`);
+          const data = await response.json();
+          if (response.ok && data.data) {
+            const meteorologicalData = data.data?.datos_meteorologicos || data.data?.cache_meteo?.current?.datos_crudos || {};
+            const apparentTemperature = meteorologicalData.temperatura_aparente ?? "N/D";
+            const description = meteorologicalData.descripcion ?? "N/D";
+            
+            setApparentTemp(String(apparentTemperature));
+            setWeatherDescription(String(description));
+          }
+        } catch (error) {
+          console.error("Error fetching weather data:", error);
+        }
+      };
+
+      if (zoneId) {
+        fetchWeatherData();
+      }
+    }, [zoneId]);
 
     // Fetch reports from Backend
     useEffect(() => {
@@ -702,10 +729,6 @@ interface Report {
                   </h1>
                   <div className="flex items-center gap-4 text-sm text-gray-600">
                     <div className="flex items-center gap-1">
-                      <MapPin className="h-4 w-4" />
-                      <span>{zoneElevation}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
                       <MessageCircle className="h-4 w-4" />
                       <span>{comments.length} comentarios</span>
                     </div>
@@ -1058,17 +1081,17 @@ interface Report {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <AlertTriangle className="h-5 w-5 text-red-600" />
+                    <Thermometer className="h-5 w-5 text-red-600" />
                     <div>
-                      <div className="text-xs text-gray-600">Riesgo Alud</div>
-                      <div className="font-bold text-gray-900">{zoneAvalanche}/5</div>
+                      <div className="text-xs text-gray-600">Sensación Térmica</div>
+                      <div className="font-bold text-gray-900">{apparentTemp}°C</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <MapPin className="h-5 w-5 text-blue-600" />
+                    <Cloud className="h-5 w-5 text-slate-600" />
                     <div>
-                      <div className="text-xs text-gray-600">Elevación</div>
-                      <div className="font-bold text-gray-900 text-sm">{zoneElevation}</div>
+                      <div className="text-xs text-gray-600">Tiempo</div>
+                      <div className="font-bold text-gray-900 text-sm">{weatherDescription}</div>
                     </div>
                   </div>
                 </div>
