@@ -1,12 +1,42 @@
-name: Frontend Deployment
+name: Front-Deployment
 on:
   push:
     branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        node-version: [20.x,22.x]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9 # O la versión que estés usando localmente
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build # Solo se ejecuta si el build pasa
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' # Solo despliega en push a main
+    
     steps:
       - uses: actions/checkout@v4
 
@@ -15,40 +45,23 @@ jobs:
         with:
           version: 9
 
-      - name: Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'pnpm'
-
-      - name: Instalar dependencias (frontend)
-        run: pnpm install --frozen-lockfile
-        working-directory: ./MeteoMap-Frontend
-
-      - name: Build (frontend)
-        run: pnpm build
-        working-directory: ./MeteoMap-Frontend
-
       - name: Instalar Vercel CLI
         run: pnpm add -g vercel
 
       - name: Pull Vercel Environment Information
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-        working-directory: ./MeteoMap-Frontend
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
-      - name: Build Project Artifacts (Vercel)
+      - name: Build Project Artifacts
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
-        working-directory: ./MeteoMap-Frontend
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
       - name: Deploy Project Artifacts to Vercel
         run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
-        working-directory: ./MeteoMap-Frontend
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
