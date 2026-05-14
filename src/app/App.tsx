@@ -21,24 +21,12 @@ function AppWithWeatherSync() {
   // Hook que sincroniza datos meteorológicos cada 3 horas
   useWeatherSync();
 
-  if (!GOOGLE_CLIENT_ID) {
-    console.warn("VITE_GOOGLE_CLIENT_ID no está configurado. El login con Google quedará desactivado.");
-  }
-
-  const appContent = (
-    <AuthProvider>
-      <RouterProvider router={router} />
-      <Toaster position="top-right" richColors />
-    </AuthProvider>
-  );
-
-  if (!GOOGLE_CLIENT_ID) {
-    return appContent;
-  }
-
   return (
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID || ""}>
-      {appContent}
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <AuthProvider>
+        <RouterProvider router={router} />
+        <Toaster position="top-right" richColors />
+      </AuthProvider>
     </GoogleOAuthProvider>
   );
 }
