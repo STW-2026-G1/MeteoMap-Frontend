@@ -18,6 +18,8 @@ import { Alert, AlertDescription } from "../components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { GoogleLogin } from '@react-oauth/google';
 
+const HAS_GOOGLE_CLIENT_ID = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -68,16 +70,22 @@ export default function LoginPage() {
             </div>
 
             {/* Google Login */}
-            <div className="flex justify-center w-full">
-              <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={handleGoogleError}
-                useOneTap
-                theme="outline"
-                shape="rectangular"
-                width="100%"
-              />
-            </div>
+            {HAS_GOOGLE_CLIENT_ID ? (
+              <div className="flex justify-center w-full">
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={handleGoogleError}
+                  useOneTap
+                  theme="outline"
+                  shape="rectangular"
+                  width="100%"
+                />
+              </div>
+            ) : (
+              <p className="text-sm text-center text-slate-500">
+                El inicio de sesión con Google no está configurado en producción.
+              </p>
+            )}
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
