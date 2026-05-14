@@ -1,3 +1,10 @@
+/**
+ * @file AIAssistant.tsx
+ * @description Asistente de IA que proporciona recomendaciones y responde preguntas
+ * sobre zonas y reportes meteorológicos mediante una interfaz de chat lateral.
+ * @author MeteoMap Team
+ */
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Sheet,

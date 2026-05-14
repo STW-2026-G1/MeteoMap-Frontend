@@ -1,3 +1,11 @@
+/**
+ * @file MapViewer.tsx
+ * @description Página principal con visualización de mapa interactivo que muestra zonas,
+ * reportes meteorológicos y permite crear nuevos reportes, favoritos y filtros de zonas.
+ * Integra información de tiempo real y gestión de favoritos del usuario.
+ * @author MeteoMap Team
+ */
+
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { Header } from "../components/Header";
@@ -127,6 +135,11 @@ export default function MapViewer() {
   // Por defecto ocultamos las alertas 'verde'
   const [activeAlertLevels, setActiveAlertLevels] = useState<string[]>(['amarillo', 'naranja', 'rojo']);
   
+  /**
+   * Obtiene el rango de severidad de una alerta basado en su nivel de color
+   * @param {string | undefined} nivel - Nivel de alerta (rojo, naranja, amarillo, verde)
+   * @returns {number} Rango de severidad (0-4)
+   */
   const getAlertSeverityRank = (nivel: string | undefined) => {
     const n = (nivel || '').toLowerCase();
     if (n === 'rojo') return 4;
@@ -136,6 +149,11 @@ export default function MapViewer() {
     return 0;
   };
 
+  /**
+   * Genera una clave única para agrupar alertas por zona
+   * @param {any} alert - Objeto de alerta
+   * @returns {string} Clave de zona de la alerta
+   */
   const getAlertZoneKey = (alert: any) => {
     const zone = String(alert?.zona || '').trim().toLowerCase();
     if (zone) return `zone:${zone}`;
@@ -149,6 +167,11 @@ export default function MapViewer() {
     return String(alert?.id || alert?._id || 'unknown-zone');
   };
 
+  /**
+   * Genera una clave única para el tipo de alerta
+   * @param {any} alert - Objeto de alerta
+   * @returns {string} Clave del tipo de alerta
+   */
   const getAlertTypeKey = (alert: any) => {
     const type = String(alert?.tipo || '').trim().toLowerCase();
     return type || 'sin-tipo';
@@ -279,6 +302,12 @@ export default function MapViewer() {
   /* ========================================================================== */
   /* EFECTO 2: Obtener Alertas de la API                                          */
   /* ========================================================================== */
+  /**
+   * Obtiene y actualiza las alertas de AEMET desde el servidor
+   * @async
+   * @param {boolean} [includePolygons] - Si se incluyen polígonos de alertas
+   * @returns {Promise<void>}
+   */
   const refreshAemetAlerts = async (includePolygons?: boolean) => {
     try {
       setAemetLoading(true);
@@ -505,10 +534,10 @@ useEffect(() => {
   /* ========================================================================== */
 
   /**
-   * Selecciona una zona para mostrar su información en el sidebar
-   * Llama a la API para obtener datos meteorológicos actualizados
-   * @param zoneId - ID de posición en el array (1-indexed)
-   *
+   * Selecciona una zona y obtiene sus datos meteorológicos actualizados
+   * @async
+   * @param {string} zoneId - ID de la zona a seleccionar
+   * @returns {Promise<void>}
    */
   const handleZoneSelect = async (zoneId: string) => {
     try {
@@ -585,14 +614,16 @@ useEffect(() => {
 
   /**
    * Cierra el panel de información de la zona seleccionada
+   * @returns {void}
    */
   const handleZoneClose = () => {
     setSelectedZone(null);
   };
 
   /**
-   * Centra el mapa en una alerta AEMET y abre su popup
-   * @param alert - Datos de la alerta AEMET
+   * Centra el mapa en una alerta AEMET y abre su popup de información
+   * @param {any} alert - Datos de la alerta AEMET
+   * @returns {void}
    */
   const handleAemetAlertClick = (alert: any) => {
     if (!mapInstanceRef.current) return;

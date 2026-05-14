@@ -1,3 +1,10 @@
+/**
+ * @file Footer.tsx
+ * @description Componente pie de página global que contiene información de copyright,
+ * enlaces a privacidad, términos y contacto.
+ * @author MeteoMap Team
+ */
+
 import { Cloud } from "lucide-react";
 
 export function Footer() {

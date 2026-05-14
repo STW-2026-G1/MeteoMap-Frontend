@@ -1,3 +1,10 @@
+/**
+ * @file ImageWithFallback.tsx
+ * @description Componente de imagen con manejo de errores y fallback,
+ * soporta carga de imagen alternativa y SVG de error como último recurso.
+ * @author MeteoMap Team
+ */
+
 import React, { useState, forwardRef } from 'react'
 
 const ERROR_IMG_SRC =

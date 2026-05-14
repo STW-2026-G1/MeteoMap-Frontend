@@ -1,3 +1,10 @@
+/**
+ * @file weather.ts
+ * @description Tipos e interfaces TypeScript para datos meteorológicos, reportes, comentarios y respuestas.
+ * Define la estructura de datos del endpoint y componentes del sistema de reportes.
+ * @author MeteoMap Team
+ */
+
 export interface UserReport {
   id: string;
   userId: string; // ID del autor del reporte

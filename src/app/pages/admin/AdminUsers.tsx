@@ -1,3 +1,10 @@
+/**
+ * @file AdminUsers.tsx
+ * @description Página de gestión de usuarios que permite ver, buscar, editar permisos
+ * y eliminar usuarios con confirmación.
+ * @author MeteoMap Team
+ */
+
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "../../components/ui/card";
 import {

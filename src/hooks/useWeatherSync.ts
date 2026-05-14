@@ -1,3 +1,10 @@
+/**
+ * @file useWeatherSync.ts
+ * @description Hook personalizado que sincroniza datos meteorológicos cada 3 horas,
+ * se ejecuta automáticamente en background con manejo silencioso de errores.
+ * @author MeteoMap Team
+ */
+
 import { useEffect } from "react";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || "http://localhost:3000/api";

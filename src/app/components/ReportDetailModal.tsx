@@ -6,6 +6,16 @@ import { Progress } from "./ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Textarea } from "./ui/textarea";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "./ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -47,6 +57,12 @@ interface ReportDetailModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
+interface DeleteDialogData {
+  type: 'comment' | 'reply';
+  commentId: string;
+  replyId?: string;
+}
+
 export function ReportDetailModal({ report, zoneName, open, onOpenChange }: ReportDetailModalProps) {
   const [userVote, setUserVote] = useState<'confirm' | 'deny' | null>(null);
   const [localConfirmations, setLocalConfirmations] = useState(0);
@@ -62,6 +78,10 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+  
+  // Alert Dialog states
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteDialogData, setDeleteDialogData] = useState<DeleteDialogData | null>(null);
 
   // Get current user ID from localStorage
   useEffect(() => {
@@ -150,7 +170,11 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
   const totalVotes = confirmations + denials + localConfirmations + localDenials;
   const confidenceLevel = totalVotes > 0 ? ((confirmations + localConfirmations) / totalVotes) * 100 : 0;
 
-  // Determine confidence badge
+  /**
+   * Determina el nivel de confianza y badge correspondiente basado en el porcentaje
+   * @param {number} level - Porcentaje de confianza (0-100)
+   * @returns {{text: string, color: string, icon: any}} Objeto con texto, color e icono del nivel
+   */
   const getConfidenceBadge = (level: number) => {
     if (level >= 80) return { text: "Alta Confianza", color: "bg-green-500", icon: Shield };
     if (level >= 60) return { text: "Confianza Moderada", color: "bg-yellow-500", icon: Shield };
@@ -161,6 +185,12 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
   const confidenceBadge = getConfidenceBadge(confidenceLevel);
   const ConfidenceIcon = confidenceBadge.icon;
 
+  /**
+   * Valida un reporte confirmando o desmintiendo su veracidad
+   * @async
+   * @param {'confirmar' | 'desmentir'} accion - Acción de validación
+   * @returns {Promise<void>}
+   */
   const handleVote = async (accion: 'confirmar' | 'desmentir') => {
     const token = localStorage.getItem("meteomap_token");
     if (!token) {
@@ -216,7 +246,14 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
   const handleConfirm = () => handleVote('confirmar');
   const handleDeny = () => handleVote('desmentir');
 
-  // Handle like/unlike comment
+  /**
+   * Da like a un comentario o respuesta, o lo deslike
+   * @async
+   * @param {string} commentId - ID del comentario o respuesta
+   * @param {boolean} [isReply=false] - Indica si es una respuesta
+   * @param {string} [parentId] - ID del comentario padre (requerido si isReply es true)
+   * @returns {Promise<void>}
+   */
   const handleLike = async (commentId: string, isReply: boolean = false, parentId?: string) => {
     const rawToken = localStorage.getItem('meteomap_token');
     if (!rawToken) {
@@ -290,21 +327,47 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
    }
   };
 
-  // Handle delete comment
-  const handleDeleteComment = async (commentId: string) => {
-    const confirmDelete = window.confirm("¿Estás seguro de que quieres eliminar este comentario?");
-    if (!confirmDelete) return;
+  /**
+   * Abre el diálogo de confirmación para eliminar un comentario
+   * @param {string} commentId - ID del comentario a eliminar
+   * @returns {void}
+   */
+  const handleDeleteComment = (commentId: string) => {
+    setDeleteDialogData({ type: 'comment', commentId });
+    setDeleteDialogOpen(true);
+  };
+
+  /**
+   * Abre el diálogo de confirmación para eliminar una respuesta
+   * @param {string} replyId - ID de la respuesta a eliminar
+   * @param {string} commentId - ID del comentario padre
+   * @returns {void}
+   */
+  const handleDeleteReply = (replyId: string, commentId: string) => {
+    setDeleteDialogData({ type: 'reply', commentId, replyId });
+    setDeleteDialogOpen(true);
+  };
+
+  /**
+   * Confirma y ejecuta la eliminación de un comentario o respuesta
+   * @async
+   * @returns {Promise<void>}
+   */
+  const confirmDelete = async () => {
+    if (!deleteDialogData) return;
 
     const rawToken = localStorage.getItem('meteomap_token');
     if (!rawToken) {
       toast.error("Sesión expirada. Por favor, inicia sesión de nuevo.");
+      setDeleteDialogOpen(false);
       return;
     }
 
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 
     try {
-      const response = await fetch(`${API_BASE_URL}/comments/${commentId}`, {
+      const deleteId = deleteDialogData.type === 'comment' ? deleteDialogData.commentId : deleteDialogData.replyId;
+      const response = await fetch(`${API_BASE_URL}/comments/${deleteId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${rawToken}`,
@@ -313,58 +376,40 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
       });
 
       if (response.ok) {
-        setComments(comments.filter((comment) => comment.id !== commentId));
+        if (deleteDialogData.type === 'comment') {
+          setComments(comments.filter((comment) => comment.id !== deleteDialogData.commentId));
+          toast.success("Comentario eliminado");
+        } else {
+          setComments(comments.map(comment => {
+            if (comment.id === deleteDialogData.commentId && comment.replies) {
+              return {
+                ...comment,
+                replies: comment.replies.filter(reply => reply.id !== deleteDialogData.replyId)
+              };
+            }
+            return comment;
+          }));
+          toast.success("Respuesta eliminada");
+        }
       } else {
         const data = await response.json();
-        toast.error(data.message || "Error deleting comment");
+        toast.error(data.message || "Error al eliminar");
       }
     } catch (error) {
       console.error("Error on DELETE request:", error);
+      toast.error("Error al eliminar");
+    } finally {
+      setDeleteDialogOpen(false);
+      setDeleteDialogData(null);
     }
   };
 
-  // Handle delete reply
-  const handleDeleteReply = async (replyId: string, commentId: string) => {
-    const confirmDelete = window.confirm("¿Estás seguro de que quieres eliminar esta respuesta?");
-    if (!confirmDelete) return;
-
-    const rawToken = localStorage.getItem('meteomap_token');
-    if (!rawToken) {
-      toast.error("Sesión expirada. Por favor, inicia sesión de nuevo.");
-      return;
-    }
-
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/comments/${replyId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${rawToken}`,
-          'Content-Type': 'application/json'
-        },
-      });
-
-      if (response.ok) {
-        setComments(comments.map(comment => {
-          if (comment.id === commentId && comment.replies) {
-            return {
-              ...comment,
-              replies: comment.replies.filter(reply => reply.id !== replyId)
-            };
-          }
-          return comment;
-        }));
-      } else {
-        const data = await response.json();
-        toast.error(data.message || "Error deleting reply");
-      }
-    } catch (error) {
-      console.error("Error on DELETE request:", error);
-    }
-  };
-
-  // Handle edit comment
+  /**
+   * Actualiza recursivamente un comentario editado en el árbol de comentarios
+   * @param {string} commentId - ID del comentario a actualizar
+   * @param {string} newText - Nuevo texto del comentario
+   * @returns {boolean} true si el comentario fue encontrado y actualizado
+   */
   const updateEditedComment = (commentId: string, newText: string): boolean => {
     let found = false;
     const updateInTree = (comments: Comment[]): Comment[] => {
@@ -395,6 +440,13 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
     return found;
   };
 
+  /**
+   * Edita un comentario existente
+   * @async
+   * @param {string} commentId - ID del comentario a editar
+   * @param {string} newText - Nuevo contenido del comentario
+   * @returns {Promise<void>}
+   */
   const handleEditComment = async (commentId: string, newText: string) => {
     if (!newText.trim()) {
       toast.error("El comentario no puede estar vacío");
@@ -436,7 +488,11 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
     }
   };
 
-  // Handle add comment
+  /**
+   * Añade un nuevo comentario al reporte
+   * @async
+   * @returns {Promise<void>}
+   */
   const handleAddComment = async () => {
     if (newComment.trim().length < 10) return;
 
@@ -521,7 +577,12 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
     }
   };
 
-  // Handle add reply
+  /**
+   * Añade una respuesta a un comentario del reporte
+   * @async
+   * @param {string} parentId - ID del comentario padre
+   * @returns {Promise<void>}
+   */
   const handleAddReply = async (parentId: string) => {
     if (!replyText.trim()) return;
 
@@ -638,6 +699,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
   const location = report.location || zoneName;
 
   return (
+   <> 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0">
         {/* Header with close button */}
@@ -1094,6 +1156,38 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Delete Confirmation Dialog */}
+    <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialogContent className="border-l-4 border-red-600 bg-gradient-to-br from-red-50 to-white shadow-xl">
+        <AlertDialogHeader className="border-b border-red-200 pb-4">
+          <AlertDialogTitle className="flex items-center gap-3 text-red-700">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+              <Trash2 className="h-5 w-5 text-red-600" />
+            </div>
+            Confirmar eliminación
+          </AlertDialogTitle>
+          <AlertDialogDescription className="mt-2 text-gray-700">
+            {deleteDialogData?.type === 'comment'
+              ? '¿Estás seguro de que quieres eliminar este comentario? Esta acción no se puede deshacer.'
+              : '¿Estás seguro de que quieres eliminar esta respuesta? Esta acción no se puede deshacer.'}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter className="border-t border-red-200 pt-4">
+          <AlertDialogCancel className="bg-gray-100 hover:bg-gray-200 text-gray-800">
+            Cancelar
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={confirmDelete}
+            className="bg-red-600 hover:bg-red-700 text-white font-semibold shadow-md"
+          >
+            Eliminar
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </> 
   );
+  
 }
 

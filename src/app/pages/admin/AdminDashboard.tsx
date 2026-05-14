@@ -1,3 +1,10 @@
+/**
+ * @file AdminDashboard.tsx
+ * @description Panel de control administrativo que muestra estadísticas de uso del sistema,
+ * peticiones de usuarios y estado de APIs externas.
+ * @author MeteoMap Team
+ */
+
 import { Card } from "../../components/ui/card";
 import { ChartContainer, ChartTooltip } from "../../components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";

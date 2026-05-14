@@ -1,3 +1,10 @@
+/**
+ * @file LandingPage.tsx
+ * @description Página de inicio que presenta características principales de la aplicación,
+ * llamadas a acción y navegación hacia login/registro.
+ * @author MeteoMap Team
+ */
+
 import { Link } from "react-router";
 import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";

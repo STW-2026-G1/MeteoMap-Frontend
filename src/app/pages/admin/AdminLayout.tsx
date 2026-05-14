@@ -1,3 +1,10 @@
+/**
+ * @file AdminLayout.tsx
+ * @description Layout base del panel administrativo con navegación lateral
+ * entre diferentes secciones de administración.
+ * @author MeteoMap Team
+ */
+
 import { Link, Outlet, useLocation } from "react-router";
 import { Users, FileText, Map, LayoutDashboard, Menu, X } from "lucide-react";
 import { Header } from "../../components/Header";

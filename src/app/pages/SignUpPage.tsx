@@ -1,3 +1,10 @@
+/**
+ * @file SignUpPage.tsx
+ * @description Página de registro de nuevos usuarios con validación de formulario,
+ * selección de avatar y opción de registro con Google OAuth.
+ * @author MeteoMap Team
+ */
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Button } from "../components/ui/button";

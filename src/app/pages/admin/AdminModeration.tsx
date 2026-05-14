@@ -1,3 +1,10 @@
+/**
+ * @file AdminModeration.tsx
+ * @description Página de moderación administrativa que permite gestionar reportes,
+ * buscar por usuario y eliminar reportes con confirmación.
+ * @author MeteoMap Team
+ */
+
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";

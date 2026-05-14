@@ -1,3 +1,10 @@
+/**
+ * @file AdminZones.tsx
+ * @description Página de gestión de zonas que permite crear, editar y eliminar zonas
+ * meteorológicas con visualización en mapa interactivo.
+ * @author MeteoMap Team
+ */
+
 import { useEffect, useMemo, useState } from "react";
 import { MapContainer, CircleMarker, TileLayer, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";

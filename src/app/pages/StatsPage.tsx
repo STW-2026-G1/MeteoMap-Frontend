@@ -1,3 +1,10 @@
+/**
+ * @file StatsPage.tsx
+ * @description Página de estadísticas que muestra información agregada de reportes
+ * y métricas meteorológicas del sistema, con selección por zona.
+ * @author MeteoMap Team
+ */
+
 import { useState, useEffect } from "react";
 import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";

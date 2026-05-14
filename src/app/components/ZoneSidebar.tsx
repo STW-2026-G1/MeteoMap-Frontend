@@ -1,3 +1,11 @@
+/**
+ * @file ZoneSidebar.tsx
+ * @description Componente lateral que muestra información detallada de una zona seleccionada,
+ * incluyendo imagen de la zona, datos meteorológicos, reportes de usuarios, comentarios y respuestas.
+ * Permite crear, editar y eliminar comentarios y reportes con confirmación mediante diálogos.
+ * @author MeteoMap Team
+ */
+
 import { X, Star, Cloud, Thermometer, Wind, TrendingUp, Clock, User, MessageCircle, ThumbsUp, Send, Trash2, Edit2, ChevronDown } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -316,7 +324,13 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
       fetchReports();
    }, [zone?.id, currentUserId, reportRefreshTrigger]);
 
-   const fetchReplies = async (commentId: string) => {
+  /**
+   * Carga las respuestas de un comentario
+   * @async
+   * @param {string} commentId - ID del comentario
+   * @returns {Promise<void>}
+   */
+  const fetchReplies = async (commentId: string) => {
     // Si ya están expandidas, las cerramos
     if (expandedReplies.has(commentId)) {
       setExpandedReplies(prev => {
@@ -356,6 +370,12 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
     }
   };
 
+  /**
+   * Da like a un comentario o lo deslike
+   * @async
+   * @param {string} commentId - ID del comentario
+   * @returns {Promise<void>}
+   */
   const handleLikeComment = async (commentId: string) => {
       const rawToken = localStorage.getItem('meteomap_token');
       if (!rawToken || !currentUserId) {
@@ -403,6 +423,11 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
       }
    };
 
+  /**
+   * Añade un nuevo comentario a la zona
+   * @async
+   * @returns {Promise<void>}
+   */
   const handleAddComment = async () => {
       if (!newCommentText.trim()) return;
 
@@ -454,16 +479,32 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
       }
    };
 
+  /**
+   * Abre el diálogo de confirmación para eliminar un comentario
+   * @param {string} commentId - ID del comentario a eliminar
+   * @returns {void}
+   */
   const handleDeleteComment = (commentId: string) => {
     setDeleteDialogData({ type: 'comment', commentId });
     setDeleteDialogOpen(true);
   };
 
+  /**
+   * Abre el diálogo de confirmación para eliminar una respuesta
+   * @param {string} replyId - ID de la respuesta a eliminar
+   * @param {string} commentId - ID del comentario padre
+   * @returns {void}
+   */
   const handleDeleteReply = (replyId: string, commentId: string) => {
     setDeleteDialogData({ type: 'reply', commentId, replyId });
     setDeleteDialogOpen(true);
   };
 
+  /**
+   * Confirma y ejecuta la eliminación de un comentario o respuesta
+   * @async
+   * @returns {Promise<void>}
+   */
   const confirmDelete = async () => {
     if (!deleteDialogData) return;
 
@@ -515,6 +556,12 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
     }
   };
 
+  /**
+   * Actualiza recursivamente un comentario editado en el árbol de comentarios
+   * @param {string} commentId - ID del comentario a actualizar
+   * @param {string} newText - Nuevo texto del comentario
+   * @returns {boolean} true si el comentario fue encontrado y actualizado
+   */
   const updateEditedComment = (commentId: string, newText: string): boolean => {
     let found = false;
     const updateInTree = (comments: Comment[]): Comment[] => {
@@ -545,6 +592,13 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
     return found;
   };
 
+  /**
+   * Edita un comentario existente
+   * @async
+   * @param {string} commentId - ID del comentario a editar
+   * @param {string} newText - Nuevo contenido del comentario
+   * @returns {Promise<void>}
+   */
   const handleEditComment = async (commentId: string, newText: string) => {
     if (!newText.trim()) {
       toast.error("El comentario no puede estar vacío");
@@ -586,6 +640,12 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
 
   const comments = dynamicComments.length > 0 ? dynamicComments : [];
 
+  /**
+   * Añade una respuesta a un comentario existente
+   * @async
+   * @param {string} commentId - ID del comentario al que responder
+   * @returns {Promise<void>}
+   */
   const handleAddReply = async (commentId: string) => {
     if (!replyText.trim()) return;
 

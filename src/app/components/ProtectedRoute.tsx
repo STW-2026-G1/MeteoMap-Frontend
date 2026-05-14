@@ -1,3 +1,10 @@
+/**
+ * @file ProtectedRoute.tsx
+ * @description Componente HOC que protege rutas privadas redirigiendo a usuarios no autenticados,
+ * con soporte para control de roles y redireccionamiento personalizado.
+ * @author MeteoMap Team
+ */
+
 import { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router";
 import { useAuth } from "../contexts/AuthContext";

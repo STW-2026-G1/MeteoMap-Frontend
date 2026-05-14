@@ -1,3 +1,10 @@
+/**
+ * @file ForgotPasswordPage.tsx
+ * @description Página para recuperación de contraseña que envía enlace de reset por email,
+ * con validación de email y manejo de estados de carga y error.
+ * @author MeteoMap Team
+ */
+
 import { useState } from "react";
 import { Link } from "react-router";
 import { Button } from "../components/ui/button";

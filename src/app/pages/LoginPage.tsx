@@ -1,3 +1,10 @@
+/**
+ * @file LoginPage.tsx
+ * @description Página de inicio de sesión con autenticación por email/contraseña
+ * y opción de login con Google OAuth.
+ * @author MeteoMap Team
+ */
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Button } from "../components/ui/button";

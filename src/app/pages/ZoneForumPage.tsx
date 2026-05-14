@@ -1,3 +1,10 @@
+/**
+ * @file ZoneForumPage.tsx
+ * @description Página del foro de una zona con comentarios, respuestas, reportes y métricas meteorológicas en tiempo real.
+ * Permite a los usuarios crear, editar y eliminar comentarios, así como ver reportes de condiciones peligrosas.
+ * @author MeteoMap Team
+ */
+
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -256,6 +263,14 @@ interface Report {
     fetchComments();
   }, [zoneId, currentUserId]);
 
+  /**
+   * Gestiona los likes/unlikes en comentarios y respuestas
+   * @async
+   * @param {string} commentId - ID del comentario o respuesta a dar like
+   * @param {boolean} [isReply=false] - Indica si es una respuesta
+   * @param {string} [parentId] - ID del comentario padre si es una respuesta
+   * @returns {Promise<void>}
+   */
   const handleLike = async (commentId: string, isReply: boolean = false, parentId?: string) => {
       const rawToken = localStorage.getItem('meteomap_token');
       if (!rawToken) {
@@ -333,16 +348,32 @@ interface Report {
       }
    };
 
+  /**
+   * Abre el diálogo de confirmación para eliminar un comentario
+   * @param {string} commentId - ID del comentario a eliminar
+   * @returns {void}
+   */
   const handleDeleteComment = (commentId: string) => {
     setDeleteDialogData({ type: 'comment', commentId });
     setDeleteDialogOpen(true);
   };
 
+  /**
+   * Abre el diálogo de confirmación para eliminar una respuesta
+   * @param {string} replyId - ID de la respuesta a eliminar
+   * @param {string} commentId - ID del comentario padre
+   * @returns {void}
+   */
   const handleDeleteReply = (replyId: string, commentId: string) => {
     setDeleteDialogData({ type: 'reply', commentId, replyId });
     setDeleteDialogOpen(true);
   };
 
+  /**
+   * Confirma y ejecuta la eliminación de un comentario o respuesta
+   * @async
+   * @returns {Promise<void>}
+   */
   const confirmDelete = async () => {
     if (!deleteDialogData) return;
 
@@ -394,6 +425,12 @@ interface Report {
     }
   };
   
+  /**
+   * Actualiza recursivamente un comentario editado en el árbol de comentarios
+   * @param {string} commentId - ID del comentario a actualizar
+   * @param {string} newText - Nuevo texto del comentario
+   * @returns {boolean} true si el comentario fue encontrado y actualizado
+   */
   const updateEditedComment = (commentId: string, newText: string): boolean => {
     let found = false;
     const updateInTree = (comments: Comment[]): Comment[] => {
@@ -424,6 +461,13 @@ interface Report {
     return found;
   };
 
+  /**
+   * Edita un comentario existente
+   * @async
+   * @param {string} commentId - ID del comentario a editar
+   * @param {string} newText - Nuevo contenido del comentario
+   * @returns {Promise<void>}
+   */
   const handleEditComment = async (commentId: string, newText: string) => {
     if (!newText.trim()) {
       toast.error("El comentario no puede estar vacío");
@@ -466,6 +510,11 @@ interface Report {
     }
   };
 
+  /**
+   * Publica un nuevo comentario en la zona
+   * @async
+   * @returns {Promise<void>}
+   */
   const handlePostComment = async () => {
     if (newComment.trim().length < 10) return;
 
@@ -547,6 +596,12 @@ interface Report {
     }
   };
 
+  /**
+   * Publica una respuesta a un comentario existente
+   * @async
+   * @param {string} parentId - ID del comentario padre
+   * @returns {Promise<void>}
+   */
   const handlePostReply = async (parentId: string) => {
     if (!replyText.trim()) return;
 

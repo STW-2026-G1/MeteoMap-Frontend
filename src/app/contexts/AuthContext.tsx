@@ -1,3 +1,10 @@
+/**
+ * @file AuthContext.tsx
+ * @description Contexto de autenticación que gestiona el estado del usuario,
+ * login, logout, registro y actualización de perfil.
+ * @author MeteoMap Team
+ */
+
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 interface User {

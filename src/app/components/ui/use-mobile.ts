@@ -1,3 +1,9 @@
+/**
+ * @file use-mobile.ts
+ * @description Hook personalizado para detectar si el dispositivo es móvil basado en breakpoint de Tailwind.
+ * @author MeteoMap Team
+ */
+
 import * as React from "react";
 
 const MOBILE_BREAKPOINT = 768;

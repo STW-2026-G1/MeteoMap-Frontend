@@ -1,3 +1,11 @@
+/**
+ * @file ProfilePage.tsx
+ * @description Página de perfil de usuario que muestra información personal, zonas favoritas,
+ * reportes creados con paginación, y permite editar datos de perfil y eliminar reportes.
+ * Utiliza diálogos de confirmación para acciones destructivas.
+ * @author MeteoMap Team
+ */
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -417,6 +425,11 @@ export default function ProfilePage() {
     region: "",
   });
 
+  /**
+   * Guarda los cambios del perfil de usuario
+   * @async
+   * @returns {Promise<void>}
+   */
   const handleSaveProfile = async () => {
     const result = await updateProfile({
       nombre: profileData.name,
@@ -444,6 +457,11 @@ export default function ProfilePage() {
     }
   };
 
+  /**
+   * Abre el diálogo para editar un reporte
+   * @param {string} reportId - ID del reporte a editar
+   * @returns {void}
+   */
   const handleEditReport = (reportId: string) => {
     const report = myReports.find((r) => r.id === reportId);
     if (report) {
@@ -457,6 +475,11 @@ export default function ProfilePage() {
     }
   };
 
+  /**
+   * Guarda los cambios realizados a un reporte
+   * @async
+   * @returns {Promise<void>}
+   */
   const handleSaveReport = async () => {
     const token = localStorage.getItem('meteomap_token');
     if (!token) {
@@ -497,6 +520,12 @@ export default function ProfilePage() {
     }
   };
 
+  /**
+   * Elimina un reporte del usuario
+   * @async
+   * @param {number | string} reportId - ID del reporte a eliminar
+   * @returns {Promise<void>}
+   */
   const handleDeleteReport = async (reportId: number | string) => {
     const token = localStorage.getItem('meteomap_token');
     if (!token) {
@@ -525,6 +554,12 @@ export default function ProfilePage() {
     }
   };
 
+  /**
+   * Elimina una zona de los favoritos del usuario
+   * @async
+   * @param {number | string} zoneId - ID de la zona a eliminar de favoritos
+   * @returns {Promise<void>}
+   */
   const handleRemoveZone = async (zoneId: number | string) => {
     const token = localStorage.getItem('meteomap_token');
     if (!token) {

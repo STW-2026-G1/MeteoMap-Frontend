@@ -1,3 +1,10 @@
+/**
+ * @file NotFoundPage.tsx
+ * @description Página 404 personalizada mostrando mensaje amigable cuando se accede a rutas no existentes,
+ * con ícono visual y opciones de navegación de regreso.
+ * @author MeteoMap Team
+ */
+
 import { Link } from "react-router";
 import { Button } from "../components/ui/button";
 import { Cloud, Home } from "lucide-react";

@@ -1,3 +1,10 @@
+/**
+ * @file Header.tsx
+ * @description Componente encabezado global de la aplicación que incluye navegación,
+ * menú usuario autenticado, botón de sincronización de datos y acceso a admin.
+ * @author MeteoMap Team
+ */
+
 import { Link, useNavigate } from "react-router";
 import { Button } from "./ui/button";
 import { Cloud, Menu, X, BarChart3, LogOut, RefreshCw, Shield } from "lucide-react";

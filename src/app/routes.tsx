@@ -1,3 +1,10 @@
+/**
+ * @file routes.tsx
+ * @description Configuración del router de la aplicación definiendo todas las rutas públicas y privadas,
+ * incluyendo páginas de autenticación, mapa, perfil, foro y panel administrativo.
+ * @author MeteoMap Team
+ */
+
 import { createBrowserRouter } from "react-router";
 import LandingPage from "./pages/LandingPage";
 import MapViewer from "./pages/MapViewer";

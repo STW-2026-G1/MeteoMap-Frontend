@@ -1,3 +1,10 @@
+/**
+ * @file CreateReportModal.tsx
+ * @description Modal para crear nuevos reportes meteorológicos en una zona específica.
+ * Permite seleccionar el tipo de riesgo y proporcionar una descripción del reporte.
+ * @author MeteoMap Team
+ */
+
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { X, MapPin, AlertTriangle, } from "lucide-react";
@@ -39,6 +46,11 @@ export function CreateReportModal({ open, onOpenChange, zoneId, zoneName, onRepo
     }
   }, [open]);
 
+  /**
+   * Carga las categorías de riesgos disponibles desde el backend
+   * @async
+   * @returns {Promise<void>}
+   */
   const loadCategories = async () => {
     setIsLoadingCategories(true);
     try {
@@ -62,6 +74,12 @@ export function CreateReportModal({ open, onOpenChange, zoneId, zoneName, onRepo
     }
   };
 
+  /**
+   * Envía un nuevo reporte al backend
+   * @async
+   * @param {React.FormEvent} e - Evento del formulario
+   * @returns {Promise<void>}
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!zoneId) {

@@ -1,3 +1,10 @@
+/**
+ * @file ResetPasswordPage.tsx
+ * @description Página para resetear contraseña usando token de validación,
+ * con validación de contraseña y control de visibilidad de passwords.
+ * @author MeteoMap Team
+ */
+
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { Button } from "../components/ui/button";

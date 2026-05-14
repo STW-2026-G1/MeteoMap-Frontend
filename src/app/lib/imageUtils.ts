@@ -1,5 +1,8 @@
 /**
- * Utilidades para obtener imágenes dinámicamente desde Unsplash API
+ * @file imageUtils.ts
+ * @description Utilidades para obtener y cachear imágenes dinámicamente desde Unsplash API,
+ * extrae nombres centrales de zonas y construye queries de búsqueda.
+ * @author MeteoMap Team
  */
 
 // Cache para evitar múltiples requests por la misma zona
