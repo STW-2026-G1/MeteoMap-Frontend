@@ -1,3 +1,11 @@
+/**
+ * @file ReportDetailModal.tsx
+ * @description Modal que muestra los detalles completos de un reporte meteorológico incluyendo
+ * validaciones, comentarios, respuestas, y control de likes/dislikes. Implementa sistema de
+ * confirmación de eliminación con AlertDialog personalizado.
+ * @author MeteoMap Team
+ */
+
 import { X, Check, XCircle, TrendingUp, MapPin, Clock, User, AlertTriangle, Shield, ThumbsUp, MessageCircle, Send, Trash2, Edit2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";

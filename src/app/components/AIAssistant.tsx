@@ -51,6 +51,11 @@ export function AIAssistant({ open, onOpenChange }: AIAssistantProps) {
   const [isResizing, setIsResizing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  /**
+   * Inicia el evento de redimensionamiento del panel
+   * @param {React.MouseEvent} e - Evento del ratón
+   * @returns {void}
+   */
   const startResizing = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     setIsResizing(true);
@@ -103,6 +108,12 @@ export function AIAssistant({ open, onOpenChange }: AIAssistantProps) {
     return () => clearTimeout(timer);
   }, [messages, isTyping, open]);
 
+  /**
+   * Envía un mensaje al asistente de IA y recibe respuesta
+   * @async
+   * @param {string} [text] - Texto del mensaje, si no se proporciona usa el inputValue
+   * @returns {Promise<void>}
+   */
   const handleSend = async (text?: string) => {
     const messageText = text || inputValue.trim();
     if (!messageText || !user?.id) return;

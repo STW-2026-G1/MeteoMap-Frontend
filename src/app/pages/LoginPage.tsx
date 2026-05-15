@@ -26,6 +26,12 @@ export default function LoginPage() {
   const { login, loginGoogle, loading, error: authError } = useAuth();
   const navigate = useNavigate();
 
+  /**
+   * Maneja el envío del formulario de login
+   * @async
+   * @param {React.FormEvent} e - Evento del formulario
+   * @returns {Promise<void>}
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -38,6 +44,12 @@ export default function LoginPage() {
     }
   };
 
+  /**
+   * Maneja el login exitoso con Google
+   * @async
+   * @param {any} credentialResponse - Respuesta de Google Login con credencial JWT
+   * @returns {Promise<void>}
+   */
   const handleGoogleSuccess = async (credentialResponse: any) => {
     if (credentialResponse.credential) {
       const result = await loginGoogle(credentialResponse.credential);
@@ -49,6 +61,10 @@ export default function LoginPage() {
     }
   };
 
+  /**
+   * Maneja error en login con Google
+   * @returns {void}
+   */
   const handleGoogleError = () => {
     setError("Error al iniciar sesión con Google");
   };

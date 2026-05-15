@@ -30,7 +30,9 @@ export const useWeatherSync = () => {
   }, []);
 
   /**
-   * Llamar endpoint de sincronización meteorológica
+   * Sincroniza datos meteorológicos con el backend
+   * @async
+   * @returns {Promise<void>}
    */
   const syncWeather = async () => {
     try {

@@ -38,7 +38,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:3000/api';
 
-// Helper function to normalize user data from backend to frontend format
+/**
+ * Normaliza datos de usuario desde backend a formato frontend
+ * @param {any} backendUser - Datos crudos del usuario del backend
+ * @returns {User} Objeto usuario normalizado
+ */
 const normalizeUserData = (backendUser: any): User => {
   // Check if data is nested inside 'perfil' (new backend structure)
   const profile = backendUser.perfil || {};
@@ -75,6 +79,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * Inicia sesión con email y contraseña
+   * @async
+   * @param {string} email - Email del usuario
+   * @param {string} password - Contraseña del usuario
+   * @returns {Promise<{success: boolean; errorMessage?: string}>} Resultado del login
+   */
   const login = async (email: string, password: string): Promise<{ success: boolean; errorMessage?: string }> => {
     setLoading(true);
     setError(null);
@@ -126,6 +137,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  /**
+   * Inicia sesión con token de Google
+   * @async
+   * @param {string} idToken - Token JWT de Google
+   * @returns {Promise<{success: boolean; errorMessage?: string}>} Resultado del login con Google
+   */
   const loginGoogle = async (idToken: string): Promise<{ success: boolean; errorMessage?: string }> => {
     setLoading(true);
     setError(null);
@@ -167,6 +184,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  /**
+   * Inicia sesión con código de autorización de GitHub
+   * @async
+   * @param {string} code - Código de autorización de GitHub
+   * @returns {Promise<{success: boolean; errorMessage?: string}>} Resultado del login con GitHub
+   */
   const loginGithub = async (code: string): Promise<{ success: boolean; errorMessage?: string }> => {
     setLoading(true);
     setError(null);
@@ -208,6 +231,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  /**
+   * Cierra la sesión del usuario actual
+   * @async
+   * @returns {Promise<void>}
+   */
   const logout = async () => {
     setLoading(true);
     setError(null);
@@ -237,6 +265,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  /**
+   * Registra un nuevo usuario
+   * @async
+   * @param {string} email - Email del usuario
+   * @param {string} password - Contraseña del usuario
+   * @param {string} nombre - Nombre completo del usuario
+   * @param {string} [avatarStyle] - Estilo de avatar seleccionado
+   * @returns {Promise<{success: boolean; errorMessage?: string}>} Resultado del registro
+   */
   const register = async (email: string, password: string, nombre: string, avatarStyle?: string): Promise<{ success: boolean; errorMessage?: string }> => {
     setLoading(true);
     setError(null);
@@ -286,6 +323,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  /**
+   * Actualiza el perfil del usuario
+   * @async
+   * @param {Object} profileData - Datos del perfil a actualizar
+   * @param {string} [profileData.nombre] - Nombre del usuario
+   * @param {string} [profileData.email] - Email del usuario
+   * @param {string} [profileData.avatar_style] - Estilo de avatar
+   * @param {string} [profileData.biografia] - Biografía del usuario
+   * @param {string} [profileData.ubicacion] - Ubicación del usuario
+   * @returns {Promise<{success: boolean; errorMessage?: string}>} Resultado de la actualización
+   */
   const updateProfile = async (profileData: { nombre?: string; email?: string; avatar_style?: string; biografia?: string; ubicacion?: string }): Promise<{ success: boolean; errorMessage?: string }> => {
     setLoading(true);
     setError(null);

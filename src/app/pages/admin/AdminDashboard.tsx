@@ -48,6 +48,11 @@ export default function AdminDashboard() {
   useEffect(() => {
     const token = localStorage.getItem("meteomap_token");
 
+    /**
+     * Obtiene datos del dashboard administrativo (estadísticas de sistema)
+     * @async
+     * @returns {Promise<void>}
+     */
     async function fetchDashboard() {
       try {
         const res = await fetch(`${API_BASE_URL}/admin/dashboard`, {

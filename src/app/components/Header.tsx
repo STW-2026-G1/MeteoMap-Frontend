@@ -31,12 +31,21 @@ export function Header() {
   const navigate = useNavigate();
   const isAdmin = user?.rol === "ADMIN";
 
+  /**
+   * Realiza el logout del usuario y redirige al inicio
+   * @returns {void}
+   */
   const handleLogout = () => {
     logout();
     setMobileMenuOpen(false);
     navigate("/");
   };
 
+  /**
+   * Sincroniza manualmente los datos meteorológicos con el backend
+   * @async
+   * @returns {Promise<void>}
+   */
   const handleWeatherSync = async () => {
     setIsSyncing(true);
     toast.loading("Actualizando datos meteorológicos...");

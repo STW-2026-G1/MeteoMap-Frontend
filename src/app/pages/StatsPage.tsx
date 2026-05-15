@@ -100,6 +100,12 @@ export default function StatsPage() {
   };
 
   // Obtener valor actual para un metricId desde currentZone con múltiples alias
+  /**
+   * Obtiene el valor actual de una métrica específica de una zona
+   * @param {string} metricId - ID de la métrica a obtener
+   * @param {any} zone - Objeto de zona con datos meteorológicos
+   * @returns {string | number} Valor de la métrica o "—" si no está disponible
+   */
   const getCurrentMetricValue = (metricId: string, zone: any) => {
     if (!zone) return "—";
 
@@ -145,6 +151,11 @@ export default function StatsPage() {
   };
 
   // Calcular índice de riesgo
+  /**
+   * Calcula el índice de riesgo de una zona basado en condiciones meteorológicas y reportes
+   * @param {any} zone - Objeto de zona con datos meteorológicos y reportes
+   * @returns {RiskIndex} Objeto con nivel de riesgo, tipo y color
+   */
   const calculateRiskIndex = (zone: any): RiskIndex => {
     let riskLevel = 20;
 
@@ -153,16 +164,18 @@ export default function StatsPage() {
       
       if (weatherCode === 0 || weatherCode === 1) {
          riskLevel = 20;
-      } else if (weatherCode === 2) {
+      } else if (weatherCode === 2 || weatherCode === 3) {
          riskLevel = 30;
-      } else if (weatherCode >= 45 && weatherCode <= 55) {
+      } else if (weatherCode >= 45 && weatherCode <= 55 || weatherCode === 80) {
          riskLevel = 50;
-      } else if (weatherCode >= 71 && weatherCode <= 86) {
+      } else if (weatherCode >= 61 && weatherCode <= 63 || weatherCode === 81) {
+         riskLevel = 60;
+      } else if (weatherCode === 71 || weatherCode === 73 || weatherCode === 77 || weatherCode === 85) {
          riskLevel = 70;
-      } else if (weatherCode >= 95 && weatherCode <= 99) {
+      } else if (weatherCode >= 95 && weatherCode <= 99 || weatherCode === 82 || weatherCode === 75 || weatherCode === 65 || weatherCode === 86) {
          riskLevel = 100;
       } else {
-         // Para cualquier otro código no especificado (como lluvia moderada, lloviznas, etc.)
+         // Para cualquier otro código no especificado
          riskLevel = 40; 
       }
     }
@@ -227,6 +240,11 @@ export default function StatsPage() {
   };
 
   // Funciones para manejar métricas
+  /**
+   * Alterna la selección de una métrica para mostrar en la gráfica
+   * @param {string} metricId - ID de la métrica a alternar
+   * @returns {void}
+   */
   const handleMetricToggle = (metricId: string) => {
     const newSet = new Set(tempSelectedMetrics);
     if (newSet.has(metricId)) {
@@ -242,6 +260,10 @@ export default function StatsPage() {
     setTempSelectedMetrics(newSet);
   };
 
+  /**
+   * Guarda las métricas seleccionadas
+   * @returns {void}
+   */
   const handleSaveMetrics = () => {
     setSelectedMetrics(new Set(tempSelectedMetrics));
     setIsEditingMetrics(false);

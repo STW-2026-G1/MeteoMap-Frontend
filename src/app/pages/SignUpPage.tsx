@@ -50,6 +50,12 @@ export default function SignUpPage() {
     { value: "personas", label: "Personas" },
   ];
 
+  /**
+   * Maneja el envío del formulario de registro
+   * @async
+   * @param {React.FormEvent} e - Evento del formulario
+   * @returns {Promise<void>}
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!acceptTerms) return;
@@ -63,6 +69,12 @@ export default function SignUpPage() {
     }
   };
 
+  /**
+   * Maneja el registro exitoso con Google
+   * @async
+   * @param {any} credentialResponse - Respuesta de Google Login con credencial JWT
+   * @returns {Promise<void>}
+   */
   const handleGoogleSuccess = async (credentialResponse: any) => {
     if (credentialResponse.credential) {
       const result = await loginGoogle(credentialResponse.credential);
@@ -74,6 +86,10 @@ export default function SignUpPage() {
     }
   };
 
+  /**
+   * Maneja error en registro con Google
+   * @returns {void}
+   */
   const handleGoogleError = () => {
     setError("Error al registrarse con Google");
   };

@@ -111,6 +111,11 @@ export default function AdminUsers() {
     return filteredUsers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [filteredUsers, currentPage]);
 
+  /**
+   * Carga todos los usuarios desde el backend
+   * @async
+   * @returns {Promise<void>}
+   */
   const loadUsers = async () => {
     const token = localStorage.getItem("meteomap_token");
 
@@ -152,6 +157,11 @@ export default function AdminUsers() {
     loadUsers();
   }, []);
 
+  /**
+   * Abre el diálogo para editar un usuario
+   * @param {AdminUser} user - Usuario a editar
+   * @returns {void}
+   */
   const openEditDialog = (user: AdminUser) => {
     setEditingUser(user);
     setForm({
@@ -164,11 +174,20 @@ export default function AdminUsers() {
     });
   };
 
+  /**
+   * Cierra el diálogo de edición de usuario
+   * @returns {void}
+   */
   const closeEditDialog = () => {
     setEditingUser(null);
     setForm(emptyForm);
   };
 
+  /**
+   * Guarda los cambios realizados a un usuario
+   * @async
+   * @returns {Promise<void>}
+   */
   const handleSaveUser = async () => {
     if (!editingUser) return;
 
@@ -208,11 +227,21 @@ export default function AdminUsers() {
     }
   };
 
+  /**
+   * Abre el diálogo de confirmación para eliminar un usuario
+   * @param {AdminUser} user - Usuario a eliminar
+   * @returns {void}
+   */
   const handleDeleteUser = (user: AdminUser) => {
     setUserToDelete(user);
     setShowDeleteConfirm(true);
   };
 
+  /**
+   * Confirma y ejecuta la eliminación de un usuario
+   * @async
+   * @returns {Promise<void>}
+   */
   const confirmDeleteUser = async () => {
     if (!userToDelete) return;
 

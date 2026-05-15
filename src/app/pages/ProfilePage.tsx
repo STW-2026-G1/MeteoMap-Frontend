@@ -595,6 +595,11 @@ export default function ProfilePage() {
     }
   };
 
+  /**
+   * Cambia la contraseña del usuario
+   * @async
+   * @returns {Promise<void>}
+   */
   const handleChangePassword = async () => {
     setPasswordError("");
 
@@ -671,6 +676,11 @@ export default function ProfilePage() {
     }
   };
 
+  /**
+   * Elimina la cuenta del usuario de forma permanente
+   * @async
+   * @returns {Promise<void>}
+   */
   const handleDeleteAccount = async () => {
     setDeleteError("");
     setDeleteLoading(true);
@@ -738,16 +748,18 @@ export default function ProfilePage() {
       
       if (weatherCode === 0 || weatherCode === 1) {
          riskLevel = 20;
-      } else if (weatherCode === 2) {
+      } else if (weatherCode === 2 || weatherCode === 3) {
          riskLevel = 30;
-      } else if (weatherCode >= 45 && weatherCode <= 55) {
+      } else if (weatherCode >= 45 && weatherCode <= 55 || weatherCode === 80) {
          riskLevel = 50;
-      } else if (weatherCode >= 71 && weatherCode <= 86) {
+      } else if (weatherCode >= 61 && weatherCode <= 63 || weatherCode === 81) {
+         riskLevel = 60;
+      } else if (weatherCode === 71 || weatherCode === 73 || weatherCode === 77 || weatherCode === 85) {
          riskLevel = 70;
-      } else if (weatherCode >= 95 && weatherCode <= 99) {
+      } else if (weatherCode >= 95 && weatherCode <= 99 || weatherCode === 82 || weatherCode === 75 || weatherCode === 65 || weatherCode === 86) {
          riskLevel = 100;
       } else {
-         // Para cualquier otro código no especificado (como lluvia moderada, lloviznas, etc.)
+         // Para cualquier otro código no especificado
          riskLevel = 40; 
       }
     }

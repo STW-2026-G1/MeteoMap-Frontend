@@ -58,6 +58,12 @@ export default function ResetPasswordPage() {
     setPasswordStrength(strength);
   }, [newPassword]);
 
+  /**
+   * Maneja el envío del formulario para resetear contraseña
+   * @async
+   * @param {React.FormEvent} e - Evento del formulario
+   * @returns {Promise<void>}
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
