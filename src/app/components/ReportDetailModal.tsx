@@ -711,7 +711,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0">
         {/* Header with close button */}
-        <div className="sticky top-0 z-10 bg-white border-b px-6 py-4 flex items-center justify-between">
+        <DialogHeader className="sticky top-0 z-10 bg-white border-b px-6 py-4 flex items-center justify-between">
           <DialogTitle className="text-xl font-bold text-gray-900">Detalle del Reporte</DialogTitle>
           <Button
             variant="ghost"
@@ -721,7 +721,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
           >
             <X className="h-5 w-5" />
           </Button>
-        </div>
+        </DialogHeader>
 
         <div className="px-6 pb-6 space-y-6 pt-4">
           {/* User Info */}

@@ -6,6 +6,7 @@
  */
 
 import { Cloud } from "lucide-react";
+import { Link } from "react-router";
 
 export function Footer() {
   return (
@@ -20,15 +21,15 @@ export function Footer() {
             © 2026 Meteo Map. Datos proporcionados por AEMET y la comunidad.
           </p>
           <div className="flex gap-6 text-sm">
-            <a href="#" className="text-gray-400 hover:text-white transition-colors">
+            <Link to="/privacidad" className="text-gray-400 hover:text-white transition-colors">
               Privacidad
-            </a>
-            <a href="#" className="text-gray-400 hover:text-white transition-colors">
+            </Link>
+            <Link to="/terminos" className="text-gray-400 hover:text-white transition-colors">
               Términos
-            </a>
-            <a href="#" className="text-gray-400 hover:text-white transition-colors">
+            </Link>
+            <Link to="/contacto" className="text-gray-400 hover:text-white transition-colors">
               Contacto
-            </a>
+            </Link>
           </div>
         </div>
       </div>
