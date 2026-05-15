@@ -124,9 +124,8 @@ export default function SignUpPage() {
               />
 
               <Button
-                type="button"
                 variant="outline"
-                className="w-full h-10 border-[#dadce0] text-[#3c4043] font-medium hover:bg-[#f8f9fa] shadow-sm flex items-center justify-center gap-3"
+                className="w-full text-sm font-normal py-5 flex items-center justify-center gap-2"
                 onClick={() => {
                   const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID;
                   const redirectUri = `${window.location.origin}/auth/github/callback`;
