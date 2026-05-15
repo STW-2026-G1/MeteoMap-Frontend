@@ -26,6 +26,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; errorMessage?: string }>;
   loginGoogle: (credential: string) => Promise<{ success: boolean; errorMessage?: string }>;
+  loginGithub: (code: string) => Promise<{ success: boolean; errorMessage?: string }>;
   logout: () => Promise<void>;
   register: (email: string, password: string, name: string, avatarStyle?: string) => Promise<{ success: boolean; errorMessage?: string }>;
   updateProfile: (profileData: { nombre?: string; email?: string; avatar_style?: string; biografia?: string; ubicacion?: string }) => Promise<{ success: boolean; errorMessage?: string }>;
@@ -166,6 +167,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const loginGithub = async (code: string): Promise<{ success: boolean; errorMessage?: string }> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login-github`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        let errorMessage = 'Error al iniciar sesión con GitHub';
+        if (data?.message) {
+          errorMessage = data.message;
+        } else if (data?.error) {
+          errorMessage = data.error;
+        }
+        setError(errorMessage);
+        return { success: false, errorMessage };
+      }
+
+      const userData = normalizeUserData(data.user);
+      setUser(userData);
+      localStorage.setItem('meteomap_user', JSON.stringify(userData));
+      localStorage.setItem('meteomap_token', data.accessToken);
+
+      return { success: true };
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+      setError(errorMessage);
+      console.error('Github login error:', errorMessage);
+      return { success: false, errorMessage };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = async () => {
     setLoading(true);
     setError(null);
@@ -297,6 +339,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!user,
         login,
         loginGoogle,
+        loginGithub,
         logout,
         register,
         updateProfile,

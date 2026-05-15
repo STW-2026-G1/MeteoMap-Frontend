@@ -12,6 +12,7 @@ import SignUpPage from "./pages/SignUpPage";
 import LoginPage from "./pages/LoginPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import GithubCallback from "./pages/GithubCallback";
 import NotFoundPage from "./pages/NotFoundPage";
 import ZoneForumPage from "./pages/ZoneForumPage";
 import StatsPage from "./pages/StatsPage";
@@ -63,6 +64,10 @@ export const router = createBrowserRouter([
   {
     path: "/reset-password",
     Component: ResetPasswordPage,
+  },
+  {
+    path: "/auth/github/callback",
+    Component: GithubCallback,
   },
   {
     path: "/admin",
