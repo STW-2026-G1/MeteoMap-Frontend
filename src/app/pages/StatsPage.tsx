@@ -188,6 +188,7 @@ export default function StatsPage() {
       } else if (zone.temperature > 30) {
         riskLevel += 15;
       }
+    }
 
      if (zone.wind !== undefined) {
       if (zone.wind > 50) {
@@ -196,7 +197,6 @@ export default function StatsPage() {
          riskLevel += 50;
       }
      }
-    }
 
     console.log(`Lista de reportes relevantes para la zona ${zone.name}:`, zone.reportsList);
     

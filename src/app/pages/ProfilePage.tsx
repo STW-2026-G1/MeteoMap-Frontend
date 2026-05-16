@@ -773,6 +773,7 @@ export default function ProfilePage() {
       } else if (zone.temperature > 30) {
         riskLevel += 15;
       }
+    }
 
      if (zone.wind !== undefined) {
       if (zone.wind > 50) {
@@ -781,8 +782,7 @@ export default function ProfilePage() {
          riskLevel += 50;
       }
      }
-    }
-
+    
     console.log(`Lista de reportes relevantes para la zona ${zone.name}:`, zone.reportsList);
     
     // Filtrado para eliminar 'Buenas condiciones'
