@@ -1,4 +1,5 @@
-const API_BASE_URL = "http://localhost:3000/api";
+const getApiBaseUrl = () =>
+  Cypress.config("env")?.API_BASE_URL || Cypress.config("env")?.VITE_API_BASE_URL || "http://localhost:3000/api";
 
 const TEST_USER = {
   email: "testuser@example.com",
@@ -9,7 +10,7 @@ const TEST_USER = {
 const ensureTestUserExists = () => {
   cy.request({
     method: "POST",
-    url: `${API_BASE_URL}/auth/register`,
+    url: `${getApiBaseUrl()}/auth/register`,
     failOnStatusCode: false,
     body: TEST_USER,
   }).then((response) => {
@@ -66,7 +67,7 @@ describe("Internal login", () => {
   it("shows a validation error when the email format is invalid", () => {
     cy.request({
       method: "POST",
-      url: `${API_BASE_URL}/auth/login`,
+      url: `${getApiBaseUrl()}/auth/login`,
       failOnStatusCode: false,
       body: {
         email: "not-an-email",
@@ -82,7 +83,7 @@ describe("Internal login", () => {
   it("shows a validation error when the password is too short", () => {
     cy.request({
       method: "POST",
-      url: `${API_BASE_URL}/auth/login`,
+      url: `${getApiBaseUrl()}/auth/login`,
       failOnStatusCode: false,
       body: {
         email: TEST_USER.email,

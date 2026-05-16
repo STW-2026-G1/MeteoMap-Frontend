@@ -1,4 +1,5 @@
-const API_BASE_URL = "http://localhost:3000/api";
+const getApiBaseUrl = () =>
+  Cypress.config("env")?.API_BASE_URL || Cypress.config("env")?.VITE_API_BASE_URL || "http://localhost:3000/api";
 
 const TEST_USER = {
   email: "testuser@example.com",
@@ -31,14 +32,14 @@ describe("Create report flow", () => {
   beforeEach(() => {
     cy.request({
       method: "POST",
-      url: `${API_BASE_URL}/auth/register`,
+      url: `${getApiBaseUrl()}/auth/register`,
       failOnStatusCode: false,
       body: TEST_USER,
     });
 
     cy.request({
       method: "POST",
-      url: `${API_BASE_URL}/auth/login`,
+      url: `${getApiBaseUrl()}/auth/login`,
       body: {
         email: TEST_USER.email,
         password: TEST_USER.password,
