@@ -6,7 +6,7 @@
   ],
   "git": {
     "deploymentEnabled": {
-      "my-branch-name": false
+      "main": false
     }
   }
 }
