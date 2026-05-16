@@ -1,33 +1,54 @@
 "use client";
 
+/**
+ * @file sheet.tsx
+ * @description Primitivas de panel lateral (Sheet) basadas en Radix UI.
+ * @author MeteoMap Team
+ */
+
 import * as React from "react";
 import * as SheetPrimitive from "@radix-ui/react-dialog";
 import { XIcon } from "lucide-react";
 
 import { cn } from "./utils";
 
+/**
+ * Componente raíz del Sheet (panel lateral).
+ */
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />;
 }
 
+/**
+ * Disparador para abrir el Sheet.
+ */
 function SheetTrigger({
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Trigger>) {
   return <SheetPrimitive.Trigger data-slot="sheet-trigger" {...props} />;
 }
 
+/**
+ * Botón para cerrar el Sheet.
+ */
 function SheetClose({
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Close>) {
   return <SheetPrimitive.Close data-slot="sheet-close" {...props} />;
 }
 
+/**
+ * Portal para renderizar el Sheet fuera de la jerarquía DOM actual.
+ */
 function SheetPortal({
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Portal>) {
   return <SheetPrimitive.Portal data-slot="sheet-portal" {...props} />;
 }
 
+/**
+ * Pantalla que oscurece el fondo cuando el Sheet está abierto.
+ */
 const SheetOverlay = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay>
@@ -46,6 +67,9 @@ const SheetOverlay = React.forwardRef<
 });
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
 
+/**
+ * Contenedor del contenido del Sheet, que se desliza desde un lateral.
+ */
 function SheetContent({
   className,
   children,
@@ -83,6 +107,9 @@ function SheetContent({
   );
 }
 
+/**
+ * Cabecera del Sheet para títulos y descripciones.
+ */
 function SheetHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -93,6 +120,9 @@ function SheetHeader({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
+/**
+ * Pie del Sheet para botones de acción.
+ */
 function SheetFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -103,6 +133,9 @@ function SheetFooter({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
+/**
+ * Título del Sheet usado para accesibilidad.
+ */
 function SheetTitle({
   className,
   ...props
@@ -116,6 +149,9 @@ function SheetTitle({
   );
 }
 
+/**
+ * Descripción corta del propósito del Sheet.
+ */
 function SheetDescription({
   className,
   ...props

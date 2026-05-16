@@ -1,10 +1,19 @@
 "use client";
 
+/**
+ * @file scroll-area.tsx
+ * @description Área con barras de desplazamiento personalizadas basada en Radix UI.
+ * @author MeteoMap Team
+ */
+
 import * as React from "react";
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 
 import { cn } from "./utils";
 
+/**
+ * Contenedor principal que proporciona scroll personalizado.
+ */
 function ScrollArea({
   className,
   children,
@@ -28,6 +37,9 @@ function ScrollArea({
   );
 }
 
+/**
+ * Barra de desplazamiento individual (vertical u horizontal).
+ */
 function ScrollBar({
   className,
   orientation = "vertical",

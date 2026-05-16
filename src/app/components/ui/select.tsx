@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * @file select.tsx
+ * @description Componente de selección (dropdown) basado en Radix UI.
+ * @author MeteoMap Team
+ */
+
 import * as React from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import {
@@ -10,24 +16,36 @@ import {
 
 import { cn } from "./utils";
 
+/**
+ * Componente raíz del selector.
+ */
 function Select({
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Root>) {
   return <SelectPrimitive.Root data-slot="select" {...props} />;
 }
 
+/**
+ * Agrupador de ítems dentro del selector.
+ */
 function SelectGroup({
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Group>) {
   return <SelectPrimitive.Group data-slot="select-group" {...props} />;
 }
 
+/**
+ * Muestra el valor seleccionado actualmente.
+ */
 function SelectValue({
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Value>) {
   return <SelectPrimitive.Value data-slot="select-value" {...props} />;
 }
 
+/**
+ * Disparador que abre la lista de opciones.
+ */
 function SelectTrigger({
   className,
   size = "default",
@@ -54,6 +72,9 @@ function SelectTrigger({
   );
 }
 
+/**
+ * Contenedor de la lista de opciones (menú desplegable).
+ */
 function SelectContent({
   className,
   children,
@@ -89,6 +110,9 @@ function SelectContent({
   );
 }
 
+/**
+ * Etiqueta para agrupar ítems (no seleccionable).
+ */
 function SelectLabel({
   className,
   ...props
@@ -102,6 +126,9 @@ function SelectLabel({
   );
 }
 
+/**
+ * Ítem individual seleccionable en la lista.
+ */
 function SelectItem({
   className,
   children,
@@ -126,6 +153,9 @@ function SelectItem({
   );
 }
 
+/**
+ * Separador visual entre grupos o ítems.
+ */
 function SelectSeparator({
   className,
   ...props
@@ -139,6 +169,9 @@ function SelectSeparator({
   );
 }
 
+/**
+ * Botón para desplazarse hacia arriba en la lista.
+ */
 function SelectScrollUpButton({
   className,
   ...props
@@ -157,6 +190,9 @@ function SelectScrollUpButton({
   );
 }
 
+/**
+ * Botón para desplazarse hacia abajo en la lista.
+ */
 function SelectScrollDownButton({
   className,
   ...props

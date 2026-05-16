@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * @file calendar.tsx
+ * @description Componente de calendario basado en react-day-picker.
+ * @author MeteoMap Team
+ */
+
 import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { DayPicker } from "react-day-picker";
@@ -7,6 +13,9 @@ import { DayPicker } from "react-day-picker";
 import { cn } from "./utils";
 import { buttonVariants } from "./button";
 
+/**
+ * Componente Calendar — selector de fechas con soporte para diferentes modos (single, range, multiple).
+ */
 function Calendar({
   className,
   classNames,

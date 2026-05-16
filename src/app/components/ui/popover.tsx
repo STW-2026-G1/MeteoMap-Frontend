@@ -1,22 +1,37 @@
 "use client";
 
+/**
+ * @file popover.tsx
+ * @description Componente de ventana flotante (popover) basado en Radix UI.
+ * @author MeteoMap Team
+ */
+
 import * as React from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 
 import { cn } from "./utils";
 
+/**
+ * Componente raíz del Popover.
+ */
 function Popover({
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Root>) {
   return <PopoverPrimitive.Root data-slot="popover" {...props} />;
 }
 
+/**
+ * Disparador que abre el popover al hacer clic.
+ */
 function PopoverTrigger({
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Trigger>) {
   return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />;
 }
 
+/**
+ * Contenido principal que se muestra dentro del popover.
+ */
 function PopoverContent({
   className,
   align = "center",
@@ -39,6 +54,9 @@ function PopoverContent({
   );
 }
 
+/**
+ * Punto de anclaje opcional para posicionar el popover.
+ */
 function PopoverAnchor({
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Anchor>) {

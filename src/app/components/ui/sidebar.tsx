@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * @file sidebar.tsx
+ * @description Componentes complejos para construir una barra lateral (sidebar).
+ * @author MeteoMap Team
+ */
+
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { VariantProps, cva } from "class-variance-authority";
@@ -44,6 +50,9 @@ type SidebarContextProps = {
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null);
 
+/**
+ * Hook para acceder a la configuración y estado del sidebar desde cualquier componente hijo. Lanza un error si se usa fuera de un SidebarProvider.
+ */
 function useSidebar() {
   const context = React.useContext(SidebarContext);
   if (!context) {
@@ -53,6 +62,9 @@ function useSidebar() {
   return context;
 }
 
+/**
+ * Componente proveedor para el sidebar, que maneja el estado de apertura/cierre, la detección de dispositivos móviles y la lógica para alternar el sidebar. También incluye un efecto para agregar un atajo de teclado (Cmd/Ctrl + B) para alternar el sidebar. Proporciona un contexto con toda esta información a los componentes hijos. Además, se encarga de guardar el estado del sidebar en una cookie para persistencia entre sesiones.
+ */
 function SidebarProvider({
   defaultOpen = true,
   open: openProp,
@@ -151,6 +163,9 @@ function SidebarProvider({
   );
 }
 
+/**
+ * Componente principal del sidebar, que se encarga de renderizar la estructura básica del mismo y aplicar las clases necesarias para el comportamiento de colapsado, variantes y estilos. También maneja la lógica para mostrar el sidebar como un Sheet en dispositivos móviles. Este componente es el que se debe usar para envolver el contenido del sidebar, y los demás componentes (SidebarTrigger, SidebarRail, etc.) deben usarse dentro de este para funcionar correctamente. Acepta props para configurar el lado del sidebar (izquierda o derecha), la variante (sidebar, floating o inset) y el tipo de colapsado (offcanvas, icon o none). Además, se encarga de aplicar los estilos necesarios para cada combinación de estas opciones utilizando clases de Tailwind CSS y data attributes.
+ */
 function Sidebar({
   side = "left",
   variant = "sidebar",
@@ -253,6 +268,9 @@ function Sidebar({
   );
 }
 
+/**
+ * Botón para alternar el estado del sidebar (expandido/colapsado). Se muestra u oculta automáticamente según el estado del sidebar y la variante de colapsado. En la variante "icon", el botón se muestra siempre pero cambia su apariencia. En la variante "offcanvas", el botón solo se muestra cuando el sidebar está colapsado. Este componente debe usarse dentro de un Sidebar para funcionar correctamente, ya que depende del contexto para acceder al estado y la función de toggle del sidebar.
+ */
 function SidebarTrigger({
   className,
   onClick,
@@ -279,6 +297,9 @@ function SidebarTrigger({
   );
 }
 
+/**
+ * Barra de arrastre para redimensionar el sidebar. Solo se muestra en la variante "icon" cuando el sidebar está colapsado, o en la variante "offcanvas" cuando el sidebar está colapsado. En otros casos, se oculta automáticamente. Este componente debe usarse dentro de un Sidebar para funcionar correctamente, ya que depende del contexto para acceder al estado y la función de toggle del sidebar.
+ */
 function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
   const { toggleSidebar } = useSidebar();
 
@@ -304,6 +325,9 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
   );
 }
 
+/**
+ * Contenedor para el contenido principal del sidebar, que se encarga de manejar el scroll interno y aplicar los estilos necesarios para el diseño del contenido. Este componente debe usarse dentro de un Sidebar para funcionar correctamente, ya que depende del contexto para aplicar los estilos adecuados según el estado del sidebar.
+ */
 function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
   return (
     <main
@@ -318,6 +342,9 @@ function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
   );
 }
 
+/**
+ * Componente para el input dentro del sidebar, con estilos específicos para adaptarse al diseño del sidebar y mantener la consistencia visual. Este componente debe usarse dentro de un Sidebar para funcionar correctamente, ya que depende del contexto para aplicar los estilos adecuados según el estado del sidebar.
+ */
 function SidebarInput({
   className,
   ...props
@@ -332,6 +359,9 @@ function SidebarInput({
   );
 }
 
+/**
+ * Componentes para las diferentes partes del sidebar, como el header, footer, separ
+ */
 function SidebarHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -343,6 +373,9 @@ function SidebarHeader({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
+/**
+ * Componente para el pie del sidebar, que se encarga de contener los elementos de acción o información adicional al final del sidebar. Este componente debe usarse dentro de un Sidebar para funcionar correctamente, ya que depende del contexto para aplicar los estilos adecuados según el estado del sidebar.
+ */
 function SidebarFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -354,6 +387,9 @@ function SidebarFooter({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
+/**
+ * Componente para el separador dentro del sidebar, que se encarga de dividir visualmente las secciones del sidebar. Este componente debe usarse dentro de un Sidebar para funcionar correctamente, ya que depende del contexto para aplicar los estilos adecuados según el estado del sidebar.
+ */
 function SidebarSeparator({
   className,
   ...props
@@ -368,6 +404,9 @@ function SidebarSeparator({
   );
 }
 
+/**
+ * Componente para el contenido principal del sidebar, que se encarga de manejar el scroll interno y aplicar los estilos necesarios para el diseño del contenido. Este componente debe usarse dentro de un Sidebar para funcionar correctamente, ya que depende del contexto para aplicar los estilos adecuados según el estado del sidebar.
+ */
 function SidebarContent({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -382,6 +421,9 @@ function SidebarContent({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
+/**
+ * Componente para el grupo dentro del sidebar, que se encarga de agrupar elementos relacionados. Este componente debe usarse dentro de un Sidebar para funcionar correctamente, ya que depende del contexto para aplicar los estilos adecuados según el estado del sidebar.
+ */
 function SidebarGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -393,6 +435,9 @@ function SidebarGroup({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
+/**
+ * Componente para la etiqueta del grupo dentro del sidebar, que se encarga de mostrar el título o descripción del grupo. Este componente debe usarse dentro de un SidebarGroup para funcionar correctamente, ya que depende del contexto para aplicar los estilos adecuados según el estado del sidebar.
+ */
 function SidebarGroupLabel({
   className,
   asChild = false,
@@ -414,6 +459,9 @@ function SidebarGroupLabel({
   );
 }
 
+/**
+ * Componente para la acción del grupo dentro del sidebar, que se encarga de mostrar un botón de acción para el grupo. Este componente debe usarse dentro de un SidebarGroup para funcionar correctamente, ya que depende del contexto para aplicar los estilos adecuados según el estado del sidebar.
+ */
 function SidebarGroupAction({
   className,
   asChild = false,
@@ -437,6 +485,9 @@ function SidebarGroupAction({
   );
 }
 
+/**
+ * Componente para el contenido del grupo dentro del sidebar, que se encarga de contener los elementos relacionados dentro del grupo. Este componente debe usarse dentro de un SidebarGroup para funcionar correctamente, ya que depende del contexto para aplicar los estilos adecuados según el estado del sidebar.
+ */
 function SidebarGroupContent({
   className,
   ...props
@@ -451,6 +502,9 @@ function SidebarGroupContent({
   );
 }
 
+/**
+ * Componente para el menú dentro del sidebar, que se encarga de contener los elementos del menú. Este componente debe usarse dentro de un Sidebar para funcionar correctamente, ya que depende del contexto para aplicar los estilos adecuados según el estado del sidebar.
+ */
 function SidebarMenu({ className, ...props }: React.ComponentProps<"ul">) {
   return (
     <ul
@@ -462,6 +516,9 @@ function SidebarMenu({ className, ...props }: React.ComponentProps<"ul">) {
   );
 }
 
+/**
+ * Componente para el elemento del menú dentro del sidebar, que se encarga de mostrar un elemento del menú. Este componente debe usarse dentro de un SidebarMenu para funcionar correctamente, ya que depende del contexto para aplicar los estilos adecuados según el estado del sidebar.
+ */
 function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
   return (
     <li
@@ -495,6 +552,9 @@ const sidebarMenuButtonVariants = cva(
   },
 );
 
+/**
+ * Componente para el botón del menú dentro del sidebar, que se encarga de mostrar un botón para cada elemento del menú. Este componente debe usarse dentro de un SidebarMenuItem para funcionar correctamente, ya que depende del contexto para aplicar los estilos adecuados según el estado del sidebar. Además, este componente tiene soporte para mostrar un tooltip cuando el sidebar está colapsado, y para mostrar un badge o una acción adicional en el botón del menú.
+ */
 function SidebarMenuButton({
   asChild = false,
   isActive = false,
@@ -577,6 +637,9 @@ function SidebarMenuAction({
   );
 }
 
+/**
+ * Componente para el badge del menú dentro del sidebar, que se encarga de mostrar un badge o contador para cada elemento del menú. Este componente debe usarse dentro de un SidebarMenuItem para funcionar correctamente, ya que depende del contexto para aplicar los estilos adecuados según el estado del sidebar. Además, este componente tiene soporte para mostrar el badge solo cuando el botón del menú está activo o cuando se hace hover sobre el botón del menú.
+ */
 function SidebarMenuBadge({
   className,
   ...props
@@ -599,6 +662,9 @@ function SidebarMenuBadge({
   );
 }
 
+/**
+ * Componente para el esqueleto del menú dentro del sidebar, que se encarga de mostrar un placeholder mientras se carga el contenido del menú. Este componente debe usarse dentro de un SidebarMenu para funcionar correctamente, ya que depende del contexto para aplicar los estilos adecuados según el estado del sidebar. Además, este componente tiene soporte para mostrar un icono de placeholder cuando el sidebar está colapsado, y para mostrar un texto de placeholder con una longitud aleatoria para simular el contenido real del menú.
+ */
 function SidebarMenuSkeleton({
   className,
   showIcon = false,
@@ -637,6 +703,9 @@ function SidebarMenuSkeleton({
   );
 }
 
+/**
+ * Componente para el submenú dentro del sidebar, que se encarga de contener los elementos del submenú. Este componente debe usarse dentro de un SidebarMenuItem para funcionar correctamente, ya que depende del contexto para aplicar los estilos adecuados según el estado del sidebar. Además, este componente tiene soporte para mostrar u ocultar el submenú automáticamente según el estado del sidebar y la variante de colapsado.
+ */
 function SidebarMenuSub({ className, ...props }: React.ComponentProps<"ul">) {
   return (
     <ul
@@ -652,6 +721,9 @@ function SidebarMenuSub({ className, ...props }: React.ComponentProps<"ul">) {
   );
 }
 
+/**
+ * Componente para el elemento del submenú dentro del sidebar, que se encarga de mostrar un elemento del submenú. Este componente debe usarse dentro de un SidebarMenuSub para funcionar correctamente, ya que depende del contexto para aplicar los estilos adecuados según el estado del sidebar.
+ */
 function SidebarMenuSubItem({
   className,
   ...props
@@ -666,6 +738,9 @@ function SidebarMenuSubItem({
   );
 }
 
+/**
+ * Componente para el botón del submenú dentro del sidebar, que se encarga de mostrar un botón para cada elemento del submenú. Este componente debe usarse dentro de un SidebarMenuSubItem para funcionar correctamente, ya que depende del contexto para aplicar los estilos adecuados según el estado del sidebar. Además, este componente tiene soporte para mostrar un tooltip cuando el sidebar está colapsado, y para mostrar un badge o una acción adicional en el botón del submenú.
+ */
 function SidebarMenuSubButton({
   asChild = false,
   size = "md",

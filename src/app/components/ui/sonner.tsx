@@ -1,5 +1,10 @@
 "use client";
 
+/** 
+ * @file sonner.tsx
+ * @description Componente de notificaciones (toaster) basado en la librería Sonner, con integración de temas.
+ * @author MeteoMap Team
+ */
 import { useTheme } from "next-themes";
 import { Toaster as Sonner, ToasterProps } from "sonner";
 

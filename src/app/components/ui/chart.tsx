@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * @file chart.tsx
+ * @description Componentes de gráficos integrados con Recharts y soporte de temas CSS.
+ * @author MeteoMap Team
+ */
+
 import * as React from "react";
 import * as RechartsPrimitive from "recharts";
 
@@ -24,6 +30,9 @@ type ChartContextProps = {
 
 const ChartContext = React.createContext<ChartContextProps | null>(null);
 
+/**
+ * Hook para acceder a la configuración del gráfico desde cualquier componente hijo.
+ */
 function useChart() {
   const context = React.useContext(ChartContext);
 
@@ -69,6 +78,9 @@ function ChartContainer({
   );
 }
 
+/**
+ * Componente para inyectar estilos CSS personalizados basados en la configuración del gráfico y el tema activo.
+ */
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(
     ([, config]) => config.theme || config.color,
@@ -104,6 +116,9 @@ ${colorConfig
 
 const ChartTooltip = RechartsPrimitive.Tooltip;
 
+/**
+ * Componente personalizado para el contenido del tooltip del gráfico, con soporte para indicadores, formato de etiquetas y estilos basados en la configuración del gráfico.
+ */
 function ChartTooltipContent({
   active,
   payload,
@@ -250,6 +265,9 @@ function ChartTooltipContent({
 
 const ChartLegend = RechartsPrimitive.Legend;
 
+/**
+ * Componente personalizado para el contenido de la leyenda del gráfico, con soporte para íconos personalizados, estilos basados en la configuración del gráfico y opciones de visualización.
+ */
 function ChartLegendContent({
   className,
   hideIcon = false,

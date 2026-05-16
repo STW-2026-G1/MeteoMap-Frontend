@@ -1,13 +1,25 @@
+/**
+ * @file breadcrumb.tsx
+ * @description Componentes para navegación mediante migas de pan (Breadcrumbs).
+ * @author MeteoMap Team
+ */
+
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { ChevronRight, MoreHorizontal } from "lucide-react";
 
 import { cn } from "./utils";
 
+/**
+ * Contenedor principal de la navegación breadcrumb.
+ */
 function Breadcrumb({ ...props }: React.ComponentProps<"nav">) {
   return <nav aria-label="breadcrumb" data-slot="breadcrumb" {...props} />;
 }
 
+/**
+ * Lista ordenada que contiene los elementos del breadcrumb.
+ */
 function BreadcrumbList({ className, ...props }: React.ComponentProps<"ol">) {
   return (
     <ol
@@ -21,6 +33,9 @@ function BreadcrumbList({ className, ...props }: React.ComponentProps<"ol">) {
   );
 }
 
+/**
+ * Ítem individual dentro de la lista de breadcrumbs.
+ */
 function BreadcrumbItem({ className, ...props }: React.ComponentProps<"li">) {
   return (
     <li
@@ -31,6 +46,9 @@ function BreadcrumbItem({ className, ...props }: React.ComponentProps<"li">) {
   );
 }
 
+/**
+ * Enlace dentro de un ítem de breadcrumb.
+ */
 function BreadcrumbLink({
   asChild,
   className,
@@ -49,6 +67,9 @@ function BreadcrumbLink({
   );
 }
 
+/**
+ * Representa la página actual dentro del breadcrumb (no clicable).
+ */
 function BreadcrumbPage({ className, ...props }: React.ComponentProps<"span">) {
   return (
     <span
@@ -62,6 +83,9 @@ function BreadcrumbPage({ className, ...props }: React.ComponentProps<"span">) {
   );
 }
 
+/**
+ * Separador visual entre ítems de breadcrumb.
+ */
 function BreadcrumbSeparator({
   children,
   className,
@@ -80,6 +104,9 @@ function BreadcrumbSeparator({
   );
 }
 
+/**
+ * Elemento visual para indicar omisión de pasos en el breadcrumb.
+ */
 function BreadcrumbEllipsis({
   className,
   ...props

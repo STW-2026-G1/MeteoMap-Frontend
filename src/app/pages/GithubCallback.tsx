@@ -1,3 +1,10 @@
+/**
+ * @file GithubCallback.tsx
+ * @description Página de callback para autenticación con GitHub. Maneja el proceso de login usando el código de autorización,
+ * muestra un spinner durante la autenticación y maneja errores mostrando un mensaje al usuario.
+ * @author MeteoMap Team
+ */
+
 import { useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../contexts/AuthContext";

@@ -1,17 +1,29 @@
 "use client";
 
+/**
+ * @file alert-dialog.tsx
+ * @description Componente de diálogo de alerta basado en Radix UI.
+ * @author MeteoMap Team
+ */
+
 import * as React from "react";
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
 
 import { cn } from "./utils";
 import { buttonVariants } from "./button";
 
+/**
+ * Componente raíz del Diálogo de Alerta (Alert Dialog).
+ */
 function AlertDialog({
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
   return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />;
 }
 
+/**
+ * Disparador (Trigger) para abrir el diálogo de alerta.
+ */
 function AlertDialogTrigger({
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Trigger>) {
@@ -20,6 +32,9 @@ function AlertDialogTrigger({
   );
 }
 
+/**
+ * Portal para renderizar el diálogo de alerta fuera de la jerarquía actual del DOM.
+ */
 function AlertDialogPortal({
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Portal>) {
@@ -28,6 +43,9 @@ function AlertDialogPortal({
   );
 }
 
+/**
+ * Capa de superposición oscurecida (Overlay) para el diálogo de alerta.
+ */
 function AlertDialogOverlay({
   className,
   ...props
@@ -44,6 +62,9 @@ function AlertDialogOverlay({
   );
 }
 
+/**
+ * Contenido principal del diálogo de alerta.
+ */
 function AlertDialogContent({
   className,
   ...props
@@ -63,6 +84,9 @@ function AlertDialogContent({
   );
 }
 
+/**
+ * Cabecera del diálogo de alerta para agrupar el título y la descripción.
+ */
 function AlertDialogHeader({
   className,
   ...props
@@ -76,6 +100,9 @@ function AlertDialogHeader({
   );
 }
 
+/**
+ * Pie de página del diálogo de alerta para agrupar las acciones.
+ */
 function AlertDialogFooter({
   className,
   ...props
@@ -92,6 +119,9 @@ function AlertDialogFooter({
   );
 }
 
+/**
+ * Título principal del diálogo de alerta.
+ */
 function AlertDialogTitle({
   className,
   ...props
@@ -105,6 +135,9 @@ function AlertDialogTitle({
   );
 }
 
+/**
+ * Descripción detallada que acompaña al título de la alerta.
+ */
 function AlertDialogDescription({
   className,
   ...props
@@ -118,6 +151,9 @@ function AlertDialogDescription({
   );
 }
 
+/**
+ * Acción principal (ej. "Confirmar") del diálogo de alerta.
+ */
 function AlertDialogAction({
   className,
   ...props
@@ -130,6 +166,9 @@ function AlertDialogAction({
   );
 }
 
+/**
+ * Acción de cancelación o cierre del diálogo de alerta.
+ */
 function AlertDialogCancel({
   className,
   ...props

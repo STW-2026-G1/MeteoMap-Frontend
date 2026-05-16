@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * @file form.tsx
+ * @description Componentes de formulario integrados con react-hook-form y Radix UI.
+ * @author MeteoMap Team
+ */
+
 import * as React from "react";
 import * as LabelPrimitive from "@radix-ui/react-label";
 import { Slot } from "@radix-ui/react-slot";
@@ -16,6 +22,9 @@ import {
 import { cn } from "./utils";
 import { Label } from "./label";
 
+/**
+ * Proveedor de contexto para el formulario.
+ */
 const Form = FormProvider;
 
 type FormFieldContextValue<
@@ -29,6 +38,9 @@ const FormFieldContext = React.createContext<FormFieldContextValue>(
   {} as FormFieldContextValue,
 );
 
+/**
+ * Componente para definir un campo de formulario controlado.
+ */
 const FormField = <
   TFieldValues extends FieldValues = FieldValues,
   TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
@@ -42,6 +54,10 @@ const FormField = <
   );
 };
 
+/**
+ * Hook para acceder al estado y propiedades de un campo de formulario.
+ * @returns {Object} Identificadores y estado del campo (id, name, error, etc.).
+ */
 const useFormField = () => {
   const fieldContext = React.useContext(FormFieldContext);
   const itemContext = React.useContext(FormItemContext);
@@ -73,6 +89,9 @@ const FormItemContext = React.createContext<FormItemContextValue>(
   {} as FormItemContextValue,
 );
 
+/**
+ * Contenedor para un ítem de formulario (etiqueta, control, mensaje).
+ */
 function FormItem({ className, ...props }: React.ComponentProps<"div">) {
   const id = React.useId();
 
@@ -87,6 +106,9 @@ function FormItem({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
+/**
+ * Etiqueta para un campo de formulario.
+ */
 function FormLabel({
   className,
   ...props
@@ -104,6 +126,9 @@ function FormLabel({
   );
 }
 
+/**
+ * Componente envoltorio para el control de entrada (Input, Select, etc.).
+ */
 function FormControl({ ...props }: React.ComponentProps<typeof Slot>) {
   const { error, formItemId, formDescriptionId, formMessageId } =
     useFormField();
@@ -123,6 +148,9 @@ function FormControl({ ...props }: React.ComponentProps<typeof Slot>) {
   );
 }
 
+/**
+ * Texto descriptivo o de ayuda para un campo.
+ */
 function FormDescription({ className, ...props }: React.ComponentProps<"p">) {
   const { formDescriptionId } = useFormField();
 
@@ -136,6 +164,9 @@ function FormDescription({ className, ...props }: React.ComponentProps<"p">) {
   );
 }
 
+/**
+ * Mensaje de error asociado a la validación del campo.
+ */
 function FormMessage({ className, ...props }: React.ComponentProps<"p">) {
   const { error, formMessageId } = useFormField();
   const body = error ? String(error?.message ?? "") : props.children;

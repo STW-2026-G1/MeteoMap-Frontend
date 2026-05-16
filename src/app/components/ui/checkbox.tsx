@@ -1,11 +1,20 @@
 "use client";
 
+/**
+ * @file checkbox.tsx
+ * @description Componente de casilla de verificación (Checkbox) basado en Radix UI.
+ * @author MeteoMap Team
+ */
+
 import * as React from "react";
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
 import { CheckIcon } from "lucide-react";
 
 import { cn } from "./utils";
 
+/**
+ * Componente Checkbox — casilla de selección interactiva.
+ */
 function Checkbox({
   className,
   ...props

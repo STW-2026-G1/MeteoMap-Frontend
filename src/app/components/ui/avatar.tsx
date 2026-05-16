@@ -1,10 +1,19 @@
 "use client";
 
+/**
+ * @file avatar.tsx
+ * @description Componentes de Avatar (Root, Image, Fallback) para perfiles de usuario.
+ * @author MeteoMap Team
+ */
+
 import * as React from "react";
 import * as AvatarPrimitive from "@radix-ui/react-avatar";
 
 import { cn } from "./utils";
 
+/**
+ * Componente Avatar — contenedor raíz para imágenes de perfil.
+ */
 function Avatar({
   className,
   ...props
@@ -21,6 +30,9 @@ function Avatar({
   );
 }
 
+/**
+ * Imagen del avatar.
+ */
 function AvatarImage({
   className,
   ...props
@@ -34,6 +46,9 @@ function AvatarImage({
   );
 }
 
+/**
+ * Contenido de respaldo cuando la imagen del avatar falla o no existe.
+ */
 function AvatarFallback({
   className,
   ...props

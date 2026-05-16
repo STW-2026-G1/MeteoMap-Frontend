@@ -1,3 +1,9 @@
+/**
+ * @file tooltip.tsx
+ * @description Componente de tooltip reutilizable basado en Radix UI, con estilos personalizados y animaciones.
+ * Incluye un proveedor para configurar el retraso de aparición y componentes para el trigger y el contenido del tooltip.
+ * @author MeteoMap Team
+ */
 "use client";
 
 import * as React from "react";
@@ -5,6 +11,9 @@ import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 
 import { cn } from "./utils";
 
+/**
+ * Componente proveedor para el tooltip, que permite configurar el retraso de aparición y otros parámetros globales del tooltip. Este componente debe envolver a cualquier componente Tooltip para que funcione correctamente, ya que proporciona el contexto necesario para la gestión del estado y la configuración del tooltip. Además, este componente tiene soporte para estilos personalizados a través de la prop className, y para renderizar cualquier contenido adicional dentro del proveedor a través de los children.
+ */
 function TooltipProvider({
   delayDuration = 0,
   ...props
@@ -18,6 +27,9 @@ function TooltipProvider({
   );
 }
 
+/**
+ * Componente raíz del tooltip, que se encarga de renderizar el tooltip y proporcionar el contexto necesario para su funcionamiento. Este componente debe usarse dentro de un componente TooltipProvider para funcionar correctamente, ya que depende del contexto para gestionar el estado y la configuración del tooltip. Además, este componente tiene soporte para estilos personalizados a través de la prop className, y para renderizar cualquier contenido adicional dentro del tooltip a través de los children.
+ */
 function Tooltip({
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Root>) {
@@ -28,12 +40,18 @@ function Tooltip({
   );
 }
 
+/**
+ * Componente de disparador (trigger) para el tooltip, que se encarga de renderizar el elemento que activará la aparición del tooltip al interactuar con él. Este componente debe usarse dentro de un componente Tooltip para funcionar correctamente, ya que depende del contexto para gestionar el estado y la configuración del tooltip. Además, este componente tiene soporte para estilos personalizados a través de la prop className, y para renderizar cualquier contenido adicional dentro del trigger a través de los children.
+ */
 function TooltipTrigger({
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Trigger>) {
   return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />;
 }
 
+/**
+ * Componente de contenido para el tooltip, que se encarga de renderizar el contenido que se mostrará dentro del tooltip cuando se active. Este componente debe usarse dentro de un componente Tooltip para funcionar correctamente, ya que depende del contexto para gestionar el estado y la configuración del tooltip. Además, este componente tiene soporte para estilos personalizados a través de la prop className, y para renderizar cualquier contenido adicional dentro del tooltip a través de los children. Este componente también incluye una flecha (arrow) que apunta al elemento disparador, con estilos personalizados para su apariencia.
+ */
 function TooltipContent({
   className,
   sideOffset = 0,

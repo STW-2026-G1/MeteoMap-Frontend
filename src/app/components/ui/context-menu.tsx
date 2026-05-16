@@ -1,17 +1,29 @@
 "use client";
 
+/**
+ * @file context-menu.tsx
+ * @description Componentes de menú contextual basados en Radix UI.
+ * @author MeteoMap Team
+ */
+
 import * as React from "react";
 import * as ContextMenuPrimitive from "@radix-ui/react-context-menu";
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "lucide-react";
 
 import { cn } from "./utils";
 
+/**
+ * Componente raíz del Menú Contextual.
+ */
 function ContextMenu({
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.Root>) {
   return <ContextMenuPrimitive.Root data-slot="context-menu" {...props} />;
 }
 
+/**
+ * Disparador (Trigger) que activa el menú contextual al hacer clic derecho.
+ */
 function ContextMenuTrigger({
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.Trigger>) {
@@ -20,6 +32,9 @@ function ContextMenuTrigger({
   );
 }
 
+/**
+ * Grupo de ítems dentro del menú contextual.
+ */
 function ContextMenuGroup({
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.Group>) {
@@ -28,6 +43,9 @@ function ContextMenuGroup({
   );
 }
 
+/**
+ * Portal para renderizar el contenido del menú fuera del flujo normal del DOM.
+ */
 function ContextMenuPortal({
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.Portal>) {
@@ -36,12 +54,18 @@ function ContextMenuPortal({
   );
 }
 
+/**
+ * Contenedor para submenús dentro del menú contextual.
+ */
 function ContextMenuSub({
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.Sub>) {
   return <ContextMenuPrimitive.Sub data-slot="context-menu-sub" {...props} />;
 }
 
+/**
+ * Grupo de ítems de tipo radio (selección única).
+ */
 function ContextMenuRadioGroup({
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.RadioGroup>) {
@@ -53,6 +77,9 @@ function ContextMenuRadioGroup({
   );
 }
 
+/**
+ * Disparador para abrir un submenú.
+ */
 function ContextMenuSubTrigger({
   className,
   inset,
@@ -77,6 +104,9 @@ function ContextMenuSubTrigger({
   );
 }
 
+/**
+ * Contenido de un submenú.
+ */
 function ContextMenuSubContent({
   className,
   ...props
@@ -93,6 +123,9 @@ function ContextMenuSubContent({
   );
 }
 
+/**
+ * Contenido principal del menú contextual.
+ */
 function ContextMenuContent({
   className,
   ...props
@@ -111,6 +144,9 @@ function ContextMenuContent({
   );
 }
 
+/**
+ * Ítem de menú interactivo.
+ */
 function ContextMenuItem({
   className,
   inset,
@@ -134,6 +170,9 @@ function ContextMenuItem({
   );
 }
 
+/**
+ * Ítem de selección tipo checkbox.
+ */
 function ContextMenuCheckboxItem({
   className,
   children,
@@ -160,6 +199,7 @@ function ContextMenuCheckboxItem({
   );
 }
 
+
 function ContextMenuRadioItem({
   className,
   children,
@@ -183,7 +223,9 @@ function ContextMenuRadioItem({
     </ContextMenuPrimitive.RadioItem>
   );
 }
-
+/**
+ * Etiqueta para agrupar ítems dentro del menú contextual, con soporte para sangría y variantes de estilo.
+ */
 function ContextMenuLabel({
   className,
   inset,
@@ -204,6 +246,9 @@ function ContextMenuLabel({
   );
 }
 
+/**
+ * Separador visual entre ítems dentro del menú contextual.
+ */
 function ContextMenuSeparator({
   className,
   ...props
@@ -217,6 +262,9 @@ function ContextMenuSeparator({
   );
 }
 
+/**
+ * Atajo de teclado (Shortcut) para un ítem de menú contextual, con estilos para alineación y formato de texto.
+ */
 function ContextMenuShortcut({
   className,
   ...props

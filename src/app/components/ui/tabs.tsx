@@ -1,10 +1,19 @@
 "use client";
 
+/**
+ * @file tabs.tsx
+ * @description Componentes de pestañas (Tabs) basados en Radix UI.
+ * @author MeteoMap Team
+ */
+
 import * as React from "react";
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 
 import { cn } from "./utils";
 
+/**
+ * Componente raíz de las Pestañas (Tabs).
+ */
 function Tabs({
   className,
   ...props
@@ -18,6 +27,9 @@ function Tabs({
   );
 }
 
+/**
+ * Lista que contiene los disparadores (triggers) de las pestañas.
+ */
 function TabsList({
   className,
   ...props
@@ -34,6 +46,9 @@ function TabsList({
   );
 }
 
+/**
+ * Disparador individual para una pestaña específica.
+ */
 function TabsTrigger({
   className,
   ...props
@@ -50,6 +65,9 @@ function TabsTrigger({
   );
 }
 
+/**
+ * Contenido que se muestra cuando se activa una pestaña.
+ */
 function TabsContent({
   className,
   ...props

@@ -1,17 +1,29 @@
 "use client";
 
+/**
+ * @file accordion.tsx
+ * @description Componente de acordeón basado en Radix UI.
+ * @author MeteoMap Team
+ */
+
 import * as React from "react";
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { ChevronDownIcon } from "lucide-react";
 
 import { cn } from "./utils";
 
+/**
+ * Componente raíz del Acordeón.
+ */
 function Accordion({
   ...props
 }: React.ComponentProps<typeof AccordionPrimitive.Root>) {
   return <AccordionPrimitive.Root data-slot="accordion" {...props} />;
 }
 
+/**
+ * Ítem individual del Acordeón.
+ */
 function AccordionItem({
   className,
   ...props
@@ -25,6 +37,9 @@ function AccordionItem({
   );
 }
 
+/**
+ * Disparador (Trigger) para expandir/contraer un ítem del Acordeón.
+ */
 function AccordionTrigger({
   className,
   children,
@@ -49,6 +64,9 @@ function AccordionTrigger({
   );
 }
 
+/**
+ * Contenido que se muestra al expandir un ítem del Acordeón.
+ */
 function AccordionContent({
   className,
   children,
