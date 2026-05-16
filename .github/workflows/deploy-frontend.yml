@@ -63,6 +63,9 @@ jobs:
           fi
 
           echo "VITE_API_BASE_URL validada correctamente"
+          
+          # Copiamos las variables de entorno al root para que Vite las detecte
+          cp "$ENV_FILE" .env.production
 
       # 2. Compila el proyecto inyectando de forma segura las variables descargadas
       - name: Build Project Artifacts
