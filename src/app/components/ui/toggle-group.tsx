@@ -1,3 +1,8 @@
+/**
+ * @file toggle-group.tsx
+ * @description Componente de grupo de toggles reutilizable basado en Radix UI, con estilos personalizados.
+ * @author MeteoMap Team
+ */
 "use client";
 
 import * as React from "react";
@@ -14,6 +19,9 @@ const ToggleGroupContext = React.createContext<
   variant: "default",
 });
 
+/**
+ * Componente de grupo de toggles reutilizable basado en Radix UI, con estilos personalizados.
+ */
 function ToggleGroup({
   className,
   variant,
@@ -40,6 +48,9 @@ function ToggleGroup({
   );
 }
 
+/**
+ * Componente para los elementos del grupo de toggles, que se encarga de renderizar cada elemento del grupo y aplicar estilos específicos para los elementos. Este componente debe usarse dentro de un componente ToggleGroup para funcionar correctamente, ya que depende del contexto para aplicar los estilos adecuados a los elementos del grupo. Además, este componente tiene soporte para estilos personalizados a través de la prop className, y para renderizar cualquier contenido adicional dentro del elemento a través de los children.
+ */
 function ToggleGroupItem({
   className,
   children,

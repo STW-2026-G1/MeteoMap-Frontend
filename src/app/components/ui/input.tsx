@@ -1,9 +1,21 @@
+/**
+ * @file input.tsx
+ * @description Componente de entrada de texto estilizado para formularios.
+ * @author MeteoMap Team
+ */
+
 import * as React from "react";
 import { cn } from "../../lib/utils";
 
+/**
+ * Props para el componente Input.
+ */
 export interface InputProps
   extends React.InputHTMLAttributes<HTMLInputElement> {}
 
+/**
+ * Componente Input — campo de entrada de datos con estilos globales y estados de foco.
+ */
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, ...props }, ref) => {
     return (

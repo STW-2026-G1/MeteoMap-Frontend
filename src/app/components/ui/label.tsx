@@ -1,10 +1,19 @@
 "use client";
 
+/**
+ * @file label.tsx
+ * @description Componente de etiqueta (Label) basado en Radix UI.
+ * @author MeteoMap Team
+ */
+
 import * as React from "react";
 import * as LabelPrimitive from "@radix-ui/react-label";
 
 import { cn } from "./utils";
 
+/**
+ * Componente Label — etiqueta de formulario accesible.
+ */
 function Label({
   className,
   ...props

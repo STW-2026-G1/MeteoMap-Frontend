@@ -1,10 +1,19 @@
 "use client";
 
+/**
+ * @file separator.tsx
+ * @description Línea divisoria visual para separar contenido, basada en Radix UI.
+ * @author MeteoMap Team
+ */
+
 import * as React from "react";
 import * as SeparatorPrimitive from "@radix-ui/react-separator";
 
 import { cn } from "./utils";
 
+/**
+ * Componente que renderiza una línea horizontal o vertical.
+ */
 function Separator({
   className,
   orientation = "horizontal",

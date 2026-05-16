@@ -1,34 +1,55 @@
 "use client";
 
+/**
+ * @file drawer.tsx
+ * @description Componentes de panel deslizable (Drawer) basados en vaul.
+ * @author MeteoMap Team
+ */
+
 import * as React from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
 
 import { cn } from "./utils";
 
+/**
+ * Componente raíz del Drawer.
+ */
 function Drawer({
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Root>) {
   return <DrawerPrimitive.Root data-slot="drawer" {...props} />;
 }
 
+/**
+ * Disparador para abrir el Drawer.
+ */
 function DrawerTrigger({
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Trigger>) {
   return <DrawerPrimitive.Trigger data-slot="drawer-trigger" {...props} />;
 }
 
+/**
+ * Portal para renderizar el Drawer fuera del flujo normal.
+ */
 function DrawerPortal({
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Portal>) {
   return <DrawerPrimitive.Portal data-slot="drawer-portal" {...props} />;
 }
 
+/**
+ * Botón para cerrar el Drawer.
+ */
 function DrawerClose({
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Close>) {
   return <DrawerPrimitive.Close data-slot="drawer-close" {...props} />;
 }
 
+/**
+ * Capa de superposición para el fondo del Drawer.
+ */
 function DrawerOverlay({
   className,
   ...props
@@ -45,6 +66,9 @@ function DrawerOverlay({
   );
 }
 
+/**
+ * Contenedor del contenido principal del Drawer.
+ */
 function DrawerContent({
   className,
   children,
@@ -72,6 +96,9 @@ function DrawerContent({
   );
 }
 
+/**
+ * Cabecera del Drawer para títulos y descripciones.
+ */
 function DrawerHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -82,6 +109,9 @@ function DrawerHeader({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
+/**
+ * Pie del Drawer para botones de acción.
+ */
 function DrawerFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -92,6 +122,9 @@ function DrawerFooter({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
+/**
+ * Título del Drawer usado para accesibilidad.
+ */
 function DrawerTitle({
   className,
   ...props
@@ -105,6 +138,9 @@ function DrawerTitle({
   );
 }
 
+/**
+ * Descripción detallada del contenido del Drawer.
+ */
 function DrawerDescription({
   className,
   ...props

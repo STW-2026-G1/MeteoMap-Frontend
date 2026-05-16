@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * @file command.tsx
+ * @description Componentes para menús de comandos (Command Palette) basados en cmdk.
+ * @author MeteoMap Team
+ */
+
 import * as React from "react";
 import { Command as CommandPrimitive } from "cmdk";
 import { SearchIcon } from "lucide-react";
@@ -13,6 +19,9 @@ import {
   DialogTitle,
 } from "./dialog";
 
+/**
+ * Componente raíz de Command.
+ */
 function Command({
   className,
   ...props
@@ -29,6 +38,9 @@ function Command({
   );
 }
 
+/**
+ * Diálogo que contiene un menú de comandos.
+ */
 function CommandDialog({
   title = "Command Palette",
   description = "Search for a command to run...",
@@ -53,6 +65,9 @@ function CommandDialog({
   );
 }
 
+/**
+ * Campo de entrada para filtrar comandos.
+ */
 function CommandInput({
   className,
   ...props
@@ -75,6 +90,9 @@ function CommandInput({
   );
 }
 
+/**
+ * Lista de resultados de comandos.
+ */
 function CommandList({
   className,
   ...props
@@ -91,6 +109,9 @@ function CommandList({
   );
 }
 
+/**
+ * Mensaje que se muestra cuando no hay resultados.
+ */
 function CommandEmpty({
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.Empty>) {
@@ -103,6 +124,9 @@ function CommandEmpty({
   );
 }
 
+/**
+ * Grupo de ítems de comando con un encabezado opcional.
+ */
 function CommandGroup({
   className,
   ...props
@@ -119,6 +143,9 @@ function CommandGroup({
   );
 }
 
+/**
+ * Separador visual entre grupos de comandos.
+ */
 function CommandSeparator({
   className,
   ...props
@@ -132,6 +159,9 @@ function CommandSeparator({
   );
 }
 
+/**
+ * Ítem individual dentro del menú de comandos.
+ */
 function CommandItem({
   className,
   ...props
@@ -148,6 +178,9 @@ function CommandItem({
   );
 }
 
+/**
+ * Atajo de teclado (Hint) para un ítem de comando.
+ */
 function CommandShortcut({
   className,
   ...props

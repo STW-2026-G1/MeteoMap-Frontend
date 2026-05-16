@@ -1,7 +1,16 @@
+/**
+ * @file textarea.tsx
+ * @description Componente de área de texto estilizado.
+ * @author MeteoMap Team
+ */
+
 import * as React from "react";
 
 import { cn } from "./utils";
 
+/**
+ * Componente Textarea — campo de entrada de texto multilínea.
+ */
 function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
   return (
     <textarea

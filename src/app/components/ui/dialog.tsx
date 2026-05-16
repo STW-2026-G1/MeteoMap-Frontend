@@ -1,16 +1,40 @@
 "use client";
 
+/**
+ * @file dialog.tsx
+ * @description Primitivas de diálogo (modal) basadas en Radix UI con estilos personalizados.
+ * @author MeteoMap Team
+ */
+
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { XIcon } from "lucide-react";
 
 import { cn } from "./utils";
 
+/**
+ * Componente raíz del Diálogo.
+ */
 const Dialog = DialogPrimitive.Root;
+
+/**
+ * Disparador para abrir el Diálogo.
+ */
 const DialogTrigger = DialogPrimitive.Trigger;
+
+/**
+ * Portal para renderizar el contenido del Diálogo en la raíz del DOM.
+ */
 const DialogPortal = DialogPrimitive.Portal;
+
+/**
+ * Botón para cerrar el Diálogo.
+ */
 const DialogClose = DialogPrimitive.Close;
 
+/**
+ * Capa de superposición (overlay) para el fondo del Diálogo.
+ */
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
@@ -27,6 +51,9 @@ const DialogOverlay = React.forwardRef<
 ));
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
+/**
+ * Contenedor del contenido principal del Diálogo.
+ */
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
@@ -52,6 +79,9 @@ const DialogContent = React.forwardRef<
 ));
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
+/**
+ * Cabecera del Diálogo para títulos y acciones.
+ */
 const DialogHeader = ({
   className,
   ...props
@@ -64,6 +94,9 @@ const DialogHeader = ({
 );
 DialogHeader.displayName = "DialogHeader";
 
+/**
+ * Pie del Diálogo para botones de acción.
+ */
 const DialogFooter = ({
   className,
   ...props
@@ -79,6 +112,9 @@ const DialogFooter = ({
 );
 DialogFooter.displayName = "DialogFooter";
 
+/**
+ * Título del Diálogo usado para accesibilidad.
+ */
 const DialogTitle = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
@@ -92,6 +128,9 @@ const DialogTitle = React.forwardRef<
 ));
 DialogTitle.displayName = DialogPrimitive.Title.displayName;
 
+/**
+ * Descripción corta del Diálogo.
+ */
 const DialogDescription = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Description>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>

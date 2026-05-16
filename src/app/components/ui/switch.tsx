@@ -2,6 +2,11 @@ import * as React from "react";
 import * as SwitchPrimitives from "@radix-ui/react-switch";
 import { cn } from "../../lib/utils";
 
+/**
+ * @file switch.tsx
+ * @description Componente de interruptor (switch) basado en Radix UI.
+ * @author MeteoMap Team
+ */
 const Switch = React.forwardRef<
   React.ElementRef<typeof SwitchPrimitives.Root>,
   React.ComponentPropsWithoutRef<typeof SwitchPrimitives.Root>

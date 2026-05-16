@@ -1,10 +1,18 @@
 "use client";
 
+/**
+ * @file slider.tsx
+ * @description Componente de control deslizante (slider) basado en Radix UI.
+ * @author MeteoMap Team
+ */
 import * as React from "react";
 import * as SliderPrimitive from "@radix-ui/react-slider";
 
 import { cn } from "./utils";
 
+/**
+ * Componente raíz del slider, que se encarga de renderizar el control deslizante y sus elementos internos. Este componente acepta props para configurar el valor, el rango, la orientación y otros aspectos del slider, y utiliza los componentes internos de Radix UI para renderizar la pista, el rango y los pulgares del slider. Además, este componente tiene soporte para estilos personalizados a través de la prop className, y para manejar eventos de cambio de valor a través de las props onValueChange y onValueCommit.
+ */
 function Slider({
   className,
   defaultValue,

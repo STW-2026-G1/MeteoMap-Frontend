@@ -1,3 +1,9 @@
+/**
+ * @file pagination.tsx
+ * @description Componentes de paginación para navegar por listas de datos.
+ * @author MeteoMap Team
+ */
+
 import * as React from "react";
 import {
   ChevronLeftIcon,
@@ -8,6 +14,9 @@ import {
 import { cn } from "./utils";
 import { Button, buttonVariants } from "./button";
 
+/**
+ * Componente raíz de la Paginación.
+ */
 function Pagination({ className, ...props }: React.ComponentProps<"nav">) {
   return (
     <nav
@@ -20,6 +29,9 @@ function Pagination({ className, ...props }: React.ComponentProps<"nav">) {
   );
 }
 
+/**
+ * Contenedor para los ítems de paginación.
+ */
 function PaginationContent({
   className,
   ...props
@@ -33,6 +45,9 @@ function PaginationContent({
   );
 }
 
+/**
+ * Ítem individual dentro de la lista de paginación.
+ */
 function PaginationItem({ ...props }: React.ComponentProps<"li">) {
   return <li data-slot="pagination-item" {...props} />;
 }
@@ -42,6 +57,9 @@ type PaginationLinkProps = {
 } & Pick<React.ComponentProps<typeof Button>, "size"> &
   React.ComponentProps<"a">;
 
+/**
+ * Enlace de navegación para una página específica.
+ */
 function PaginationLink({
   className,
   isActive,
@@ -65,6 +83,9 @@ function PaginationLink({
   );
 }
 
+/**
+ * Botón para navegar a la página anterior.
+ */
 function PaginationPrevious({
   className,
   ...props
@@ -82,6 +103,9 @@ function PaginationPrevious({
   );
 }
 
+/**
+ * Botón para navegar a la página siguiente.
+ */
 function PaginationNext({
   className,
   ...props
@@ -99,6 +123,9 @@ function PaginationNext({
   );
 }
 
+/**
+ * Indicador visual de páginas omitidas (puntos suspensivos).
+ */
 function PaginationEllipsis({
   className,
   ...props

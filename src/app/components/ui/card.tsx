@@ -1,6 +1,15 @@
+/**
+ * @file card.tsx
+ * @description Componentes de tarjeta (Card) para agrupar contenido relacionado.
+ * @author MeteoMap Team
+ */
+
 import * as React from "react";
 import { cn } from "../../lib/utils";
 
+/**
+ * Componente Card — contenedor principal con borde y sombra.
+ */
 const Card = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
@@ -16,6 +25,9 @@ const Card = React.forwardRef<
 ));
 Card.displayName = "Card";
 
+/**
+ * Cabecera de la tarjeta para títulos y descripciones.
+ */
 const CardHeader = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
@@ -28,6 +40,9 @@ const CardHeader = React.forwardRef<
 ));
 CardHeader.displayName = "CardHeader";
 
+/**
+ * Título de la tarjeta.
+ */
 const CardTitle = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLHeadingElement>
@@ -40,6 +55,9 @@ const CardTitle = React.forwardRef<
 ));
 CardTitle.displayName = "CardTitle";
 
+/**
+ * Descripción corta de la tarjeta.
+ */
 const CardDescription = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
@@ -52,6 +70,9 @@ const CardDescription = React.forwardRef<
 ));
 CardDescription.displayName = "CardDescription";
 
+/**
+ * Contenedor para el contenido principal de la tarjeta.
+ */
 const CardContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
@@ -60,6 +81,9 @@ const CardContent = React.forwardRef<
 ));
 CardContent.displayName = "CardContent";
 
+/**
+ * Pie de la tarjeta para acciones adicionales.
+ */
 const CardFooter = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>

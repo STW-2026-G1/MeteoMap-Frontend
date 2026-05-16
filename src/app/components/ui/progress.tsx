@@ -1,10 +1,19 @@
 "use client";
 
+/**
+ * @file progress.tsx
+ * @description Barra de progreso visual basada en Radix UI.
+ * @author MeteoMap Team
+ */
+
 import * as React from "react";
 import * as ProgressPrimitive from "@radix-ui/react-progress";
 
 import { cn } from "./utils";
 
+/**
+ * Componente que muestra el progreso de una tarea.
+ */
 function Progress({
   className,
   value,

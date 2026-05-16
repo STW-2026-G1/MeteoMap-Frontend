@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * @file carousel.tsx
+ * @description Componente de carrusel basado en Embla Carousel.
+ * @author MeteoMap Team
+ */
+
 import * as React from "react";
 import useEmblaCarousel, {
   type UseEmblaCarouselType,
@@ -32,6 +38,9 @@ type CarouselContextProps = {
 
 const CarouselContext = React.createContext<CarouselContextProps | null>(null);
 
+/**
+ * Hook para acceder al contexto del carrusel.
+ */
 function useCarousel() {
   const context = React.useContext(CarouselContext);
 
@@ -42,6 +51,9 @@ function useCarousel() {
   return context;
 }
 
+/**
+ * Componente raíz del Carrusel.
+ */
 function Carousel({
   orientation = "horizontal",
   opts,
@@ -132,6 +144,9 @@ function Carousel({
   );
 }
 
+/**
+ * Contenedor del contenido del carrusel.
+ */
 function CarouselContent({ className, ...props }: React.ComponentProps<"div">) {
   const { carouselRef, orientation } = useCarousel();
 
@@ -153,6 +168,9 @@ function CarouselContent({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
+/**
+ * Ítem individual dentro del carrusel (diapositiva).
+ */
 function CarouselItem({ className, ...props }: React.ComponentProps<"div">) {
   const { orientation } = useCarousel();
 
@@ -171,6 +189,9 @@ function CarouselItem({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
+/**
+ * Botón para retroceder en el carrusel.
+ */
 function CarouselPrevious({
   className,
   variant = "outline",
@@ -201,6 +222,9 @@ function CarouselPrevious({
   );
 }
 
+/**
+ * Botón para avanzar en el carrusel.
+ */
 function CarouselNext({
   className,
   variant = "outline",

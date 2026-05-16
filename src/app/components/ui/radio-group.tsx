@@ -1,11 +1,20 @@
 "use client";
 
+/**
+ * @file radio-group.tsx
+ * @description Conjunto de botones de opción (radio buttons) basado en Radix UI.
+ * @author MeteoMap Team
+ */
+
 import * as React from "react";
 import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
 import { CircleIcon } from "lucide-react";
 
 import { cn } from "./utils";
 
+/**
+ * Contenedor raíz para el grupo de radio buttons.
+ */
 function RadioGroup({
   className,
   ...props
@@ -19,6 +28,9 @@ function RadioGroup({
   );
 }
 
+/**
+ * Ítem individual seleccionable dentro de un RadioGroup.
+ */
 function RadioGroupItem({
   className,
   ...props

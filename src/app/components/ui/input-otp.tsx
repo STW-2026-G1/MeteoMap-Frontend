@@ -1,11 +1,20 @@
 "use client";
 
+/**
+ * @file input-otp.tsx
+ * @description Componente de entrada para contraseñas de un solo uso (OTP) o códigos de verificación.
+ * @author MeteoMap Team
+ */
+
 import * as React from "react";
 import { OTPInput, OTPInputContext } from "input-otp";
 import { MinusIcon } from "lucide-react";
 
 import { cn } from "./utils";
 
+/**
+ * Componente principal para la entrada de código OTP.
+ */
 function InputOTP({
   className,
   containerClassName,
@@ -26,6 +35,9 @@ function InputOTP({
   );
 }
 
+/**
+ * Grupo que contiene múltiples ranuras (slots) de entrada.
+ */
 function InputOTPGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -36,6 +48,9 @@ function InputOTPGroup({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
+/**
+ * Ranura individual para un carácter del código.
+ */
 function InputOTPSlot({
   index,
   className,
@@ -66,6 +81,9 @@ function InputOTPSlot({
   );
 }
 
+/**
+ * Separador visual entre grupos de ranuras.
+ */
 function InputOTPSeparator({ ...props }: React.ComponentProps<"div">) {
   return (
     <div data-slot="input-otp-separator" role="separator" {...props}>

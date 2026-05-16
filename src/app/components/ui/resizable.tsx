@@ -1,11 +1,20 @@
 "use client";
 
+/**
+ * @file resizable.tsx
+ * @description Componentes para crear paneles con tamaño ajustable.
+ * @author MeteoMap Team
+ */
+
 import * as React from "react";
 import { GripVerticalIcon } from "lucide-react";
 import * as ResizablePrimitive from "react-resizable-panels";
 
 import { cn } from "./utils";
 
+/**
+ * Grupo de paneles redimensionables.
+ */
 function ResizablePanelGroup({
   className,
   ...props
@@ -22,12 +31,18 @@ function ResizablePanelGroup({
   );
 }
 
+/**
+ * Panel individual dentro de un grupo redimensionable.
+ */
 function ResizablePanel({
   ...props
 }: React.ComponentProps<typeof ResizablePrimitive.Panel>) {
   return <ResizablePrimitive.Panel data-slot="resizable-panel" {...props} />;
 }
 
+/**
+ * Manija o controlador para redimensionar los paneles.
+ */
 function ResizableHandle({
   withHandle,
   className,
