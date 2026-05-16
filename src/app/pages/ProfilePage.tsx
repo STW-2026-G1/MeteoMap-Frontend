@@ -772,6 +772,14 @@ export default function ProfilePage() {
       } else if (zone.temperature > 30) {
         riskLevel += 15;
       }
+
+      if (zone.viento !== undefined) {
+      if (zone.viento > 50) {
+         riskLevel += 20;
+      } else if (zone.viento > 100) {
+         riskLevel += 50;
+      }
+     }
     }
 
     console.log(`Lista de reportes relevantes para la zona ${zone.name}:`, zone.reportsList);

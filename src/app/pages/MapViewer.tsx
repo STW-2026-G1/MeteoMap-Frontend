@@ -57,7 +57,7 @@ interface MapMarker {
 
 export default function MapViewer() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const userMarkersRef = useRef<L.Marker[]>([]);
@@ -516,7 +516,7 @@ useEffect(() => {
         }
         
         // Limpiar el parámetro de la URL para evitar repetir el zoom
-        window.history.replaceState({}, '', window.location.pathname);
+        setSearchParams({}, { replace: true });
       }, 500);
       
       return;
