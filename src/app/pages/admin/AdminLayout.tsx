@@ -9,18 +9,53 @@ import { Link, Outlet, useLocation } from "react-router";
 import { Users, FileText, Map, LayoutDashboard, Menu, X } from "lucide-react";
 import { Header } from "../../components/Header";
 import { Footer } from "../../components/Footer";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "../../components/ui/sheet";
 import { Button } from "../../components/ui/button";
 
 export default function AdminLayout() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    // Obtenemos cuántos reportes pendientes/nuevos hay para mostrarlos en el badge
+    const fetchPendingReports = async () => {
+      // Si estamos en la pestaña de moderación, borramos el badge inmediatamente y no hace falta consultar porque se marcarán como leídos
+      if (location.pathname === "/admin/moderacion") {
+        setPendingCount(0);
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem("meteomap_token");
+        if (!token) return;
+        
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
+        const resp = await fetch(`${API_BASE_URL}/admin/reports/unread-count`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          setPendingCount(data.count);
+        }
+      } catch (err) {
+        console.error("Error fetching pending reports:", err);
+      }
+    };
+
+    fetchPendingReports();
+    // Actualizamos el contador automáticamente cada cierto tiempo (1 min)
+    const interval = setInterval(fetchPendingReports, 60000);
+    return () => clearInterval(interval);
+  }, [location.pathname]); // Refrescar recuento al cambiar de vista en el panel
 
   const menuItems = [
     { path: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { path: "/admin/usuarios", label: "Usuarios", icon: Users },
-    { path: "/admin/moderacion", label: "Moderación", icon: FileText },
+    { path: "/admin/moderacion", label: "Moderación", icon: FileText, badge: pendingCount },
     { path: "/admin/configuracion", label: "Configuración", icon: Map },
   ];
 
@@ -40,8 +75,13 @@ export default function AdminLayout() {
                 : "text-slate-300 hover:bg-slate-700 hover:text-white"
             }`}
           >
-            <Icon className="w-5 h-5" />
-            <span className="font-medium">{item.label}</span>
+            <Icon className="w-5 h-5 flex-shrink-0" />
+            <span className="font-medium flex-1">{item.label}</span>
+            {item.badge !== undefined && item.badge > 0 && (
+              <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-sm flex-shrink-0">
+                {item.badge > 99 ? "99+" : item.badge}
+              </span>
+            )}
           </Link>
         );
       })}

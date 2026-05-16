@@ -27,6 +27,7 @@ export default function AdminModeration() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [adminId, setAdminId] = useState<string | null>(null);
   const ITEMS_PER_PAGE = 15;
 
   const filteredReports = useMemo(() => {
@@ -66,7 +67,24 @@ export default function AdminModeration() {
     try {
       const resp = await fetch(`${API_BASE_URL}/reports`);
       const data = await resp.json();
-      setReports(data.reports || []);
+      const fetchedReports = data.reports || [];
+      
+      // Ordenar de más nuevo a más viejo por fecha de creación
+      fetchedReports.sort((a: any, b: any) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+
+      setReports(fetchedReports);
+      
+      // Marcar estos reportes como vistos al cargar la lista para apagar el globo rojo del admin
+      const token = localStorage.getItem("meteomap_token");
+      if (token) {
+        // Ejecución en background, no bloqueamos la renderización
+        fetch(`${API_BASE_URL}/admin/reports/mark-seen`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` }
+        }).catch(err => console.error("Error marking seen", err));
+      }
     } catch (err) {
       console.error("Error fetching reports:", err);
     } finally {
@@ -75,6 +93,15 @@ export default function AdminModeration() {
   };
 
   useEffect(() => {
+    const token = localStorage.getItem("meteomap_token");
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        setAdminId(payload.userId || payload.id);
+      } catch (err) {
+        console.error("Error decoding token:", err);
+      }
+    }
     loadReports();
   }, []);
 
@@ -175,9 +202,23 @@ export default function AdminModeration() {
                   </TableCell>
                 </TableRow>
               ) : (
-                paginatedReports.map((report) => (
+                paginatedReports.map((report) => {
+                  const isNew = adminId && Array.isArray(report.visto_por_admins)
+                    ? !report.visto_por_admins.includes(adminId)
+                    : !report.visto_por_admins;
+
+                  return (
                   <TableRow key={report._id} className="hover:bg-red-50/30 transition-colors border-b border-gray-100">
-                    <TableCell className="py-5 font-medium text-gray-900">{new Date(report.createdAt).toLocaleString()}</TableCell>
+                    <TableCell className="py-5 font-medium text-gray-900">
+                      <div className="flex items-center gap-2">
+                        {new Date(report.createdAt).toLocaleString()}
+                        {isNew && (
+                          <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+                            Nuevo
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="py-5 text-gray-700">{report.usuario_id?.perfil?.nombre || report.usuario_id?.nombre || report.usuario_id?.email}</TableCell>
                     <TableCell className="py-5">{report.categoria_id?.nombre || report.categoria_id}</TableCell>
                     <TableCell className="py-5 text-gray-700">{report.zona_id?.nombre || report.zona_id}</TableCell>
@@ -190,7 +231,8 @@ export default function AdminModeration() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))
+                  );
+                })
               )}
             </TableBody>
           </Table>
