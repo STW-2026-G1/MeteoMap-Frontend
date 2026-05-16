@@ -27,15 +27,67 @@ jobs:
       - name: Instalar Vercel CLI
         run: pnpm add -g vercel
 
+      - name: Pull Vercel Project Settings
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Inyectar variables de entorno propias
+        run: |
+          ENV_FILE=".vercel/.env.production.local"
+
+          inject_var() {
+            local key=$1
+            local value=$2
+            if grep -q "^${key}=" "$ENV_FILE" 2>/dev/null; then
+              sed -i "s|^${key}=.*|${key}=${value}|" "$ENV_FILE"
+            else
+              echo "${key}=${value}" >> "$ENV_FILE"
+            fi
+          }
+
+          inject_var "VITE_API_BASE_URL"          "$VITE_API_BASE_URL"
+          inject_var "VITE_GOOGLE_CLIENT_ID"      "$VITE_GOOGLE_CLIENT_ID"
+          inject_var "VITE_UNSPLASH_ACCESS_KEY"   "$VITE_UNSPLASH_ACCESS_KEY"
+          inject_var "VITE_GITHUB_CLIENT_ID"      "$VITE_GITHUB_CLIENT_ID"
+
+          echo "Variables inyectadas correctamente"
+        env:
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          VITE_UNSPLASH_ACCESS_KEY: ${{ secrets.VITE_UNSPLASH_ACCESS_KEY }}
+          VITE_GITHUB_CLIENT_ID: ${{ secrets.VITE_GITHUB_CLIENT_ID }}
+
+      - name: Validar variables requeridas
+        run: |
+          ENV_FILE=".vercel/.env.production.local"
+
+          validate_var() {
+            local key=$1
+            local value
+            value=$(grep "^${key}=" "$ENV_FILE" | cut -d '=' -f2-)
+            if [[ -z "$value" ]]; then
+              echo "ERROR: ${key} está vacía"
+              exit 1
+            fi
+            if [[ "$value" == *"localhost"* || "$value" == *"127.0.0.1"* ]]; then
+              echo "ERROR: ${key} apunta a localhost: $value"
+              exit 1
+            fi
+            echo "${key} validada correctamente"
+          }
+
+          validate_var "VITE_API_BASE_URL"
+          validate_var "VITE_GOOGLE_CLIENT_ID"
+          validate_var "VITE_UNSPLASH_ACCESS_KEY"
+          validate_var "VITE_GITHUB_CLIENT_ID"
+
       - name: Build Project Artifacts
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
-          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
-          VITE_UNSPLASH_ACCESS_KEY: ${{ secrets.VITE_UNSPLASH_ACCESS_KEY }}
-          VITE_GITHUB_CLIENT_ID: ${{ secrets.VITE_GITHUB_CLIENT_ID }}
 
       - name: Deploy Project Artifacts to Vercel
         run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
