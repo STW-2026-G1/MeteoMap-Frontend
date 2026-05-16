@@ -328,6 +328,7 @@ export default function ProfilePage() {
                     name: zoneInfo.nombre || zone.nombre || "Zona sin nombre",
                     weather: { code: meteoData.codigo_clima },
                     temperature: meteoData.temperatura,
+                    wind: meteoData.velocidad_viento,
                     reportsList: recentReports,
                     hasConfirmedReports,
                   });
@@ -773,10 +774,10 @@ export default function ProfilePage() {
         riskLevel += 15;
       }
 
-      if (zone.viento !== undefined) {
-      if (zone.viento > 50) {
+     if (zone.wind !== undefined) {
+      if (zone.wind > 50) {
          riskLevel += 20;
-      } else if (zone.viento > 100) {
+      } else if (zone.wind > 100) {
          riskLevel += 50;
       }
      }
