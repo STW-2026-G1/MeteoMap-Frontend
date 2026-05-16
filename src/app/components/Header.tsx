@@ -7,12 +7,10 @@
 
 import { Link, useNavigate } from "react-router";
 import { Button } from "./ui/button";
-import { Cloud, Menu, X, BarChart3, LogOut, RefreshCw, Shield, MapPin } from "lucide-react";
+import { Cloud, Menu, X, BarChart3, LogOut, Shield, MapPin } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { ImageWithFallback } from "./common/ImageWithFallback";
-import { useWeatherSync } from "../../hooks/useWeatherSync";
-import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,9 +23,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "./ui/sheet";
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
-  const { syncWeather } = useWeatherSync();
   const navigate = useNavigate();
   const isAdmin = user?.rol === "ADMIN";
 
@@ -39,25 +35,6 @@ export function Header() {
     logout();
     setMobileMenuOpen(false);
     navigate("/");
-  };
-
-  /**
-   * Sincroniza manualmente los datos meteorológicos con el backend
-   * @async
-   * @returns {Promise<void>}
-   */
-  const handleWeatherSync = async () => {
-    setIsSyncing(true);
-    toast.loading("Actualizando datos meteorológicos...");
-    
-    try {
-      await syncWeather();
-      toast.success("✓ Datos meteorológicos actualizados");
-    } catch (error) {
-      toast.error("Error al actualizar datos meteorológicos");
-    } finally {
-      setIsSyncing(false);
-    }
   };
 
   return (
@@ -83,18 +60,6 @@ export function Header() {
             {/* Auth buttons / User menu */}
             {isAuthenticated ? (
               <>
-                {/* Weather Sync Button */}
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="text-gray-700 hover:text-blue-600"
-                  onClick={handleWeatherSync}
-                  disabled={isSyncing}
-                  title="Sincronizar datos meteorológicos"
-                >
-                  <RefreshCw className={`h-5 w-5 ${isSyncing ? "animate-spin" : ""}`} />
-                </Button>
-
                 {/* Stats/Chart Button */}
                 <Button variant="ghost" size="icon" className="text-gray-700" asChild>
                   <Link to="/estadisticas">
@@ -272,16 +237,6 @@ export function Header() {
                             </Link>
                           )}
 
-                          <button
-                            onClick={handleWeatherSync}
-                            disabled={isSyncing}
-                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all disabled:opacity-50"
-                          >
-                            <RefreshCw className={`h-5 w-5 flex-shrink-0 ${isSyncing ? "animate-spin" : ""}`} />
-                            <span className="font-medium text-left">
-                              {isSyncing ? "Actualizando..." : "Sincronizar Clima"}
-                            </span>
-                          </button>
                         </div>
                       </div>
                     </>

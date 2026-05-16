@@ -6,6 +6,7 @@
  */
 
 import { Card } from "../../components/ui/card";
+import { Badge } from "../../components/ui/badge";
 import { ChartContainer, ChartTooltip } from "../../components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { useEffect, useState } from "react";
@@ -23,6 +24,7 @@ type UsageByUser = {
 type ApiStatus = {
   name: string;
   status: "online" | "warning" | "offline";
+  statusLabel?: string;
   source: string;
   details: string;
 };
@@ -43,7 +45,6 @@ export default function AdminDashboard() {
   const [apiStatus, setApiStatus] = useState<ApiStatus[]>([]);
   const [usersActive, setUsersActive] = useState<number | null>(null);
   const [iaTotalToday, setIaTotalToday] = useState<number | null>(null);
-  const [latestLatency, setLatestLatency] = useState<number | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("meteomap_token");
@@ -63,7 +64,6 @@ export default function AdminDashboard() {
 
         setUsersActive(data?.users?.activosNoAdmin ?? null);
         setIaTotalToday(data?.ia?.totalPeticionesHoy ?? null);
-        setLatestLatency(data?.weatherSync?.latestLatencyMs ?? null);
         setApiStatus(Array.isArray(data?.apiStatus) ? data.apiStatus : []);
 
         const usage = Array.isArray(data?.ia?.usageByUser) ? data.ia.usageByUser : [];
@@ -86,6 +86,27 @@ export default function AdminDashboard() {
     totalUsersWithUsage > 0 && iaTotalToday !== null
       ? (iaTotalToday / totalUsersWithUsage).toFixed(1)
       : "0.0";
+
+  const getStatusPresentation = (status: ApiStatus["status"]) => {
+    if (status === "online") {
+      return {
+        label: "Activo",
+        className: "bg-green-500/15 text-green-200 border-green-500/30",
+      };
+    }
+
+    if (status === "warning") {
+      return {
+        label: "Revisar",
+        className: "bg-yellow-500/15 text-yellow-200 border-yellow-500/30",
+      };
+    }
+
+    return {
+      label: "Inactivo",
+      className: "bg-red-500/15 text-red-200 border-red-500/30",
+    };
+  };
 
   const iaChartData: IaChartDatum[] = chartUsers.map((u) => ({
     usuario: u.nombre.length > 14 ? `${u.nombre.slice(0, 14)}...` : u.nombre,
@@ -112,7 +133,7 @@ export default function AdminDashboard() {
         <p className="text-gray-500 mt-2">Datos reales agregados desde backend</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
         <Card className="p-5 md:p-7 bg-gradient-to-br from-blue-600 to-blue-700 border-0 text-white shadow-xl hover:shadow-2xl transition-all hover:scale-105">
           <p className="text-xs md:text-sm text-blue-100 mb-2 md:mb-3 font-medium">Usuarios Activos</p>
           <p className="text-3xl md:text-5xl font-bold">{usersActive !== null ? usersActive : "—"}</p>
@@ -124,11 +145,6 @@ export default function AdminDashboard() {
           <p className="text-xs text-purple-100 mt-2">
             {totalUsersWithUsage} usuarios con actividad IA
           </p>
-        </Card>
-
-        <Card className="p-5 md:p-7 bg-gradient-to-br from-emerald-600 to-emerald-700 border-0 text-white shadow-xl hover:shadow-2xl transition-all hover:scale-105 sm:col-span-2 lg:col-span-1">
-          <p className="text-xs md:text-sm text-emerald-100 mb-2 md:mb-3 font-medium">Latencia Open-Meteo (última sync)</p>
-          <p className="text-3xl md:text-5xl font-bold">{latestLatency !== null ? `${latestLatency}ms` : "—"}</p>
         </Card>
       </div>
 
@@ -226,11 +242,16 @@ export default function AdminDashboard() {
             {apiStatus.map((api) => (
               <div key={api.name} className="flex items-center justify-between p-3 md:p-3 bg-slate-700/50 rounded-lg hover:bg-slate-700/70 transition-colors">
                 <div className="min-w-0 pr-2">
-                  <span className="block text-xs md:text-sm font-medium truncate">{api.name}</span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="block text-xs md:text-sm font-medium truncate">{api.name}</span>
+                    <Badge variant="outline" className={`shrink-0 ${getStatusPresentation(api.status).className}`}>
+                      {api.statusLabel || getStatusPresentation(api.status).label}
+                    </Badge>
+                  </div>
                   <span className="block text-[10px] md:text-xs text-slate-400 truncate">Fuente: {api.source}</span>
                   <span className="block text-[10px] md:text-xs text-slate-300 truncate">{api.details}</span>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-2 flex-shrink-0 md:hidden">
                   <div
                     className={`w-2.5 h-2.5 md:w-3 md:h-3 rounded-full shadow-lg ${
                       api.status === "online"
@@ -241,7 +262,7 @@ export default function AdminDashboard() {
                     }`}
                   />
                   <span className="text-xs text-slate-300 hidden md:inline">
-                    {api.status === "online" ? "Online" : api.status === "warning" ? "Warn" : "Off"}
+                    {api.status === "online" ? "Activo" : api.status === "warning" ? "Revisar" : "Inactivo"}
                   </span>
                 </div>
               </div>
