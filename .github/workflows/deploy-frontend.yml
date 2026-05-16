@@ -93,6 +93,12 @@ jobs:
           fi
           echo "CYPRESS_API_BASE_URL=$API_URL" >> "$GITHUB_ENV"
 
+      - name: Instalar binario de Cypress
+        run: pnpm exec cypress install --force
+
+      - name: Verificar binario de Cypress
+        run: pnpm exec cypress verify
+
       - name: Ejecutar tests E2E
         uses: cypress-io/github-action@v6
         with:
