@@ -55,6 +55,11 @@ export default function AdminModeration() {
     return filteredReports.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [filteredReports, currentPage]);
 
+  /**
+   * Carga todos los reportes del backend
+   * @async
+   * @returns {Promise<void>}
+   */
   const loadReports = async () => {
     setLoading(true);
     setCurrentPage(1);
@@ -73,11 +78,21 @@ export default function AdminModeration() {
     loadReports();
   }, []);
 
+  /**
+   * Abre el diálogo de confirmación para eliminar un reporte
+   * @param {string} id - ID del reporte a eliminar
+   * @returns {void}
+   */
   const openDeleteDialog = (id: string) => {
     setDeletingId(id);
     setDialogOpen(true);
   };
 
+  /**
+   * Confirma y ejecuta la eliminación de un reporte
+   * @async
+   * @returns {Promise<void>}
+   */
   const confirmDelete = async () => {
     if (!deletingId) return;
     const token = localStorage.getItem("meteomap_token");

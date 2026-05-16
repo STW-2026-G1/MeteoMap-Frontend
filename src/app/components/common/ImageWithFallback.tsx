@@ -17,6 +17,11 @@ export const ImageWithFallback = forwardRef<HTMLImageElement | HTMLDivElement, I
   (props, ref) => { // 2. Recibimos 'ref' como segundo parámetro
     const [didError, setDidError] = useState(false)
 
+    /**
+     * Maneja error de carga de imagen intentando fallback o muestra icono de error
+     * @param {React.SyntheticEvent<HTMLImageElement, Event>} e - Evento de error de imagen
+     * @returns {void}
+     */
     const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
       if (props.fallback && e.currentTarget.src !== props.fallback) {
         e.currentTarget.src = props.fallback;

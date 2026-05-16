@@ -188,6 +188,10 @@ interface Report {
       fetchReports();
     }, [zoneId, zoneName]);
   // Obtener comentarios dinámicos del parámetro o usar mock
+  /**
+   * Obtiene comentarios iniciales desde parámetros o usa comentarios por defecto
+   * @returns {Comment[]} Array de comentarios iniciales
+   */
   const getInitialComments = (): Comment[] => {
     if (commentsParam) {
       try {
@@ -1221,24 +1225,34 @@ interface Report {
       />
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar eliminación</AlertDialogTitle>
-            <AlertDialogDescription>
-              {deleteDialogData?.type === 'comment' 
-                ? "¿Estás seguro de que quieres eliminar este comentario? Esta acción no se puede deshacer."
-                : "¿Estás seguro de que quieres eliminar esta respuesta? Esta acción no se puede deshacer."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
-              Eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+    <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialogContent className="border-l-4 border-red-600 bg-gradient-to-br from-red-50 to-white shadow-xl">
+        <AlertDialogHeader className="border-b border-red-200 pb-4">
+          <AlertDialogTitle className="flex items-center gap-3 text-red-700">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+              <Trash2 className="h-5 w-5 text-red-600" />
+            </div>
+            Confirmar eliminación
+          </AlertDialogTitle>
+          <AlertDialogDescription className="mt-2 text-gray-700">
+            {deleteDialogData?.type === 'comment'
+              ? '¿Estás seguro de que quieres eliminar este comentario? Esta acción no se puede deshacer.'
+              : '¿Estás seguro de que quieres eliminar esta respuesta? Esta acción no se puede deshacer.'}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter className="border-t border-red-200 pt-4">
+          <AlertDialogCancel className="bg-gray-100 hover:bg-gray-200 text-gray-800">
+            Cancelar
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={confirmDelete}
+            className="bg-red-600 hover:bg-red-700 text-white font-semibold shadow-md"
+          >
+            Eliminar
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     </div>
   );
 }

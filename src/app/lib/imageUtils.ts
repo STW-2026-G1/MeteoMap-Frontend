@@ -9,7 +9,9 @@
 const imageCache: { [key: string]: string } = {};
 
 /**
- * Helper para extraer el nombre central (elimina prefijos comunes)
+ * Extrae el nombre central eliminando prefijos comunes de nombres de parques
+ * @param {string} name - Nombre completo de la zona
+ * @returns {string} Nombre simplificado sin prefijos
  */
 const getCoreZoneName = (name: string): string => {
   let core = name;
@@ -39,8 +41,9 @@ const getCoreZoneName = (name: string): string => {
 
 /**
  * Obtiene una imagen de Unsplash basada en el nombre de la zona
- * @param zoneName - Nombre de la zona (ej: "Ordesa y Monte Perdido")
- * @returns URL de imagen de Unsplash o fallback genérico
+ * @async
+ * @param {string} zoneName - Nombre de la zona (ej: "Ordesa y Monte Perdido")
+ * @returns {Promise<string>} URL de imagen de Unsplash o fallback genérico
  */
 export const getZoneImageFromUnsplash = async (zoneName: string): Promise<string> => {
   if (imageCache[zoneName]) {
@@ -96,7 +99,10 @@ export const getZoneImageFromUnsplash = async (zoneName: string): Promise<string
 };
 
 /**
- * Obtiene imágenes para múltiples zonas de forma eficiente
+ * Obtiene imágenes para múltiples zonas de forma eficiente con batches
+ * @async
+ * @param {string[]} zoneNames - Array de nombres de zonas
+ * @returns {Promise<{[key: string]: string}>} Objeto mapeando zoneName a imageURL
  */
 export const getZoneImagesFromUnsplash = async (
   zoneNames: string[]
@@ -124,7 +130,8 @@ export const getZoneImagesFromUnsplash = async (
 };
 
 /**
- * Obtiene la imagen por defecto (fallback)
+ * Obtiene la imagen por defecto cuando no se encuentra una mejor opción
+ * @returns {string} URL de imagen fallback de Unsplash
  */
 export const getDefaultImage = (): string => {
   return 'https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?q=80&w=1176&auto=format&fit=crop';
@@ -158,7 +165,10 @@ const zoneImageMappings: { [key: string]: string } = {
 };
 
 /**
- * Obtiene imagen de mapeo local o Unsplash
+ * Obtiene imagen de mapeo local o consulta Unsplash como fallback
+ * @async
+ * @param {string} zoneName - Nombre de la zona a buscar
+ * @returns {Promise<string>} URL de imagen de mapeo local o Unsplash
  */
 export const getZoneImage = async (zoneName: string): Promise<string> => {
   if (zoneImageMappings[zoneName]) {

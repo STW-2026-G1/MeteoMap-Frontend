@@ -12,10 +12,14 @@ import SignUpPage from "./pages/SignUpPage";
 import LoginPage from "./pages/LoginPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import GithubCallback from "./pages/GithubCallback";
 import NotFoundPage from "./pages/NotFoundPage";
 import ZoneForumPage from "./pages/ZoneForumPage";
 import StatsPage from "./pages/StatsPage";
 import ProfilePage from "./pages/ProfilePage";
+import PrivacyPage from "./pages/PrivacyPage";
+import TermsPage from "./pages/TermsPage";
+import ContactPage from "./pages/ContactPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -63,6 +67,22 @@ export const router = createBrowserRouter([
   {
     path: "/reset-password",
     Component: ResetPasswordPage,
+  },
+  {
+    path: "/privacidad",
+    Component: PrivacyPage,
+  },
+  {
+    path: "/terminos",
+    Component: TermsPage,
+  },
+  {
+    path: "/contacto",
+    Component: ContactPage,
+  },
+  {
+    path: "/auth/github/callback",
+    Component: GithubCallback,
   },
   {
     path: "/admin",

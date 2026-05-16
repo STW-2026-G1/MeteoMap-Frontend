@@ -191,6 +191,11 @@ export default function AdminZones() {
     return filteredCategories.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [filteredCategories, currentCategoryPage]);
 
+  /**
+   * Carga zonas y categorías del backend
+   * @async
+   * @returns {Promise<void>}
+   */
   const loadData = async () => {
     setLoading(true);
     setError("");
@@ -231,12 +236,21 @@ export default function AdminZones() {
     loadData();
   }, []);
 
+  /**
+   * Abre el diálogo para crear una nueva zona
+   * @returns {void}
+   */
   const openCreateZoneDialog = () => {
     setEditingZone(null);
     setZoneForm(emptyZoneForm);
     setZoneDialogOpen(true);
   };
 
+  /**
+   * Abre el diálogo para editar una zona existente
+   * @param {AdminZone} zone - Zona a editar
+   * @returns {void}
+   */
   const openEditZoneDialog = (zone: AdminZone) => {
     setEditingZone(zone);
     setZoneForm({
@@ -249,18 +263,31 @@ export default function AdminZones() {
     setZoneDialogOpen(true);
   };
 
+  /**
+   * Cierra el diálogo de zonas
+   * @returns {void}
+   */
   const closeZoneDialog = () => {
     setZoneDialogOpen(false);
     setEditingZone(null);
     setZoneForm(emptyZoneForm);
   };
 
+  /**
+   * Abre el diálogo para crear una nueva categoría
+   * @returns {void}
+   */
   const openCreateCategoryDialog = () => {
     setEditingCategory(null);
     setCategoryForm(emptyCategoryForm);
     setCategoryDialogOpen(true);
   };
 
+  /**
+   * Abre el diálogo para editar una categoría existente
+   * @param {AdminCategory} category - Categoría a editar
+   * @returns {void}
+   */
   const openEditCategoryDialog = (category: AdminCategory) => {
     setEditingCategory(category);
     setCategoryForm({
@@ -271,12 +298,21 @@ export default function AdminZones() {
     setCategoryDialogOpen(true);
   };
 
+  /**
+   * Cierra el diálogo de categorías
+   * @returns {void}
+   */
   const closeCategoryDialog = () => {
     setCategoryDialogOpen(false);
     setEditingCategory(null);
     setCategoryForm(emptyCategoryForm);
   };
 
+  /**
+   * Guarda una zona nueva o existente
+   * @async
+   * @returns {Promise<void>}
+   */
   const saveZone = async () => {
     const token = getToken();
 
