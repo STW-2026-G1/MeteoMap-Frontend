@@ -6,5 +6,10 @@
   "routes": [
     { "handle": "filesystem" },
     { "src": "/.*", "dest": "/index.html" }
-  ]
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "my-branch-name": false
+    }
+  }
 }
