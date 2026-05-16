@@ -1,5 +1,10 @@
-const getApiBaseUrl = () =>
-  Cypress.config("env")?.API_BASE_URL || Cypress.config("env")?.VITE_API_BASE_URL || "http://localhost:3000/api";
+/**
+ * @file auth-login.cy.js
+ * @description Pruebas end-to-end para el flujo de inicio de sesión interno en MeteoMap.
+ * @author MeteoMap Team
+ */
+
+const API_BASE_URL = Cypress.env('API_BASE_URL') || 'http://localhost:3000/api';
 
 const TEST_USER = {
   email: "testuser@example.com",
@@ -10,7 +15,7 @@ const TEST_USER = {
 const ensureTestUserExists = () => {
   cy.request({
     method: "POST",
-    url: `${getApiBaseUrl()}/auth/register`,
+    url: `${API_BASE_URL}/auth/register`,
     failOnStatusCode: false,
     body: TEST_USER,
   }).then((response) => {
@@ -18,7 +23,7 @@ const ensureTestUserExists = () => {
   });
 };
 
-describe("Internal login", () => {
+describe("Inicio de sesión interno", () => {
   beforeEach(() => {
     cy.clearCookies();
     ensureTestUserExists();
@@ -30,7 +35,7 @@ describe("Internal login", () => {
     });
   });
 
-  it("shows the internal login form", () => {
+  it("muestra el formulario de inicio de sesión interno", () => {
     cy.getBySel("login-card").should("be.visible");
     cy.getBySel("login-form").should("be.visible");
     cy.getBySel("email-input").should("be.visible");
@@ -38,7 +43,7 @@ describe("Internal login", () => {
     cy.getBySel("login-submit").should("be.visible");
   });
 
-  it("logs in successfully with valid credentials", () => {
+  it("inicia sesión correctamente con credenciales válidas", () => {
     cy.getBySel("email-input").type(TEST_USER.email);
     cy.getBySel("password-input").type(TEST_USER.password);
     cy.getBySel("login-submit").click();
@@ -54,7 +59,7 @@ describe("Internal login", () => {
     });
   });
 
-  it("shows an error when the password is incorrect", () => {
+  it("muestra un error cuando la contraseña es incorrecta", () => {
     cy.getBySel("email-input").type(TEST_USER.email);
     cy.getBySel("password-input").type("WrongPassword123#");
     cy.getBySel("login-submit").click();
@@ -64,10 +69,10 @@ describe("Internal login", () => {
       .and("contain", "Credenciales inválidas");
   });
 
-  it("shows a validation error when the email format is invalid", () => {
+  it("muestra un error de validación cuando el formato del email es inválido", () => {
     cy.request({
       method: "POST",
-      url: `${getApiBaseUrl()}/auth/login`,
+      url: `${API_BASE_URL}/auth/login`,
       failOnStatusCode: false,
       body: {
         email: "not-an-email",
@@ -80,10 +85,10 @@ describe("Internal login", () => {
     });
   });
 
-  it("shows a validation error when the password is too short", () => {
+  it("muestra un error de validación cuando la contraseña es demasiado corta", () => {
     cy.request({
       method: "POST",
-      url: `${getApiBaseUrl()}/auth/login`,
+      url: `${API_BASE_URL}/auth/login`,
       failOnStatusCode: false,
       body: {
         email: TEST_USER.email,

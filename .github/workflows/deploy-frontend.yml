@@ -83,16 +83,6 @@ jobs:
           validate_var "VITE_UNSPLASH_ACCESS_KEY"
           validate_var "VITE_GITHUB_CLIENT_ID"
 
-      - name: Preparar variable API para Cypress
-        run: |
-          ENV_FILE=".vercel/.env.production.local"
-          API_URL=$(grep '^VITE_API_BASE_URL=' "$ENV_FILE" | cut -d '=' -f2-)
-          if [[ -z "$API_URL" ]]; then
-            echo "ERROR: no se pudo obtener VITE_API_BASE_URL para Cypress"
-            exit 1
-          fi
-          echo "CYPRESS_API_BASE_URL=$API_URL" >> "$GITHUB_ENV"
-
       - name: Instalar binario de Cypress
         run: pnpm exec cypress install --force
 
@@ -107,7 +97,7 @@ jobs:
           wait-on: 'http://127.0.0.1:5173'
           wait-on-timeout: 120
         env:
-          CYPRESS_API_BASE_URL: ${{ env.CYPRESS_API_BASE_URL }}
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
 
       - name: Build Project Artifacts
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}

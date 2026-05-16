@@ -1,5 +1,10 @@
-const getApiBaseUrl = () =>
-  Cypress.config("env")?.API_BASE_URL || Cypress.config("env")?.VITE_API_BASE_URL || "http://localhost:3000/api";
+/**
+ * @file report-create.cy.js
+ * @description Pruebas end-to-end para el flujo de creación de reportes en MeteoMap.
+ * @author MeteoMap Team
+ */
+
+const API_BASE_URL = Cypress.env('API_BASE_URL') || 'http://localhost:3000/api';
 
 const TEST_USER = {
   email: "testuser@example.com",
@@ -28,18 +33,18 @@ const TEST_CATEGORY = {
   icono_marcador: "snowflake",
 };
 
-describe("Create report flow", () => {
+describe("Flujo de creación de reporte", () => {
   beforeEach(() => {
     cy.request({
       method: "POST",
-      url: `${getApiBaseUrl()}/auth/register`,
+      url: `${API_BASE_URL}/auth/register`,
       failOnStatusCode: false,
       body: TEST_USER,
     });
 
     cy.request({
       method: "POST",
-      url: `${getApiBaseUrl()}/auth/login`,
+      url: `${API_BASE_URL}/auth/login`,
       body: {
         email: TEST_USER.email,
         password: TEST_USER.password,
@@ -118,7 +123,7 @@ describe("Create report flow", () => {
     });
   });
 
-  it("creates a report for a selected zone", () => {
+  it("crea un reporte para una zona seleccionada", () => {
     cy.wait("@getZones");
 
     cy.getBySel("zone-search-input").type("Ordesa");
