@@ -49,3 +49,6 @@ Thumbs.db
 .env-front*
 .vercel
 .env*.local
+
+# other
+.DS_Store
