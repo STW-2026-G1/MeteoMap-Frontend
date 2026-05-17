@@ -71,8 +71,10 @@ function getStateBadgeClasses(estado: string) {
 }
 
 function getProviderLabel(provider?: string) {
-  if (provider === "google") return "Google";
-  if (provider === "local") return "Local";
+  const p = provider?.toLowerCase();
+  if (p === "google") return "Google";
+  if (p === "github") return "GitHub";
+  if (p === "local") return "Local";
   return "Desconocido";
 }
 
