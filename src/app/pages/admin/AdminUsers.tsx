@@ -268,7 +268,13 @@ export default function AdminUsers() {
         throw new Error(data?.error || data?.message || "No se pudo eliminar el usuario");
       }
 
-      setUsers((currentUsers) => currentUsers.filter((currentUser) => currentUser.id !== userToDelete.id));
+      setUsers((currentUsers) =>
+        currentUsers.map((currentUser) =>
+          currentUser.id === userToDelete.id
+            ? { ...currentUser, estado: "ELIMINADO" }
+            : currentUser
+        )
+      );
       toast.success("Usuario eliminado correctamente");
       setShowDeleteConfirm(false);
       setUserToDelete(null);
