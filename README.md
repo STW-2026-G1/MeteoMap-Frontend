@@ -45,6 +45,6 @@ Interfaz de usuario para la plataforma de seguridad en montaña MeteoMap. Permit
     npx tsc --noEmit
     ```
 
-## Acceso a la app
+## Acceso a la app
 
 Una vez lanzado el backend y el frontend, se puede acceder a la aplicación en: `http://localhost:5173`
