@@ -10,7 +10,7 @@ import { Users, FileText, Map, LayoutDashboard, Menu, X } from "lucide-react";
 import { Header } from "../../components/Header";
 import { Footer } from "../../components/Footer";
 import { useState, useEffect } from "react";
-import { Sheet, SheetContent, SheetTrigger } from "../../components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "../../components/ui/sheet";
 import { Button } from "../../components/ui/button";
 
 export default function AdminLayout() {
@@ -113,9 +113,11 @@ export default function AdminLayout() {
                 <Menu className="h-6 w-6 text-white" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-72 bg-gradient-to-b from-slate-900 to-slate-800 text-white border-0">
-              <div className="py-6">
-                <h2 className="text-2xl font-bold mb-8 text-white">Panel Admin</h2>
+            <SheetContent side="left" className="w-72 bg-gradient-to-b from-slate-900 to-slate-800 text-white border-0 p-0">
+              <div className="py-6 px-6">
+                <SheetHeader className="p-0 mb-8 text-left">
+                  <SheetTitle className="text-2xl font-bold text-white">Panel Admin</SheetTitle>
+                </SheetHeader>
                 <nav className="space-y-2">
                   <NavItems onClick={() => setMobileMenuOpen(false)} />
                 </nav>
