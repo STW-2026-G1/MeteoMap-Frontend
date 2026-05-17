@@ -46,7 +46,7 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || 'http://lo
 const normalizeUserData = (backendUser: any): User => {
   // Check if data is nested inside 'perfil' (new backend structure)
   const profile = backendUser.perfil || {};
-  
+
   return {
     id: backendUser.id || backendUser._id?.toString(),
     email: backendUser.email,
@@ -99,11 +99,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       const data = await response.json();
-      
+
       if (!response.ok) {
         // Extraer mensaje - intentar todos los campos posibles
         let errorMessage = 'Error al iniciar sesión';
-        
+
         if (data?.message) {
           errorMessage = data.message;
         } else if (data?.error) {
@@ -114,18 +114,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             errorMessage = firstError;
           }
         }
-        
+
         console.log('Login error message:', errorMessage);
         setError(errorMessage);
         return { success: false, errorMessage };
       }
 
       const userData = normalizeUserData(data.user || { email });
-      
+
       setUser(userData);
       localStorage.setItem('meteomap_user', JSON.stringify(userData));
       localStorage.setItem('meteomap_token', data.accessToken);
-      
+
       return { success: true };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
@@ -241,7 +241,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       const token = localStorage.getItem('meteomap_token');
-      
+
       // Llamar al endpoint de logout si el token existe
       if (token) {
         await fetch(`${API_BASE_URL}/auth/logout`, {
@@ -287,7 +287,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       const errorData = await response.json();
-      
+
       console.log('Register response:', {
         status: response.status,
         ok: response.ok,
@@ -297,21 +297,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!response.ok) {
         // Error de registro
         let errorMessage = 'Error al registrarse';
-        
+
         if (errorData?.message) {
           errorMessage = errorData.message;
         }
-        
+
         setError(errorMessage);
         return { success: false, errorMessage };
       }
 
       const userData = normalizeUserData(errorData.user || { email, nombre });
-      
+
       setUser(userData);
       localStorage.setItem('meteomap_user', JSON.stringify(userData));
       localStorage.setItem('meteomap_token', errorData.accessToken);
-      
+
       return { success: true };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
@@ -335,7 +335,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * @returns {Promise<{success: boolean; errorMessage?: string}>} Resultado de la actualización
    */
   const updateProfile = async (profileData: { nombre?: string; email?: string; avatar_style?: string; biografia?: string; ubicacion?: string }): Promise<{ success: boolean; errorMessage?: string }> => {
-    setLoading(true);
     setError(null);
     try {
       const token = localStorage.getItem('meteomap_token');
@@ -364,7 +363,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Update local user data
       if (user) {
         // Correctly handle the response from backend which might be nested
-        const updatedUser = normalizeUserData(data.user || data || { ...user, ...profileData });
+        const backendUser = data.user || data;
+        const updatedUser = normalizeUserData({ ...user, ...backendUser });
+        if (!updatedUser.rol && user.rol) {
+          console.log('Rol no actualizado: ', backendUser.rol);
+          updatedUser.rol = user.rol;
+        }
         setUser(updatedUser);
         localStorage.setItem('meteomap_user', JSON.stringify(updatedUser));
       }
@@ -375,8 +379,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setError(errorMessage);
       console.error('Update profile error:', errorMessage);
       return { success: false, errorMessage };
-    } finally {
-      setLoading(false);
     }
   };
 

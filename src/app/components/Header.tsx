@@ -25,6 +25,7 @@ export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
+  console.log("User object:", user);
   const isAdmin = user?.rol === "ADMIN";
 
   /**
@@ -121,14 +122,14 @@ export function Header() {
               </>
             ) : (
               <>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="border-gray-300 text-gray-700 hover:bg-gray-50 h-9 px-4 text-sm font-medium"
                   asChild
                 >
                   <Link to="/login">Iniciar Sesión</Link>
                 </Button>
-                <Button 
+                <Button
                   className="bg-blue-600 hover:bg-blue-700 h-9 px-4 text-sm font-medium"
                   asChild
                 >
@@ -141,9 +142,9 @@ export function Header() {
           {/* Mobile Menu Button */}
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 className="md:hidden text-gray-700 hover:text-blue-600"
                 aria-label="Abrir menú"
               >
@@ -153,7 +154,7 @@ export function Header() {
             <SheetContent side="right" className="w-full sm:w-96 p-0 flex flex-col bg-white">
               {/* Hidden title for accessibility */}
               <SheetTitle className="sr-only">Menú de Navegación</SheetTitle>
-              
+
               {/* Menu Header */}
               <div className="px-6 py-6 border-b bg-gradient-to-r from-blue-50 to-blue-100/50">
                 <div className="flex items-center gap-2">

@@ -75,6 +75,7 @@ export default function ProfilePage() {
   const { user, updateProfile, logout } = useAuth();
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [favoriteZones, setFavoriteZones] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState("reports");
   const [profileData, setProfileData] = useState({
     id: user?.id || 'User',
     name: user?.name || user?.nombre || "Usuario",
@@ -257,13 +258,18 @@ export default function ProfilePage() {
         try {
           const catResponse = await fetch(`${API_BASE_URL}/categories`, {
             headers: {
-              'Authorization': `Bearer ${token}` 
+              'Authorization': `Bearer ${token}`
             }
           });
           if (catResponse.ok) {
             const dataCategories = await catResponse.json();
-            setCategories(dataCategories);
-            console.log('Categorías cargadas:', dataCategories);
+            const mapped = dataCategories.map((cat: any) => ({
+              value: cat._id,
+              label: cat.nombre,
+              icon: cat.icono_marcador || "⚠️"
+            }));
+            setCategories(mapped);
+            console.log('Categorías cargadas:', mapped);
           }
         } catch (catError) {
           console.error('Error al cargar las categorías:', catError);
@@ -291,7 +297,7 @@ export default function ProfilePage() {
                 if (zoneResponse.ok) {
                   const zoneData = await zoneResponse.json();
                   const zoneInfo = zoneData.data || zoneData.zone || zoneData;
-                  
+
                   // Extracción de datos meteorológicos reales de la API
                   const meteoData = zoneInfo.cache_meteo?.current?.datos_crudos || {};
 
@@ -305,7 +311,7 @@ export default function ProfilePage() {
 
                       const now = new Date();
                       const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-                      
+
                       recentReports = allZoneReports.filter((report: any) => {
                         const reportDate = new Date(report.createdAt || report.fecha || report.updatedAt);
                         return reportDate >= oneDayAgo;
@@ -370,6 +376,25 @@ export default function ProfilePage() {
                     name: zone.nombre || zone.name || "Zona sin nombre",
                     region: zone.departamento || "Región desconocida",
                     image: getDefaultImage(),
+                    temperature: 0,
+                    wind: 0,
+                    weather: {},
+                    riskLevel: 50,
+                    riskType: "Moderado",
+                    riskColor: "bg-yellow-100 text-yellow-800",
+                    recentReports: 0,
+                    reportCategories: [],
+                    lastVisit: new Date().toISOString().split('T')[0],
+                  };
+                }
+              } catch (error) {
+                console.error(`Error cargando datos de zona ${zoneId}:`, error);
+                return {
+                  id: index,
+                  zoneId,
+                  name: zone.nombre || zone.name || "Zona sin nombre",
+                  region: zone.departamento || "Región desconocida",
+                  image: getDefaultImage(),
                   temperature: 0,
                   wind: 0,
                   weather: {},
@@ -381,27 +406,8 @@ export default function ProfilePage() {
                   lastVisit: new Date().toISOString().split('T')[0],
                 };
               }
-            } catch (error) {
-               console.error(`Error cargando datos de zona ${zoneId}:`, error);
-               return {
-               id: index,
-               zoneId,
-               name: zone.nombre || zone.name || "Zona sin nombre",
-               region: zone.departamento || "Región desconocida",
-               image: getDefaultImage(),
-               temperature: 0,
-               wind: 0,
-               weather: {},
-               riskLevel: 50,
-               riskType: "Moderado",
-               riskColor: "bg-yellow-100 text-yellow-800",
-               recentReports: 0,
-               reportCategories: [],
-               lastVisit: new Date().toISOString().split('T')[0],
-               };
-            }
-         })
-         );
+            })
+          );
 
           setFavoriteZones(mappedFavorites);
           console.log('Favoritas cargadas:', mappedFavorites);
@@ -450,7 +456,7 @@ export default function ProfilePage() {
           location: user.ubicacion || "",
           avatar_style: user.avatar_style || "avataaars",
           avatar_seed: user.avatar_seed || user.name || user.nombre || "Usuario",
-          avatar_url: user.avatar_url,
+          avatar_url: user.avatar_url
         });
       }
     } else {
@@ -746,22 +752,22 @@ export default function ProfilePage() {
 
     if (zone.weather) {
       const weatherCode = zone.weather.code || 0;
-      
+
       if (weatherCode === 0 || weatherCode === 1) {
-         riskLevel = 20;
+        riskLevel = 20;
       } else if (weatherCode === 2 || weatherCode === 3) {
-         riskLevel = 30;
+        riskLevel = 30;
       } else if (weatherCode >= 45 && weatherCode <= 55 || weatherCode === 80) {
-         riskLevel = 50;
+        riskLevel = 50;
       } else if (weatherCode >= 61 && weatherCode <= 63 || weatherCode === 81) {
-         riskLevel = 60;
+        riskLevel = 60;
       } else if (weatherCode === 71 || weatherCode === 73 || weatherCode === 77 || weatherCode === 85) {
-         riskLevel = 70;
+        riskLevel = 70;
       } else if (weatherCode >= 95 && weatherCode <= 99 || weatherCode === 82 || weatherCode === 75 || weatherCode === 65 || weatherCode === 86) {
-         riskLevel = 100;
+        riskLevel = 100;
       } else {
-         // Para cualquier otro código no especificado
-         riskLevel = 40; 
+        // Para cualquier otro código no especificado
+        riskLevel = 40;
       }
     }
 
@@ -775,25 +781,25 @@ export default function ProfilePage() {
       }
     }
 
-     if (zone.wind !== undefined) {
+    if (zone.wind !== undefined) {
       if (zone.wind > 50) {
-         riskLevel += 20;
+        riskLevel += 20;
       } else if (zone.wind > 100) {
-         riskLevel += 50;
+        riskLevel += 50;
       }
-     }
-    
+    }
+
     console.log(`Lista de reportes relevantes para la zona ${zone.name}:`, zone.reportsList);
-    
+
     // Filtrado para eliminar 'Buenas condiciones'
     const relevantReportsList = (zone.reportsList || []).filter((report: any) => {
       let categoryName = report.categoria_id?.nombre || "";
-      
+
       if (!categoryName && categories.length > 0) {
         const found = categories.find((cat) => cat.value === report.categoria_id || cat.value === report.categoria_id?._id);
         if (found) categoryName = found.label;
       }
-      
+
       return categoryName.toLowerCase() !== "buenas condiciones";
     });
 
@@ -801,11 +807,11 @@ export default function ProfilePage() {
     console.log(`Zona: ${zone.name}, Reportes relevantes en las últimas 24h: ${recentReportCount}`);
 
     if (recentReportCount >= 1 && recentReportCount <= 2) {
-       riskLevel += 5;
+      riskLevel += 5;
     } else if (recentReportCount >= 3 && recentReportCount <= 5) {
-       riskLevel += 15;
+      riskLevel += 15;
     } else if (recentReportCount >= 6) {
-       riskLevel += 25;
+      riskLevel += 25;
     }
 
     riskLevel = Math.min(Math.max(riskLevel, 0), 100);
@@ -897,7 +903,7 @@ export default function ProfilePage() {
         </Card>
 
         {/* Tabs Navigation */}
-        <Tabs defaultValue="reports" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-3 h-auto gap-2 bg-white/80 p-2">
             <TabsTrigger value="reports" className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white">
               <FileText className="h-4 w-4" />
@@ -1109,7 +1115,7 @@ export default function ProfilePage() {
                         alt={zone.name}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                       />
-                      
+
                       {/* Gradient Overlay */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
