@@ -44,6 +44,7 @@ interface ReportData {
   confirmations?: number;
   denials?: number;
   totalVotes?: number;
+  userId?: string;
 }
 
 interface Comment {
@@ -97,7 +98,7 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
     if (userData) {
       try {
         const parsedUser = JSON.parse(userData);
-        setCurrentUserId(parsedUser.id);
+        setCurrentUserId(parsedUser.id || parsedUser._id || null);
       } catch (error) {
         console.error("Error parsing user data:", error);
       }
@@ -172,6 +173,8 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
 
   if (!report) return null;
 
+  const isOwner = !!(report.userId && currentUserId && String(report.userId) === String(currentUserId));
+
   // Initialize vote counts
   const confirmations = report.confirmations ?? 0;
   const denials = report.denials ?? 0;
@@ -203,6 +206,11 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
     const token = localStorage.getItem("meteomap_token");
     if (!token) {
       toast.error("Debes iniciar sesión para validar un reporte.");
+      return;
+    }
+
+    if (isOwner) {
+      toast.error("No puedes confirmar ni desmentir tus propios reportes.");
       return;
     }
 
@@ -798,8 +806,11 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
               <Button
                 size="lg"
                 onClick={handleConfirm}
+                disabled={isOwner}
                 className={`h-auto py-4 flex flex-col gap-2 transition-all ${
-                  userVote === 'confirm'
+                  isOwner
+                    ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-60'
+                    : userVote === 'confirm'
                     ? 'bg-green-600 hover:bg-green-700 text-white ring-4 ring-green-200'
                     : 'bg-green-500 hover:bg-green-600 text-white'
                 }`}
@@ -815,8 +826,11 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
               <Button
                 size="lg"
                 onClick={handleDeny}
+                disabled={isOwner}
                 className={`h-auto py-4 flex flex-col gap-2 transition-all ${
-                  userVote === 'deny'
+                  isOwner
+                    ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-60'
+                    : userVote === 'deny'
                     ? 'bg-red-600 hover:bg-red-700 text-white ring-4 ring-red-200'
                     : 'bg-red-500 hover:bg-red-600 text-white'
                 }`}
@@ -828,6 +842,16 @@ export function ReportDetailModal({ report, zoneName, open, onOpenChange }: Repo
                 </div>
               </Button>
             </div>
+
+            {/* Owner Alert Message */}
+            {isOwner && (
+              <div className="mt-4 p-3 rounded-lg bg-amber-50/80 border border-amber-200 text-center flex items-center justify-center gap-2 backdrop-blur-sm animate-pulse">
+                <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0" />
+                <p className="text-xs md:text-sm text-amber-700 font-medium">
+                  No puedes confirmar ni desmentir tus propios reportes.
+                </p>
+              </div>
+            )}
 
             {/* User Vote Feedback */}
             {userVote && (

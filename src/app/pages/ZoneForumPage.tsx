@@ -162,7 +162,7 @@ interface Report {
 
               return {
                 id: r._id,
-                userId: r.usuario_id?._id,
+                userId: r.usuario_id?._id || r.usuario_id,
                 userName: r.usuario_id?.perfil?.nombre || "Usuario",
                 avatar: r.usuario_id?.perfil?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${r.usuario_id?.avatar_seed || r.usuario_id?._id || "usuario"}`,
                 condition: r.contenido?.descripcion?.slice(0, 50) + (r.contenido?.descripcion?.length > 50 ? "..." : ""),

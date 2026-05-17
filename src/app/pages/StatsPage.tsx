@@ -464,6 +464,7 @@ export default function StatsPage() {
         const mappedList = zone.reportsList
           .map((report: any) => ({
             id: report._id,
+            userId: report.usuario_id?._id || report.usuario_id,
             user: report.usuario_id?.perfil?.nombre || "Usuario desconocido",
             avatar: report.usuario_id?.perfil?.avatar_url || "",
             time: new Date(report.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -730,6 +731,7 @@ export default function StatsPage() {
                     onClick={() => {
                       const reportData = {
                         id: report.id,
+                        userId: report.userId,
                         userName: report.user,
                         avatar: report.avatar,
                         condition: report.report,
