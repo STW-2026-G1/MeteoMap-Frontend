@@ -480,11 +480,13 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
             setDynamicComments([newCommentMapped, ...dynamicComments]);
             setNewCommentText("");
             setIsAddingComment(false);
+            toast.success("Comentario publicado con éxito");
          } else {
             toast.error(data.message || "Error al publicar (Status: " + response.status + ")");
          }
       } catch (error) {
          console.error("Error de red:", error);
+         toast.error("Error de red al publicar el comentario");
       } finally {
          setIsSubmittingComment(false);
       }
@@ -637,6 +639,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
         updateEditedComment(commentId, newText);
         setEditingCommentId(null);
         setEditingText("");
+        toast.success("Comentario editado con éxito");
       } else {
         const data = await response.json();
         toast.error(data.message || "Error al actualizar el comentario");
@@ -683,6 +686,7 @@ export function ZoneSidebar({ zone, onClose, onToggleFavorite, onCreateReport, o
         // Limpiamos los campos
         setReplyText("");
         setReplyingTo(null);
+        toast.success("Respuesta publicada con éxito");
         
         // Cargamos las respuestas actualizadas desde el backend
         try {
