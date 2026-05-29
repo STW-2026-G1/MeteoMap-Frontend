@@ -447,20 +447,28 @@ export default function ProfilePage() {
     });
     if (result.success) {
       setIsEditingProfile(false);
-      if (user) {
-        setProfileData({
-          ...profileData,
-          name: user.name || user.nombre || "Usuario",
-          email: user.email || "",
-          bio: user.biografia || "",
-          location: user.ubicacion || "",
-          avatar_style: user.avatar_style || "avataaars",
-          avatar_seed: user.avatar_seed || user.name || user.nombre || "Usuario",
-          avatar_url: user.avatar_url
-        });
-      }
     } else {
       toast.error(result.errorMessage || "Error al actualizar perfil");
+    }
+  };
+
+  /**
+   * Cancela la edición y restaura los valores originales del perfil
+   */
+  const handleCancelEdit = () => {
+    setIsEditingProfile(false);
+    if (user) {
+      setProfileData({
+        id: user.id || "",
+        name: user.name || user.nombre || "Usuario",
+        email: user.email || "",
+        bio: user.biografia || "",
+        location: user.ubicacion || "",
+        experience: "Avanzado",
+        avatar_style: user.avatar_style || "avataaars",
+        avatar_seed: user.avatar_seed || user.name || user.nombre || "Usuario",
+        avatar_url: user.avatar_url,
+      });
     }
   };
 
@@ -1293,7 +1301,7 @@ export default function ProfilePage() {
                       Guardar
                     </Button>
                     <Button
-                      onClick={() => setIsEditingProfile(false)}
+                      onClick={handleCancelEdit}
                       variant="outline"
                       className="border-red-300 text-red-600 hover:bg-red-50"
                     >

@@ -46,17 +46,20 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || 'http://lo
 const normalizeUserData = (backendUser: any): User => {
   // Check if data is nested inside 'perfil' (new backend structure)
   const profile = backendUser.perfil || {};
+  const style = profile.avatar_style || backendUser.avatar_style || 'avataaars';
+  const seed = profile.avatar_seed || backendUser.avatar_seed || profile.nombre || backendUser.nombre || backendUser.name || 'User';
+  const generatedAvatarUrl = `https://api.dicebear.com/9.x/${style}/svg?seed=${encodeURIComponent(seed)}`;
 
   return {
     id: backendUser.id || backendUser._id?.toString(),
     email: backendUser.email,
-    name: backendUser.name || profile.nombre || backendUser.nombre,
+    name: profile.nombre || backendUser.nombre || backendUser.name,
     nombre: profile.nombre || backendUser.nombre,
     biografia: profile.biografia || backendUser.biografia,
     ubicacion: profile.ubicacion || backendUser.ubicacion,
-    avatar_style: profile.avatar_style || backendUser.avatar_style,
-    avatar_seed: profile.avatar_seed || backendUser.avatar_seed,
-    avatar_url: profile.avatar_url || backendUser.avatar_url,
+    avatar_style: style,
+    avatar_seed: seed,
+    avatar_url: generatedAvatarUrl,
     rol: backendUser.rol,
     createdAt: backendUser.createdAt,
   };
